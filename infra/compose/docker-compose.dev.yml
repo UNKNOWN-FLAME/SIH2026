@@ -1,0 +1,442 @@
+# VajraX Development Docker Compose
+# Brings up the full infrastructure layer for local development.
+# Usage: make dev
+#
+# Services:
+#   postgres-edge-maitri     TimescaleDB for Maitri Edge
+#   postgres-edge-bharati    TimescaleDB for Bharati Edge
+#   postgres-cloud           TimescaleDB + PostgreSQL for Cloud
+#   redis-maitri             AOF-persisted Redis for Maitri Edge queue
+#   redis-bharati            AOF-persisted Redis for Bharati Edge queue
+#   mosquitto-cloud          Eclipse Mosquitto MQTT broker (TLS, mTLS)
+#   minio                    S3-compatible object store for black-box blobs
+
+version: "3.9"
+
+networks:
+  edge-maitri:
+    name: vajrax-edge-maitri
+    driver: bridge
+  edge-bharati:
+    name: vajrax-edge-bharati
+    driver: bridge
+  cloud:
+    name: vajrax-cloud
+    driver: bridge
+  satellite-link:
+    # Simulates the satellite link between Edge and Cloud.
+    # The link simulator attaches to both edge networks and the cloud network.
+    name: vajrax-satellite-link
+    driver: bridge
+
+volumes:
+  pg-edge-maitri-data:
+  pg-edge-bharati-data:
+  pg-cloud-data:
+  redis-maitri-data:
+  redis-bharati-data:
+  redis-cloud-data:
+  minio-data:
+  mosquitto-data:
+  mosquitto-logs:
+
+services:
+
+  # --------------------------------------------------------------------------
+  # Databases — Edge
+  # --------------------------------------------------------------------------
+
+  postgres-edge-maitri:
+    image: timescale/timescaledb:latest-pg16
+    container_name: vajrax-pg-edge-maitri
+    environment:
+      POSTGRES_DB: vajrax_edge
+      POSTGRES_USER: vajrax_edge
+      POSTGRES_PASSWORD: edge_secret_dev
+      STATION_ID: maitri
+    volumes:
+      - pg-edge-maitri-data:/var/lib/postgresql/data
+    networks:
+      - edge-maitri
+    ports:
+      - "5433:5432"  # host:container
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vajrax_edge -d vajrax_edge"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  postgres-edge-bharati:
+    image: timescale/timescaledb:latest-pg16
+    container_name: vajrax-pg-edge-bharati
+    environment:
+      POSTGRES_DB: vajrax_edge
+      POSTGRES_USER: vajrax_edge
+      POSTGRES_PASSWORD: edge_secret_dev
+      STATION_ID: bharati
+    volumes:
+      - pg-edge-bharati-data:/var/lib/postgresql/data
+    networks:
+      - edge-bharati
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vajrax_edge -d vajrax_edge"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------------
+  # Database — Cloud
+  # --------------------------------------------------------------------------
+
+  postgres-cloud:
+    image: timescale/timescaledb:latest-pg16
+    container_name: vajrax-pg-cloud
+    environment:
+      POSTGRES_DB: vajrax_cloud
+      POSTGRES_USER: vajrax_cloud
+      POSTGRES_PASSWORD: cloud_secret_dev
+    volumes:
+      - pg-cloud-data:/var/lib/postgresql/data
+    networks:
+      - cloud
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vajrax_cloud -d vajrax_cloud"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------------
+  # Redis — Edge queues (AOF persistence)
+  # --------------------------------------------------------------------------
+
+  redis-maitri:
+    image: redis:7-alpine
+    container_name: vajrax-redis-maitri
+    command: redis-server --appendonly yes --appendfilename appendonly.aof
+    volumes:
+      - redis-maitri-data:/data
+    networks:
+      - edge-maitri
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis-bharati:
+    image: redis:7-alpine
+    container_name: vajrax-redis-bharati
+    command: redis-server --appendonly yes --appendfilename appendonly.aof
+    volumes:
+      - redis-bharati-data:/data
+    networks:
+      - edge-bharati
+    ports:
+      - "6381:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis-cloud:
+    image: redis:7-alpine
+    container_name: vajrax-redis-cloud
+    command: redis-server --appendonly yes --appendfilename appendonly.aof
+    volumes:
+      - redis-cloud-data:/data
+    networks:
+      - cloud
+    ports:
+      - "6382:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+
+  # --------------------------------------------------------------------------
+  # MQTT Broker — Cloud (Mosquitto with TLS + mTLS)
+  # --------------------------------------------------------------------------
+
+  mosquitto-cloud:
+    image: eclipse-mosquitto:2
+    container_name: vajrax-mosquitto
+    volumes:
+      - ../docker/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ../../infra/certs/dev:/mosquitto/certs:ro
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-logs:/mosquitto/log
+    networks:
+      - cloud
+      - satellite-link
+    ports:
+      - "1883:1883"   # plaintext (local dev only, disable in production)
+      - "8883:8883"   # TLS/mTLS
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-t", "$$SYS/#", "-C", "1", "-i", "healthcheck", "-W", "3"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------------
+  # MinIO — Cloud black-box object store
+  # --------------------------------------------------------------------------
+
+  minio:
+    image: minio/minio:latest
+    container_name: vajrax-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: vajrax_minio
+      MINIO_ROOT_PASSWORD: minio_secret_dev
+    volumes:
+      - minio-data:/data
+    networks:
+      - cloud
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Web console
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------------
+  # Station Simulators — Phase 1
+  # --------------------------------------------------------------------------
+
+  sim-maitri:
+    build:
+      context: ../../
+      dockerfile: infra/docker/simulator/Dockerfile
+    container_name: vajrax-sim-maitri
+    environment:
+      STATION_ID: maitri
+      CONFIG_PATH_TEMPLATE: edge/config/{station_id}.yaml
+      EDGE_INGEST_URL: http://edge-maitri:8100/ingest
+      DRY_RUN: "true"          # set to false once Edge ingestion service is running
+      LOG_FORMAT: json
+      SIM_TICK_INTERVAL_S: "1.0"
+      SIM_FLUSH_INTERVAL_S: "10.0"
+    volumes:
+      - ../../:/app:ro
+    networks:
+      - edge-maitri
+    ports:
+      - "8200:8200"
+    depends_on:
+      postgres-edge-maitri:
+        condition: service_healthy
+      redis-maitri:
+        condition: service_healthy
+    restart: unless-stopped
+
+  sim-bharati:
+    build:
+      context: ../../
+      dockerfile: infra/docker/simulator/Dockerfile
+    container_name: vajrax-sim-bharati
+    environment:
+      STATION_ID: bharati
+      CONFIG_PATH_TEMPLATE: edge/config/{station_id}.yaml
+      EDGE_INGEST_URL: http://edge-bharati:8100/ingest
+      DRY_RUN: "true"
+      LOG_FORMAT: json
+      SIM_TICK_INTERVAL_S: "1.0"
+      SIM_FLUSH_INTERVAL_S: "10.0"
+    volumes:
+      - ../../:/app:ro
+    networks:
+      - edge-bharati
+    ports:
+      - "8201:8200"
+    depends_on:
+      postgres-edge-bharati:
+        condition: service_healthy
+      redis-bharati:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --------------------------------------------------------------------------
+  # Link Simulator — Toxiproxy + control API
+  # --------------------------------------------------------------------------
+
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.9.0
+    container_name: vajrax-toxiproxy
+    networks:
+      - edge-maitri
+      - edge-bharati
+      - satellite-link
+    ports:
+      - "8474:8474"    # toxiproxy REST API
+      - "18883:18883"  # maitri satellite link proxy port
+      - "18884:18884"  # bharati satellite link proxy port
+    restart: unless-stopped
+
+  link-sim:
+    build:
+      context: ../../
+      dockerfile: infra/docker/link_sim/Dockerfile
+    container_name: vajrax-link-sim
+    environment:
+      TOXIPROXY_HOST: toxiproxy
+      TOXIPROXY_API_PORT: "8474"
+      MQTT_UPSTREAM: mosquitto-cloud:8883
+      MAITRI_PROXY_PORT: "18883"
+      BHARATI_PROXY_PORT: "18884"
+      LOG_FORMAT: json
+    volumes:
+      - ../../:/app:ro
+    networks:
+      - edge-maitri
+      - edge-bharati
+      - satellite-link
+    ports:
+      - "8300:8300"
+    depends_on:
+      - toxiproxy
+      - mosquitto-cloud
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Edge Backend — one instance per station
+  # ---------------------------------------------------------------------------
+
+  edge-maitri:
+    build:
+      context: ../../
+      dockerfile: infra/docker/edge/Dockerfile
+    container_name: vajrax-edge-maitri
+    environment:
+      STATION_ID: maitri
+      DATABASE_URL: postgresql://vajrax_edge:edge_secret_dev@postgres-edge-maitri:5432/vajrax_edge
+      REDIS_URL: redis://redis-maitri:6379/0
+      MQTT_HOST: toxiproxy
+      MQTT_PORT: "18883"
+      MQTT_TLS: "false"
+      PRIVATE_KEY_PATH: /etc/vajrax/certs/maitri_private.pem
+      HEARTBEAT_INTERVAL_S: "60"
+      FLUSH_INTERVAL_S: "5"
+      LOG_FORMAT: json
+      LOG_LEVEL: INFO
+    volumes:
+      - ../../:/app:ro
+      - ../../infra/certs:/etc/vajrax/certs
+    networks:
+      - edge-maitri
+      - satellite-link
+    ports:
+      - "8100:8100"
+    depends_on:
+      postgres-edge-maitri:
+        condition: service_healthy
+      redis-maitri:
+        condition: service_healthy
+      toxiproxy:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8100/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  edge-bharati:
+    build:
+      context: ../../
+      dockerfile: infra/docker/edge/Dockerfile
+    container_name: vajrax-edge-bharati
+    environment:
+      STATION_ID: bharati
+      DATABASE_URL: postgresql://vajrax_edge:edge_secret_dev@postgres-edge-bharati:5432/vajrax_edge
+      REDIS_URL: redis://redis-bharati:6379/0
+      MQTT_HOST: toxiproxy
+      MQTT_PORT: "18884"
+      MQTT_TLS: "false"
+      PRIVATE_KEY_PATH: /etc/vajrax/certs/bharati_private.pem
+      HEARTBEAT_INTERVAL_S: "60"
+      FLUSH_INTERVAL_S: "5"
+      LOG_FORMAT: json
+      LOG_LEVEL: INFO
+    volumes:
+      - ../../:/app:ro
+      - ../../infra/certs:/etc/vajrax/certs
+    networks:
+      - edge-bharati
+      - satellite-link
+    ports:
+      - "8101:8100"
+    depends_on:
+      postgres-edge-bharati:
+        condition: service_healthy
+      redis-bharati:
+        condition: service_healthy
+      toxiproxy:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8100/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Cloud Backend — NCPOR HQ
+  # ---------------------------------------------------------------------------
+
+  cloud:
+    build:
+      context: ../../
+      dockerfile: infra/docker/cloud/Dockerfile
+    container_name: vajrax-cloud
+    environment:
+      STATION_IDS: maitri,bharati
+      DATABASE_URL: postgresql://vajrax_cloud:cloud_secret_dev@postgres-cloud:5432/vajrax_cloud
+      REDIS_URL: redis://redis-cloud:6379/0
+      MQTT_HOST: mosquitto-cloud
+      MQTT_PORT: "1883"
+      MQTT_TLS: "false"
+      STATION_PUBKEY_DIR: /etc/vajrax/certs/stations
+      HEARTBEAT_TIMEOUT_MINUTES: "15"
+      API_PORT: "8200"
+      LOG_FORMAT: json
+      LOG_LEVEL: INFO
+    volumes:
+      - ../../:/app:ro
+      - ../../infra/certs:/etc/vajrax/certs
+    networks:
+      - cloud
+    ports:
+      - "8200:8200"
+    depends_on:
+      postgres-cloud:
+        condition: service_healthy
+      redis-cloud:
+        condition: service_healthy
+      mosquitto-cloud:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8200/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+

@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+env/
+.env
+*.env
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Docker
+*.log
+
+# Generated Protobuf bindings (regenerate with make proto-gen)
+shared/schemas/proto_generated/
+
+# Dev certificates (generated with make certs)
+infra/certs/dev/*.key
+infra/certs/dev/*.crt
+infra/certs/dev/*.csr
+infra/certs/dev/*.srl
+infra/certs/dev/*.pem
+
+# Environment files
+.env.local
+.env.*.local
+secrets/
+
+# MinIO data (local dev)
+data/
