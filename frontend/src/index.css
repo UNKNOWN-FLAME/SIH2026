@@ -49,18 +49,57 @@
   --color-secondary-container: #444955;
   --color-inverse-primary: #595e6d;
   --color-accent: #00a3ad;
+  /* Government of India brand tokens */
+  --color-goi-saffron: #FF9933;
+  --color-goi-white: #FFFFFF;
+  --color-goi-green: #138808;
+  --color-goi-navy: #0B2545;
+  --color-goi-deep: #071626;
+  --color-goi-border: #1E3A5F;
+  --color-goi-gold: #E5A93C;
 }
 
 * { box-sizing: border-box; }
 
-/* Sharp corners everywhere (design language) */
+/* Tricolour Ribbon */
+.tricolour-ribbon {
+  height: 4px;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    #FF9933 0%,
+    #FF9933 33.33%,
+    #FFFFFF 33.33%,
+    #FFFFFF 66.66%,
+    #138808 66.66%,
+    #138808 100%
+  );
+  flex-shrink: 0;
+}
+
+.tricolour-bottom {
+  height: 3px;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    #FF9933 0%,
+    #FF9933 33.33%,
+    #FFFFFF 33.33%,
+    #FFFFFF 66.66%,
+    #138808 66.66%,
+    #138808 100%
+  );
+  flex-shrink: 0;
+}
+
+/* Sharp corners everywhere (institutional design language) */
 *, *::before, *::after { border-radius: 0 !important; }
 .rounded-full { border-radius: 9999px !important; }
 
 body {
   font-family: 'Inter', sans-serif;
-  background: #051424;
-  color: #d4e4fa;
+  background: #f0f4f8;
+  color: #0f172a;
   overflow: hidden;
   height: 100vh;
   margin: 0;
@@ -76,9 +115,9 @@ body {
 
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #0d1c2d; }
-::-webkit-scrollbar-thumb { background: #273647; }
-::-webkit-scrollbar-thumb:hover { background: #444955; }
+::-webkit-scrollbar-track { background: #e2e8f0; }
+::-webkit-scrollbar-thumb { background: #94a3b8; }
+::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
 /* Bento grid */
 .bento-grid {
@@ -88,23 +127,44 @@ body {
 }
 
 /* Segmented control */
-.seg-active { background: #00a3ad !important; color: #010f1f !important; font-weight: 700; }
-.seg-inactive { background: transparent; color: #909096; }
-.seg-inactive:hover { color: #d4e4fa; background: #1c2b3c; }
+.seg-active { background: #0b3b60 !important; color: #ffffff !important; font-weight: 700; }
+.seg-inactive { background: #ffffff; color: #475569; }
+.seg-inactive:hover { color: #0b3b60; background: #e2e8f0; }
 
 /* Station tab */
-.station-active  { background: #1a1f2c; border: 1px solid #c2c6d8; color: #d4e4fa; }
-.station-inactive { background: transparent; border: 1px solid transparent; color: #909096; }
-.station-inactive:hover { color: #d4e4fa; background: #1c2b3c; }
+.station-active  { background: #ffffff; border: 1px solid #0b3b60; color: #0b3b60; }
+.station-inactive { background: #f8fafc; border: 1px solid transparent; color: #64748b; }
+.station-inactive:hover { color: #0b3b60; background: #e2e8f0; }
 
 /* Nav */
-.nav-active   { background: #444955; color: #b4b8c6; border-left: 2px solid #c2c6d8; }
-.nav-inactive { color: #c6c6cc; }
-.nav-inactive:hover { background: #1c2b3c; color: #d4e4fa; }
+.nav-active   { background: #0b3b60; color: #ffffff; border-left: 3px solid #ff9933; }
+.nav-inactive { color: #cbd5e1; }
+.nav-inactive:hover { background: #0f2d4a; color: #ffffff; }
 
 /* Alert strip */
 .alert-strip { overflow-x: auto; white-space: nowrap; }
 .alert-strip::-webkit-scrollbar { height: 0; }
+
+/* Continuous Running Marquee for Government Latest Bulletins */
+@keyframes marquee-scroll {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: marquee-scroll 35s linear infinite;
+  will-change: transform;
+}
+
+.marquee-track:hover {
+  animation-play-state: paused;
+}
 
 /* Seismic animation */
 @keyframes seismic-scroll {
@@ -121,10 +181,10 @@ body {
 .pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
 
 /* Alert rows */
-.alert-critical { border-left: 2px solid #ffb4ab; }
-.alert-warning  { border-left: 2px solid #d8c4a8; }
-.alert-info     { border-left: 2px solid #45464c; }
-.alert-row:hover { background: #1c2b3c; }
+.alert-critical { border-left: 3px solid #dc2626; }
+.alert-warning  { border-left: 3px solid #d97706; }
+.alert-info     { border-left: 3px solid #0284c7; }
+.alert-row:hover { background: #f1f5f9; }
 
 /* Status badges */
 .badge-nominal { color: #00a3ad; font-size: 9px; font-weight: 700; letter-spacing: 0.08em; }

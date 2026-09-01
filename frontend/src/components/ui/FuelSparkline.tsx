@@ -5,7 +5,7 @@ interface Props {
   label?: string
 }
 
-export default function FuelSparkline({ values, color = '#c2c6d8', label = 'FUEL LVL' }: Props) {
+export default function FuelSparkline({ values, color = '#ea580c', label = 'FUEL LVL' }: Props) {
   // Default fallback data if API not available yet
   const pts = values && values.length > 0
     ? values
@@ -21,21 +21,21 @@ export default function FuelSparkline({ values, color = '#c2c6d8', label = 'FUEL
   const pointStr = pts.map((v, i) => `${i * xStep},${toY(v)}`).join(' ')
 
   return (
-    <div style={{ position: 'relative', flex: 1, minHeight: 56, borderBottom: '1px solid rgba(69,70,76,0.6)', borderLeft: '1px solid rgba(69,70,76,0.6)' }}>
-      <span style={{ position: 'absolute', top: 0, right: 0, fontSize: 9, fontWeight: 700, color: '#909096', letterSpacing: '0.05em' }}>
+    <div style={{ position: 'relative', flex: 1, minHeight: 56, borderBottom: '1px solid #e2e8f0', borderLeft: '1px solid #e2e8f0', background: '#f8fafc', padding: '4px' }}>
+      <span style={{ position: 'absolute', top: 3, right: 6, fontSize: 9.5, fontWeight: 700, color: '#334155', letterSpacing: '0.04em', zIndex: 2 }}>
         {label}
       </span>
       <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
         {/* Grid */}
-        <line x1="0" y1="20" x2={W} y2="20" stroke="#1c2b3c" strokeWidth="1" />
-        <line x1="0" y1="40" x2={W} y2="40" stroke="#1c2b3c" strokeWidth="1" />
-        <line x1="50" y1="0" x2="50" y2={H} stroke="#1c2b3c" strokeWidth="1" />
-        <line x1="100" y1="0" x2="100" y2={H} stroke="#1c2b3c" strokeWidth="1" />
-        <line x1="150" y1="0" x2="150" y2={H} stroke="#1c2b3c" strokeWidth="1" />
+        <line x1="0" y1="20" x2={W} y2="20" stroke="#e2e8f0" strokeWidth="1" />
+        <line x1="0" y1="40" x2={W} y2="40" stroke="#e2e8f0" strokeWidth="1" />
+        <line x1="50" y1="0" x2="50" y2={H} stroke="#e2e8f0" strokeWidth="1" />
+        <line x1="100" y1="0" x2="100" y2={H} stroke="#e2e8f0" strokeWidth="1" />
+        <line x1="150" y1="0" x2="150" y2={H} stroke="#e2e8f0" strokeWidth="1" />
         {/* Line */}
         <polyline
           points={pointStr}
-          fill="none" stroke={color} strokeWidth="1.5"
+          fill="none" stroke={color} strokeWidth="2"
           strokeLinecap="round" strokeLinejoin="round"
         />
         {/* Latest value dot */}
@@ -43,7 +43,7 @@ export default function FuelSparkline({ values, color = '#c2c6d8', label = 'FUEL
           <circle
             cx={(pts.length - 1) * xStep}
             cy={toY(pts[pts.length - 1])}
-            r="2.5" fill={color}
+            r="3" fill={color}
           />
         )}
       </svg>

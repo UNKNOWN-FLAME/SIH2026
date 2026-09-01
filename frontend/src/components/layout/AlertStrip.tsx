@@ -1,52 +1,114 @@
 import { useAlerts } from '../../hooks/useAlerts'
-
-const SEV_STYLE: Record<string, { bg: string; border: string; color: string; icon: string }> = {
-  CRITICAL: { bg: 'rgba(147,0,10,0.15)', border: 'rgba(255,180,171,0.4)', color: '#ffb4ab', icon: 'warning' },
-  HIGH:     { bg: 'rgba(40,29,11,0.4)',  border: 'rgba(216,196,168,0.4)', color: '#d8c4a8', icon: 'thermostat' },
-  MEDIUM:   { bg: 'rgba(40,29,11,0.4)',  border: 'rgba(216,196,168,0.4)', color: '#d8c4a8', icon: 'local_shipping' },
-  LOW:      { bg: 'rgba(30,43,60,0.4)',  border: 'rgba(69,70,76,0.4)',    color: '#909096', icon: 'info' },
-}
+import { useLanguage } from '../../context/LanguageContext'
 
 export default function AlertStrip() {
   const { data, isError } = useAlerts({ ack_state: 'OPEN', page_size: 10 })
+  const { t } = useLanguage()
 
   const alerts = data?.items ?? []
 
+  const bulletins = [
+    t('marquee.notice1'),
+    alerts.length > 0
+      ? alerts.map(a => `[${a.severity}] ${a.station_id.toUpperCase()}: ${a.description}`).join(' • ')
+      : t('advisory.all_nominal'),
+    t('marquee.notice2'),
+    'NCPOR HQ Goa Polar Satellite Telemetry Uplink: GSAT-7 / Inmarsat Encrypted Multi-Beam Nominal',
+  ]
+
+  // Render a block of bulletins
+  const renderBulletinBlock = () => (
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 24, paddingRight: 24 }}>
+      {bulletins.map((item, idx) => (
+        <span key={idx} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 600, color: '#1e293b' }}>
+          <span style={{ color: '#ea580c', fontWeight: 900 }}>★</span>
+          <span>{item}</span>
+        </span>
+      ))}
+    </div>
+  )
+
   return (
-    <div className="alert-strip" style={{
-      background: '#0d1c2d', borderBottom: '1px solid #45464c',
-      padding: '5px 16px', display: 'flex', alignItems: 'center',
-      gap: 12, minHeight: 34,
-    }}>
-      {isError && (
-        <span style={{ fontSize: 11, color: '#909096' }}>⚠ API unreachable — showing last known data</span>
-      )}
+    <div
+      style={{
+        background: '#ffffff',
+        borderBottom: '1px solid #cbd5e1',
+        padding: '3px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        minHeight: 34,
+        flexShrink: 0,
+        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Official Government "LATEST BULLETINS" Badge */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          background: '#dc2626',
+          padding: '3px 10px',
+          flexShrink: 0,
+          boxShadow: '0 1px 2px rgba(220,38,38,0.25)',
+          zIndex: 5,
+        }}
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#ffffff' }}>
+          campaign
+        </span>
+        <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.06em', color: '#ffffff', whiteSpace: 'nowrap' }}>
+          {t('marquee.label')}
+        </span>
+      </div>
 
-      {alerts.length === 0 && !isError && (
-        <span style={{ fontSize: 11, color: '#00a3ad', fontWeight: 600 }}>✓ No open alerts</span>
-      )}
+      {/* Running Continuous Marquee Ticker */}
+      <div
+        style={{
+          flex: 1,
+          overflow: 'hidden',
+          whiteSpace: 'nowrap',
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          maskImage: 'linear-gradient(to right, transparent 0%, black 2%, black 98%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 2%, black 98%, transparent 100%)',
+        }}
+        title="Hover to pause ticker / स्क्रॉल रोकने के लिए कर्सर ऊपर लाएं"
+      >
+        <div className="marquee-track">
+          {renderBulletinBlock()}
+          {renderBulletinBlock()}
+        </div>
+      </div>
 
-      {alerts.map(alert => {
-        const s = SEV_STYLE[alert.severity] ?? SEV_STYLE.LOW
-        return (
-          <div key={alert.alert_id} style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            background: s.bg, border: `1px solid ${s.border}`, padding: '3px 10px',
-            flexShrink: 0,
-          }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 13, color: s.color }}>{s.icon}</span>
-            <span style={{ fontSize: 11, fontWeight: 600, color: s.color, letterSpacing: '0.03em' }}>
-              {alert.severity}: {alert.description}
-            </span>
-          </div>
-        )
-      })}
-
-      {/* Live indicator */}
-      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-        <span className="pulse-dot rounded-full" style={{ width: 6, height: 6, background: isError ? '#ffb4ab' : '#00a3ad', display: 'inline-block' }} />
-        <span style={{ fontSize: 10, fontWeight: 700, color: isError ? '#ffb4ab' : '#00a3ad', letterSpacing: '0.06em' }}>
-          {isError ? 'OFFLINE' : 'LIVE'}
+      {/* Live sync pulse */}
+      <div
+        style={{
+          marginLeft: 'auto',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          flexShrink: 0,
+          background: '#f8fafc',
+          border: '1px solid #e2e8f0',
+          padding: '2px 8px',
+          zIndex: 5,
+        }}
+      >
+        <span
+          className="pulse-dot rounded-full"
+          style={{
+            width: 7,
+            height: 7,
+            background: isError ? '#dc2626' : '#16a34a',
+            display: 'inline-block',
+          }}
+        />
+        <span style={{ fontSize: 10, fontWeight: 800, color: isError ? '#dc2626' : '#166534', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+          {isError ? 'LINK OFFLINE' : t('advisory.live')}
         </span>
       </div>
     </div>
