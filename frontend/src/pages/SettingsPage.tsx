@@ -4,7 +4,6 @@ import TopNav from '../components/layout/TopNav'
 import AlertStrip from '../components/layout/AlertStrip'
 import Sidebar from '../components/layout/Sidebar'
 import Footer from '../components/layout/Footer'
-import { useLanguage } from '../context/LanguageContext'
 import { useAuth } from '../hooks/useAuth'
 
 type TabType = 'system' | 'security' | 'link' | 'users' | 'notifications'
@@ -12,9 +11,7 @@ type TabType = 'system' | 'security' | 'link' | 'users' | 'notifications'
 export default function SettingsPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { t } = useLanguage()
   const [activeTab, setActiveTab] = useState<TabType>('system')
-  const [saved, setSaved] = useState(false)
 
   // Settings state
   const [telemetryInterval, setTelemetryInterval] = useState('10')
@@ -93,7 +90,6 @@ export default function SettingsPage() {
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <span style={{ fontSize: 10, color: '#16a34a', fontWeight: 700, background: '#f0fdf4', padding: '2px 8px', border: '1px solid #bbf7d0' }}>ADMIN: {user?.username?.toUpperCase()}</span>
-                <span style={{ fontSize: 10, color: '#64748b', fontWeight: 700 }}>REF: NCPOR/SYS/CONFIG/2026</span>
               </div>
             </div>
 

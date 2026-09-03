@@ -1,18 +1,14 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
-import { useDashboard } from '../../hooks/useDashboard'
 import { useLanguage } from '../../context/LanguageContext'
 import GovtOfIndiaLogo from '../ui/GovtOfIndiaLogo'
 
 export default function TopNav() {
   const navigate = useNavigate()
-  const location = useLocation()
   const { user, logout } = useAuth()
-  const { data: dash } = useDashboard()
   const { lang, toggleLang, t } = useLanguage()
   const [timeStr, setTimeStr] = useState<string>('')
-  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     function updateClock() {
@@ -125,11 +121,15 @@ export default function TopNav() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          borderBottom: '1px solid #e2e8f0',
+          borderBottom: '2px solid #FF9933',
         }}
       >
         {/* Left: Government of India Official Logo + Ministry Hierarchy */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div
+          onClick={() => navigate('/')}
+          style={{ display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer' }}
+          title="VajraX Home"
+        >
           {/* Government of India Logo */}
           <GovtOfIndiaLogo size={50} color="#0b3b60" showGovtText={true} textColor="#0b3b60" />
 
@@ -232,125 +232,8 @@ export default function TopNav() {
           </div>
         </div>
       </div>
-
-      {/* ── Tier 3: The Canonical Government Navy Blue Navigation Bar (#0B3B60) ── */}
-      <nav
-        style={{
-          background: '#0b3b60',
-          borderBottom: '3px solid #FF9933',
-          padding: '0 16px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          minHeight: 40,
-        }}
-      >
-        {/* Horizontal Navigation Items */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 2, overflowX: 'auto' }}>
-          {[
-            { label: t('topnav.home'), icon: 'home', path: '/' },
-            { label: t('nav.stations'), icon: 'hub', path: '/stations' },
-            { label: t('topnav.maitri'), icon: 'foundation', path: '/stations' },
-            { label: t('topnav.bharati'), icon: 'domain', path: '/stations' },
-            { label: t('topnav.energy'), icon: 'bolt', path: '/energy' },
-            { label: t('topnav.logistics'), icon: 'local_shipping', path: '/logistics' },
-            { label: t('topnav.weather'), icon: 'thermostat', path: '/' },
-            { label: t('topnav.alerts'), icon: 'notifications_active', badge: dash?.critical_alerts, path: '/' },
-            { label: t('topnav.reports'), icon: 'description', path: '/' },
-          ].map((item, idx) => {
-            const active = location.pathname === item.path && (item.path !== '/' || location.pathname === '/')
-            return (
-              <button
-                key={idx}
-                onClick={() => navigate(item.path)}
-                style={{
-                  background: active ? '#082545' : 'transparent',
-                  border: 'none',
-                  borderBottom: active ? '3px solid #FF9933' : '3px solid transparent',
-                  color: active ? '#ffffff' : '#cbd5e1',
-                  padding: '9px 12px',
-                  fontSize: 11.5,
-                  fontWeight: active ? 800 : 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  whiteSpace: 'nowrap',
-                  transition: 'all 0.15s',
-                }}
-                onMouseOver={(e) => {
-                  if (!active) {
-                    (e.currentTarget as HTMLElement).style.background = '#0d4775'
-                    ;(e.currentTarget as HTMLElement).style.color = '#ffffff'
-                  }
-                }}
-                onMouseOut={(e) => {
-                  if (!active) {
-                    (e.currentTarget as HTMLElement).style.background = 'transparent'
-                    ;(e.currentTarget as HTMLElement).style.color = '#cbd5e1'
-                  }
-                }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: 15, color: active ? '#FF9933' : '#94a3b8' }}>
-                  {item.icon}
-                </span>
-                <span>{item.label}</span>
-                {typeof item.badge === 'number' && item.badge > 0 && (
-                  <span
-                    style={{
-                      background: '#dc2626',
-                      color: '#ffffff',
-                      fontSize: 9,
-                      fontWeight: 800,
-                      padding: '1px 5px',
-                      borderRadius: 9999,
-                      marginLeft: 2,
-                    }}
-                  >
-                    {item.badge}
-                  </span>
-                )}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Integrated Government Search Box */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 0' }} className="hidden md:flex">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t('header.search')}
-            style={{
-              background: '#ffffff',
-              border: '1px solid #cbd5e1',
-              color: '#0f172a',
-              fontSize: 11,
-              padding: '5px 10px',
-              width: 190,
-              outline: 'none',
-            }}
-          />
-          <button
-            style={{
-              background: '#ea580c',
-              border: 'none',
-              color: '#ffffff',
-              padding: '5px 10px',
-              fontSize: 11,
-              fontWeight: 800,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 3,
-            }}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>search</span>
-            <span>{t('header.search_btn')}</span>
-          </button>
-        </div>
-      </nav>
     </header>
   )
 }
+
+

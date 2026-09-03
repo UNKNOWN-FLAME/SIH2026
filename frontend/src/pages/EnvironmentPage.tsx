@@ -4,7 +4,6 @@ import TopNav from '../components/layout/TopNav'
 import AlertStrip from '../components/layout/AlertStrip'
 import Sidebar from '../components/layout/Sidebar'
 import Footer from '../components/layout/Footer'
-import { useLanguage } from '../context/LanguageContext'
 
 type StationId = 'maitri' | 'bharati'
 type TabType = 'overview' | 'atmosphere' | 'glaciology' | 'seismic' | 'ocean'
@@ -33,7 +32,6 @@ function MetCard({ label, value, unit, icon, color, sub }: { label: string; valu
 
 export default function EnvironmentPage() {
   const navigate = useNavigate()
-  const { t } = useLanguage()
   const [activeStation, setActiveStation] = useState<StationId>('maitri')
   const [activeTab, setActiveTab] = useState<TabType>('overview')
   const st = STATIONS[activeStation]
@@ -63,7 +61,6 @@ export default function EnvironmentPage() {
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <span style={{ fontSize: 10, color: '#16a34a', fontWeight: 700, background: '#f0fdf4', padding: '2px 8px', border: '1px solid #bbf7d0' }}>● SENSORS LIVE</span>
-                <span style={{ fontSize: 10, color: '#64748b', fontWeight: 700 }}>REF: NCPOR/MET/ENV/{activeStation.toUpperCase()}/2026</span>
               </div>
             </div>
             <div style={{ background: '#0b3b60', color: '#fff', padding: '10px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -181,31 +178,143 @@ export default function EnvironmentPage() {
             {activeTab === 'seismic' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-                  <MetCard label="SEISMIC ACTIVITY" value="Quiet" unit="" icon="vibration" color="#16a34a" sub="No events in 72h" />
-                  <MetCard label="DOMINANT FREQ." value={env.seismicHz} unit="Hz" icon="waves" color="#3b82f6" sub="Microseismic noise floor" />
-                  <MetCard label="GRAVITY ANOMALY" value="-18.4" unit="mGal" icon="height" color="#7c3aed" sub="Free-air correction" />
-                  <MetCard label="MAGNETIC DECL." value="27.3°" unit="E" icon="explore" color="#ea580c" sub="IGRF-13 model epoch" />
+                  <MetCard label="EARTHQUAKE LEVEL" value="Quiet" unit="" icon="vibration" color="#16a34a" sub="No tremors detected in 72h" />
+                  <MetCard label="GROUND VIBRATION" value={env.seismicHz} unit="Hz" icon="waves" color="#3b82f6" sub="Normal background vibration" />
+                  <MetCard label="LOCAL GRAVITY" value="-18.4" unit="mGal" icon="height" color="#7c3aed" sub="Natural polar gravity level" />
+                  <MetCard label="COMPASS OFFSET" value="27.3°" unit="East" icon="explore" color="#ea580c" sub="Difference from true North" />
                 </div>
-                <div style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '16px' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 12, letterSpacing: '0.05em' }}>SEISMOGRAPH LIVE TRACE — BROADBAND SENSOR BB-{activeStation === 'maitri' ? 'M1' : 'B1'}</div>
-                  <div style={{ background: '#0f172a', padding: '12px', height: 80, display: 'flex', alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
-                    <svg width="100%" height="56" style={{ display: 'block' }}>
-                      {Array.from({ length: 200 }).map((_, i) => {
-                        const noise = Math.sin(i * 0.3) * 4 + Math.sin(i * 0.71) * 2 + Math.sin(i * 1.3) * 1
-                        const prevNoise = Math.sin((i-1) * 0.3) * 4 + Math.sin((i-1) * 0.71) * 2 + Math.sin((i-1) * 1.3) * 1
-                        return i === 0 ? null : <line key={i} x1={`${(i - 1) / 200 * 100}%`} y1={28 + prevNoise} x2={`${i / 200 * 100}%`} y2={28 + noise} stroke="#22d3ee" strokeWidth={1.5} />
-                      })}
-                    </svg>
-                    <div style={{ position: 'absolute', bottom: 4, right: 8, fontSize: 9, color: '#22d3ee' }}>BHZ • 100sps • LIVE</div>
+                {/* Underground Ice & Ground Temperature Profile — Official Government Theme */}
+                <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                  {/* Government Header Bar */}
+                  <div
+                    style={{
+                      background: '#0b3b60',
+                      borderBottom: '2px solid #FF9933',
+                      padding: '10px 14px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: 8,
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: '#ffffff', letterSpacing: '0.03em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#FF9933' }}>thermostat</span>
+                        UNDERGROUND ICE & GROUND TEMPERATURE — {activeStation === 'maitri' ? 'MAITRI BASE (SCHIRMACHER OASIS)' : 'BHARATI BASE (LARSEMANN HILLS)'}
+                      </div>
+                      <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2, marginLeft: 22 }}>
+                        National Centre for Polar and Ocean Research (MoES) • Multi-Depth Cryosphere Monitoring • GIGW 3.0
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 10, color: '#ffffff', fontWeight: 800, background: '#072740', padding: '3px 8px', border: '1px solid #0d4775' }}>
+                        CONSTANT TEMP: BELOW {activeStation === 'maitri' ? '11.4 m' : '9.8 m'}
+                      </span>
+                      <span style={{ fontSize: 10, color: '#166534', fontWeight: 800, background: '#dcfce7', padding: '3px 8px', border: '1px solid #86efac' }}>
+                        ● GROUND FULLY FROZEN (STABLE)
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '14px' }}>
+                    {/* Multi-depth Borehole Grid — Government Light Theme */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10 }}>
+                      {[
+                        { depth: 'Surface (0 m)', temp: activeStation === 'maitri' ? '-28.4' : '-21.7', layer: 'Ground Surface', drift: '-0.02°C / yr', topColor: '#FF9933' },
+                        { depth: '1.5 m Deep', temp: activeStation === 'maitri' ? '-19.8' : '-16.4', layer: 'Top Soil Layer', drift: '+0.01°C / yr', topColor: '#0284c7' },
+                        { depth: '5 m Deep', temp: activeStation === 'maitri' ? '-14.2' : '-12.1', layer: 'Frozen Ice & Soil', drift: '+0.01°C / yr', topColor: '#0b3b60' },
+                        { depth: '10 m Deep', temp: activeStation === 'maitri' ? '-11.6' : '-10.2', layer: 'Same Temp Year-Round', drift: '0.00°C (Stable)', topColor: '#0b3b60' },
+                        { depth: '25 m Deep', temp: activeStation === 'maitri' ? '-9.8' : '-8.9', layer: 'Deep Bedrock Under Ice', drift: '0.00°C (Stable)', topColor: '#1e3a8a' },
+                        { depth: '50 m Deep', temp: activeStation === 'maitri' ? '-9.1' : '-8.4', layer: 'Deep Earth (50m)', drift: '0.00°C (Stable)', topColor: '#138808' },
+                      ].map((b) => (
+                        <div
+                          key={b.depth}
+                          style={{
+                            background: '#f8fafc',
+                            border: '1px solid #cbd5e1',
+                            borderTop: `3px solid ${b.topColor}`,
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between',
+                            padding: '10px 10px 8px',
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontSize: 10, color: '#0b3b60', fontWeight: 800, letterSpacing: '0.02em', borderBottom: '1px solid #e2e8f0', paddingBottom: 4 }}>
+                              {b.depth}
+                            </div>
+                            <div style={{ fontSize: 22, fontWeight: 900, color: '#0b3b60', fontFamily: 'Inter, sans-serif', margin: '8px 0 2px' }}>
+                              {b.temp}°C
+                            </div>
+                            <div style={{ fontSize: 9.5, color: '#475569', fontWeight: 700, lineHeight: 1.2 }}>
+                              {b.layer}
+                            </div>
+                          </div>
+                          <div style={{ marginTop: 8, paddingTop: 6, borderTop: '1px dashed #e2e8f0' }}>
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 3,
+                                fontSize: 9,
+                                fontWeight: 700,
+                                color: '#166534',
+                                background: '#f0fdf4',
+                                border: '1px solid #bbf7d0',
+                                padding: '1px 5px',
+                                borderRadius: 2,
+                              }}
+                            >
+                              <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#16a34a' }} />
+                              {b.drift}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Government Information Strip */}
+                    <div
+                      style={{
+                        marginTop: 12,
+                        background: '#f1f5f9',
+                        border: '1px solid #cbd5e1',
+                        borderLeft: '3px solid #0b3b60',
+                        padding: '8px 12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontSize: 10.5,
+                        flexWrap: 'wrap',
+                        gap: 8,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div>
+                          <span style={{ fontWeight: 700, color: '#64748b' }}>Summer Thaw Depth: </span>
+                          <strong style={{ color: '#0b3b60' }}>{activeStation === 'maitri' ? '0.42 m (Top 42 cm melts in summer)' : '0.28 m (Top 28 cm melts in summer)'}</strong>
+                        </div>
+                        <span style={{ color: '#cbd5e1' }}>|</span>
+                        <div>
+                          <span style={{ fontWeight: 700, color: '#64748b' }}>Solid Rock Starts At: </span>
+                          <strong style={{ color: '#0b3b60' }}>{activeStation === 'maitri' ? '28.5 m deep' : '41.2 m deep'}</strong>
+                        </div>
+                      </div>
+                      <div style={{ color: '#475569', fontSize: 10 }}>
+                        Telemetry Interval: <strong style={{ color: '#0b3b60' }}>10 mins</strong> • Sensors: <strong style={{ color: '#166534' }}>All 6 Active (Pt100 RTD)</strong> • MoES Verified
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '16px' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 12, letterSpacing: '0.05em' }}>RECENT SEISMIC EVENTS — SOUTHERN OCEAN REGION</div>
-                  {[{ time: '48h ago', mag: 2.1, depth: '12km', loc: '640 km NW — Bouvet', type: 'Teleseismic' },{ time: '5 days ago', mag: 4.7, depth: '8km', loc: '1,240 km W — Scotia Ridge', type: 'Teleseismic' },{ time: '12 days ago', mag: 1.4, depth: '3km', loc: '18 km E — Local ice event', type: 'Icequake' }].map(ev => (
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 12, letterSpacing: '0.05em' }}>RECENT EARTHQUAKES & ICE TREMORS — SURROUNDING REGION</div>
+                  {[{ time: '48h ago', mag: 2.1, depth: '12 km deep', loc: '640 km NW — Bouvet Island', type: 'Distant Quake' },{ time: '5 days ago', mag: 4.7, depth: '8 km deep', loc: '1,240 km W — Scotia Ridge', type: 'Distant Quake' },{ time: '12 days ago', mag: 1.4, depth: '3 km deep', loc: '18 km East — Near station', type: 'Ice Crack' }].map(ev => (
                     <div key={ev.time} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f1f5f9', fontSize: 11 }}>
                       <span style={{ fontWeight: 800, color: ev.mag > 4 ? '#dc2626' : ev.mag > 2 ? '#d97706' : '#16a34a', width: 40 }}>M{ev.mag}</span>
                       <span style={{ flex: 1, color: '#475569' }}>{ev.loc}</span>
-                      <span style={{ color: '#94a3b8', width: 80 }}>{ev.depth}</span>
+                      <span style={{ color: '#94a3b8', width: 90 }}>{ev.depth}</span>
                       <span style={{ fontSize: 10, color: '#0b3b60', fontWeight: 700, background: '#f0f9ff', padding: '2px 6px', border: '1px solid #bae6fd' }}>{ev.type}</span>
                       <span style={{ color: '#94a3b8', width: 80, textAlign: 'right' }}>{ev.time}</span>
                     </div>

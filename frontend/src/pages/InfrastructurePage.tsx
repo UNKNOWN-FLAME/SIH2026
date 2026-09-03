@@ -4,7 +4,6 @@ import TopNav from '../components/layout/TopNav'
 import AlertStrip from '../components/layout/AlertStrip'
 import Sidebar from '../components/layout/Sidebar'
 import Footer from '../components/layout/Footer'
-import { useLanguage } from '../context/LanguageContext'
 
 type StationId = 'maitri' | 'bharati'
 type TabType = 'overview' | 'structural' | 'hvac' | 'comms' | 'safety'
@@ -28,7 +27,6 @@ function StatCard({ label, value, unit, icon, color, status }: { label: string; 
 
 export default function InfrastructurePage() {
   const navigate = useNavigate()
-  const { t } = useLanguage()
   const [activeStation, setActiveStation] = useState<StationId>('maitri')
   const [activeTab, setActiveTab] = useState<TabType>('overview')
 
@@ -68,7 +66,6 @@ export default function InfrastructurePage() {
                 <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: '#0b3b60', fontWeight: 700, cursor: 'pointer', padding: 0, fontSize: 11 }}>Home</button>
                 <span>›</span><span style={{ color: '#ea580c', fontWeight: 800 }}>Infrastructure Twin</span>
               </div>
-              <span style={{ fontSize: 10, color: '#64748b', fontWeight: 700 }}>REF: NCPOR/INFRA/{activeStation.toUpperCase()}/DT/2026</span>
             </div>
 
             <div style={{ background: '#0b3b60', color: '#fff', padding: '10px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

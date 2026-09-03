@@ -4,7 +4,6 @@ import TopNav from '../components/layout/TopNav'
 import AlertStrip from '../components/layout/AlertStrip'
 import Sidebar from '../components/layout/Sidebar'
 import Footer from '../components/layout/Footer'
-import { useLanguage } from '../context/LanguageContext'
 import { useAnalytics } from '../hooks/useAnalytics'
 
 type StationId = 'maitri' | 'bharati'
@@ -48,10 +47,9 @@ function MiniBarChart({ data, labels, color }: { data: number[]; labels: string[
 
 export default function AnalyticsPage() {
   const navigate = useNavigate()
-  const { t } = useLanguage()
   const [activeStation, setActiveStation] = useState<StationId>('maitri')
   const [activeTab, setActiveTab] = useState<TabType>('fuel')
-  const { data: analytics } = useAnalytics(activeStation)
+  useAnalytics(activeStation)
 
   const tabs: { id: TabType; label: string; icon: string }[] = [
     { id: 'fuel', label: 'Fuel Burn Model', icon: 'local_gas_station' },
@@ -84,7 +82,6 @@ export default function AnalyticsPage() {
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <span style={{ fontSize: 10, color: '#7c3aed', fontWeight: 700, background: '#f5f3ff', padding: '2px 8px', border: '1px solid #ddd6fe' }}>🤖 AI ENGINE ACTIVE</span>
-                <span style={{ fontSize: 10, color: '#64748b', fontWeight: 700 }}>REF: NCPOR/AI/{activeStation.toUpperCase()}/2026</span>
               </div>
             </div>
 

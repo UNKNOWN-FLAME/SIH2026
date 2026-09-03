@@ -4,7 +4,6 @@ import TopNav from '../components/layout/TopNav'
 import AlertStrip from '../components/layout/AlertStrip'
 import Sidebar from '../components/layout/Sidebar'
 import Footer from '../components/layout/Footer'
-import { useLanguage } from '../context/LanguageContext'
 
 type ReportType = 'daily' | 'monthly' | 'incident' | 'scientific' | 'audit'
 
@@ -38,7 +37,6 @@ const REPORT_DATA: Record<ReportType, Array<{ id: string; title: string; station
 
 export default function ReportsPage() {
   const navigate = useNavigate()
-  const { t } = useLanguage()
   const [activeTab, setActiveTab] = useState<ReportType>('daily')
   const [searchQuery, setSearchQuery] = useState('')
   const [downloadMsg, setDownloadMsg] = useState<string | null>(null)
@@ -88,7 +86,6 @@ export default function ReportsPage() {
                 <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: '#0b3b60', fontWeight: 700, cursor: 'pointer', padding: 0, fontSize: 11 }}>Home</button>
                 <span>›</span><span style={{ color: '#ea580c', fontWeight: 800 }}>Official Reports</span>
               </div>
-              <span style={{ fontSize: 10, color: '#64748b', fontWeight: 700 }}>REF: NCPOR/REPORTS/GIGW/2026 | CLASSIFIED PORTAL</span>
             </div>
 
             <div style={{ background: '#0b3b60', color: '#fff', padding: '10px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

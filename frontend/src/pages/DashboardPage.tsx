@@ -53,9 +53,6 @@ export default function DashboardPage() {
               <span style={{ color: '#0b3b60', fontWeight: 600 }}>{t('crumb.polar_division')}</span>
               <span>&gt;</span>
               <span style={{ color: '#ea580c', fontWeight: 800 }}>{t('crumb.twin')}</span>
-              <span style={{ marginLeft: 'auto', fontSize: 10, color: '#64748b', fontWeight: 700 }} className="hidden sm:inline">
-                REF: MoES/NCPOR/ANT-TWIN/2026
-              </span>
             </div>
 
             <StationTabs
