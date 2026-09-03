@@ -1,0 +1,252 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import TopNav from '../components/layout/TopNav'
+import AlertStrip from '../components/layout/AlertStrip'
+import Sidebar from '../components/layout/Sidebar'
+import Footer from '../components/layout/Footer'
+import { useLanguage } from '../context/LanguageContext'
+
+type StationId = 'maitri' | 'bharati'
+type TabType = 'overview' | 'atmosphere' | 'glaciology' | 'seismic' | 'ocean'
+
+const STATIONS: Record<StationId, { name: string; coords: string; elevation: string; region: string }> = {
+  maitri: { name: 'Maitri Research Station', coords: '70°45′S, 11°44′E', elevation: '130m ASL', region: 'Schirmacher Oasis, Queen Maud Land' },
+  bharati: { name: 'Bharati Research Station', coords: '69°24′S, 76°11′E', elevation: '35m ASL', region: 'Larsemann Hills, Prydz Bay' },
+}
+
+function MetCard({ label, value, unit, icon, color, sub }: { label: string; value: string | number; unit: string; icon: string; color: string; sub?: string }) {
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '14px', display: 'flex', flexDirection: 'column', gap: 4, boxShadow: '0 1px 3px rgba(0,0,0,0.04)', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, width: 3, height: '100%', background: color }} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginLeft: 8 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', letterSpacing: '0.05em', textTransform: 'uppercase' }}>{label}</div>
+        <span className="material-symbols-outlined" style={{ fontSize: 16, color }}>{icon}</span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginLeft: 8 }}>
+        <span style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', fontFamily: 'Inter' }}>{value}</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>{unit}</span>
+      </div>
+      {sub && <div style={{ fontSize: 10, color: '#94a3b8', marginLeft: 8 }}>{sub}</div>}
+    </div>
+  )
+}
+
+export default function EnvironmentPage() {
+  const navigate = useNavigate()
+  const { t } = useLanguage()
+  const [activeStation, setActiveStation] = useState<StationId>('maitri')
+  const [activeTab, setActiveTab] = useState<TabType>('overview')
+  const st = STATIONS[activeStation]
+  const env = activeStation === 'maitri'
+    ? { temp: -28.4, feels: -41.2, wind: 67, gust: 94, humidity: 78, pressure: 978.4, visibility: 1.2, uv: 0, dewPoint: -34.1, snowDepth: 2.4, iceThickness: 1.85, seismicHz: 0.12, co2: 412, ozone: 287, radiation: 0.18 }
+    : { temp: -21.7, feels: -33.5, wind: 42, gust: 71, humidity: 85, pressure: 1002.1, visibility: 3.8, uv: 1, dewPoint: -27.3, snowDepth: 1.1, iceThickness: 0.92, seismicHz: 0.08, co2: 413, ozone: 291, radiation: 0.22 }
+  const tabs: { id: TabType; label: string; icon: string }[] = [
+    { id: 'overview', label: 'Met Overview', icon: 'cloud' },
+    { id: 'atmosphere', label: 'Atmosphere', icon: 'air' },
+    { id: 'glaciology', label: 'Glaciology', icon: 'ac_unit' },
+    { id: 'seismic', label: 'Seismic & Geophysics', icon: 'vibration' },
+    { id: 'ocean', label: 'Ocean & Ice', icon: 'waves' },
+  ]
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f0f4f8' }}>
+      <TopNav />
+      <AlertStrip />
+      <div style={{ display: 'flex', flex: 1 }}>
+        <Sidebar activeStation={activeStation} onSwitchStation={() => setActiveStation(s => s === 'maitri' ? 'bharati' : 'maitri')} />
+        <main id="main-content" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: '#f0f4f8' }}>
+          <div style={{ flex: 1, padding: '10px 14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, color: '#64748b', marginBottom: 10, padding: '6px 12px', background: '#fff', border: '1px solid #cbd5e1' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 15, color: '#0b3b60' }}>home</span>
+                <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: '#0b3b60', fontWeight: 700, cursor: 'pointer', padding: 0, fontSize: 11 }}>Home</button>
+                <span>›</span><span style={{ color: '#ea580c', fontWeight: 800 }}>Environment & Met</span>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <span style={{ fontSize: 10, color: '#16a34a', fontWeight: 700, background: '#f0fdf4', padding: '2px 8px', border: '1px solid #bbf7d0' }}>● SENSORS LIVE</span>
+                <span style={{ fontSize: 10, color: '#64748b', fontWeight: 700 }}>REF: NCPOR/MET/ENV/{activeStation.toUpperCase()}/2026</span>
+              </div>
+            </div>
+            <div style={{ background: '#0b3b60', color: '#fff', padding: '10px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 800 }}>🌬️ {st.name.toUpperCase()} — ENVIRONMENTAL MONITORING</div>
+                <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>{st.coords} • {st.region} • {st.elevation}</div>
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {(['maitri', 'bharati'] as const).map(s => (
+                  <button key={s} onClick={() => setActiveStation(s)} style={{ background: activeStation === s ? '#ff9933' : 'rgba(255,255,255,0.1)', border: activeStation === s ? '2px solid #ff9933' : '2px solid rgba(255,255,255,0.2)', color: '#fff', padding: '4px 12px', fontWeight: 800, fontSize: 10, cursor: 'pointer' }}>{s.toUpperCase()}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{ display: 'flex', borderBottom: '2px solid #cbd5e1', marginBottom: 12, background: '#fff', padding: '0 8px' }}>
+              {tabs.map(tab => (
+                <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 14px', border: 'none', background: 'none', cursor: 'pointer', fontWeight: activeTab === tab.id ? 800 : 600, color: activeTab === tab.id ? '#0b3b60' : '#64748b', fontSize: 11, borderBottom: activeTab === tab.id ? '2px solid #0b3b60' : '2px solid transparent', marginBottom: -2 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 15 }}>{tab.icon}</span>{tab.label}
+                </button>
+              ))}
+            </div>
+            {activeTab === 'overview' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {env.temp < -30 && (<div style={{ background: '#fef3c7', border: '1px solid #f59e0b', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 8 }}><span className="material-symbols-outlined" style={{ color: '#d97706', fontSize: 18 }}>warning</span><span style={{ fontSize: 11, fontWeight: 700, color: '#92400e' }}>SEVERE WEATHER ALERT: Extreme cold advisory active — Temperature below -30°C. All external operations suspended.</span></div>)}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+                  <MetCard label="AIR TEMPERATURE" value={env.temp} unit="°C" icon="thermometer" color="#3b82f6" sub={`Feels like ${env.feels}°C`} />
+                  <MetCard label="WIND SPEED" value={env.wind} unit="km/h" icon="air" color="#0b3b60" sub={`Gusts: ${env.gust} km/h`} />
+                  <MetCard label="HUMIDITY" value={env.humidity} unit="%" icon="water_drop" color="#06b6d4" sub={`Dew Point: ${env.dewPoint}°C`} />
+                  <MetCard label="PRESSURE" value={env.pressure} unit="hPa" icon="compress" color="#ea580c" sub="Sea Level Ref." />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+                  <MetCard label="VISIBILITY" value={env.visibility} unit="km" icon="visibility" color="#8b5cf6" sub={env.visibility < 2 ? '⚠ Poor' : 'Moderate'} />
+                  <MetCard label="UV INDEX" value={env.uv} unit="" icon="wb_sunny" color="#f59e0b" sub={env.uv === 0 ? 'Polar Night' : 'Low'} />
+                  <MetCard label="SNOW DEPTH" value={env.snowDepth} unit="m" icon="ac_unit" color="#06b6d4" sub="Surface accumulation" />
+                  <MetCard label="CO₂ LEVEL" value={env.co2} unit="ppm" icon="co2" color="#16a34a" sub="NOAA ref: 421 ppm" />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '16px' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 12, letterSpacing: '0.05em' }}>IMD AUTO WEATHER STATION NETWORK</div>
+                    {[{ name: 'Main AWS Station', status: 'ONLINE', last: '2 min ago', sensors: 18 },{ name: 'Summit Ridge AWS', status: 'ONLINE', last: '5 min ago', sensors: 12 },{ name: 'Ice Shelf Sensor Array', status: 'DEGRADED', last: '18 min ago', sensors: 6 },{ name: 'Upper Air Radiosonde', status: 'OFFLINE', last: '4h ago', sensors: 0 }].map(s => (
+                      <div key={s.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid #f1f5f9', fontSize: 11 }}>
+                        <div><div style={{ fontWeight: 700, color: '#1e293b' }}>{s.name}</div><div style={{ fontSize: 9, color: '#94a3b8' }}>{s.sensors} sensors • {s.last}</div></div>
+                        <span style={{ fontWeight: 800, fontSize: 10, color: s.status === 'ONLINE' ? '#16a34a' : s.status === 'DEGRADED' ? '#d97706' : '#dc2626', background: s.status === 'ONLINE' ? '#f0fdf4' : s.status === 'DEGRADED' ? '#fef3c7' : '#fef2f2', padding: '2px 8px', border: `1px solid ${s.status === 'ONLINE' ? '#bbf7d0' : s.status === 'DEGRADED' ? '#fde68a' : '#fecaca'}` }}>{s.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '16px' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 12, letterSpacing: '0.05em' }}>IMD / ECMWF 5-DAY FORECAST</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
+                      {['Today', 'D+1', 'D+2', 'D+3', 'D+4'].map((day, i) => {
+                        const temps = [env.temp, env.temp - 3, env.temp + 1, env.temp - 5, env.temp + 2]
+                        const winds = [env.wind, env.wind + 10, env.wind - 8, env.wind + 20, env.wind - 5]
+                        const icons = ['storm', 'ac_unit', 'cloud', 'thunderstorm', 'partly_cloudy_day']
+                        const labels = ['Blizzard', 'Snow', 'Overcast', 'Storm', 'Clearing']
+                        return (<div key={day} style={{ background: i === 0 ? '#f0f9ff' : '#f8fafc', border: `1px solid ${i === 0 ? '#bae6fd' : '#e2e8f0'}`, padding: '10px 6px', textAlign: 'center' }}>
+                          <div style={{ fontSize: 9, fontWeight: 800, color: '#0b3b60' }}>{day}</div>
+                          <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#3b82f6', margin: '6px 0', display: 'block' }}>{icons[i]}</span>
+                          <div style={{ fontSize: 12, fontWeight: 800, color: '#0f172a' }}>{temps[i].toFixed(1)}°</div>
+                          <div style={{ fontSize: 8, color: '#64748b' }}>{labels[i]}</div>
+                          <div style={{ fontSize: 8, color: '#475569' }}>💨{winds[i]}</div>
+                        </div>)
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            {activeTab === 'atmosphere' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+                  <MetCard label="OZONE COLUMN" value={env.ozone} unit="DU" icon="layers" color="#7c3aed" sub="Dobson Units — NOAA" />
+                  <MetCard label="CO₂ LEVEL" value={env.co2} unit="ppm" icon="co2" color="#16a34a" sub="Mauna Loa ref: 421" />
+                  <MetCard label="SOLAR RADIATION" value={env.radiation} unit="kW/m²" icon="wb_sunny" color="#f59e0b" sub="Global horizontal" />
+                  <MetCard label="K-INDEX" value="2" unit="(Quiet)" icon="radio" color="#3b82f6" sub="Geomagnetic activity" />
+                </div>
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '16px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 12, letterSpacing: '0.05em' }}>UPPER AIR PROFILE — RADIOSONDE DATA (LAST ASCENT)</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, fontSize: 11 }}>
+                    <div style={{ fontWeight: 700, color: '#64748b', fontSize: 10, padding: '4px 0', borderBottom: '2px solid #0b3b60' }}>ALTITUDE</div>
+                    <div style={{ fontWeight: 700, color: '#64748b', fontSize: 10, padding: '4px 0', borderBottom: '2px solid #0b3b60' }}>TEMP</div>
+                    <div style={{ fontWeight: 700, color: '#64748b', fontSize: 10, padding: '4px 0', borderBottom: '2px solid #0b3b60' }}>WIND</div>
+                    <div style={{ fontWeight: 700, color: '#64748b', fontSize: 10, padding: '4px 0', borderBottom: '2px solid #0b3b60' }}>PRESSURE</div>
+                    <div style={{ fontWeight: 700, color: '#64748b', fontSize: 10, padding: '4px 0', borderBottom: '2px solid #0b3b60' }}>HUMIDITY</div>
+                    {[{ alt: '10 km', temp: -56.2, wind: '142 WNW', p: '264 hPa', rh: '18%' },{ alt: '5 km', temp: -38.7, wind: '98 SW', p: '540 hPa', rh: '32%' },{ alt: '2 km', temp: -33.1, wind: '71 SW', p: '790 hPa', rh: '58%' },{ alt: '500 m', temp: -30.4, wind: '54 SSW', p: '920 hPa', rh: '71%' },{ alt: 'Surface', temp: env.temp, wind: `${env.wind} SW`, p: `${Math.round(env.pressure)} hPa`, rh: `${env.humidity}%` }].map(l => (
+                      [<div key={l.alt+'a'} style={{ padding: '6px 0', borderBottom: '1px solid #f1f5f9', fontWeight: 800, color: '#0b3b60', fontSize: 10 }}>{l.alt}</div>,
+                      <div key={l.alt+'t'} style={{ padding: '6px 0', borderBottom: '1px solid #f1f5f9', color: '#3b82f6', fontWeight: 700 }}>{l.temp}°C</div>,
+                      <div key={l.alt+'w'} style={{ padding: '6px 0', borderBottom: '1px solid #f1f5f9', color: '#0b3b60', fontWeight: 700 }}>{l.wind}</div>,
+                      <div key={l.alt+'p'} style={{ padding: '6px 0', borderBottom: '1px solid #f1f5f9', color: '#64748b' }}>{l.p}</div>,
+                      <div key={l.alt+'r'} style={{ padding: '6px 0', borderBottom: '1px solid #f1f5f9', color: '#06b6d4', fontWeight: 700 }}>{l.rh}</div>]
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+            {activeTab === 'glaciology' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+                  <MetCard label="SNOW DEPTH" value={env.snowDepth} unit="m" icon="ac_unit" color="#06b6d4" sub="Fresh: +12cm/wk" />
+                  <MetCard label="ICE THICKNESS" value={env.iceThickness} unit="m" icon="layers" color="#3b82f6" sub="Ground Penetrating Radar" />
+                  <MetCard label="ALBEDO" value="0.87" unit="" icon="light_mode" color="#f59e0b" sub="Snow-covered surface" />
+                  <MetCard label="GLACIER FLOW" value="1.2" unit="m/yr" icon="trending_down" color="#8b5cf6" sub="Schirmacher retreat rate" />
+                </div>
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '16px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 14, letterSpacing: '0.05em' }}>CRYOSPHERE MONITORING — NCPOR GLACIOLOGY UNIT</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                    {[{ label: 'Active Ice Core Sites', value: '3 Sites', sub: 'Depths: 12m, 24m, 150m', icon: 'circle', color: '#16a34a' },{ label: 'Permafrost Active Layer', value: '0.42 m', sub: 'Seasonal thaw depth', icon: 'terrain', color: '#ea580c' },{ label: 'Ice Sheet Velocity', value: '1.8 m/yr', sub: 'GPS-derived flow rate', icon: 'speed', color: '#3b82f6' },{ label: 'Surface Mass Balance', value: '-0.12 m/yr', sub: 'Sublimation loss', icon: 'scale', color: '#dc2626' },{ label: 'Last ICESat-2 Pass', value: '2 days ago', sub: 'NASA polar orbit', icon: 'satellite', color: '#7c3aed' },{ label: 'Ice Core Analysis', value: 'Active', sub: '150m deep, 800yr record', icon: 'science', color: '#06b6d4' }].map(item => (
+                      <div key={item.label} style={{ border: '1px solid #e2e8f0', padding: '12px', background: '#f8fafc', display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 22, color: item.color, flexShrink: 0 }}>{item.icon}</span>
+                        <div><div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>{item.value}</div><div style={{ fontSize: 10, fontWeight: 700, color: '#0b3b60' }}>{item.label}</div><div style={{ fontSize: 9, color: '#94a3b8' }}>{item.sub}</div></div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+            {activeTab === 'seismic' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+                  <MetCard label="SEISMIC ACTIVITY" value="Quiet" unit="" icon="vibration" color="#16a34a" sub="No events in 72h" />
+                  <MetCard label="DOMINANT FREQ." value={env.seismicHz} unit="Hz" icon="waves" color="#3b82f6" sub="Microseismic noise floor" />
+                  <MetCard label="GRAVITY ANOMALY" value="-18.4" unit="mGal" icon="height" color="#7c3aed" sub="Free-air correction" />
+                  <MetCard label="MAGNETIC DECL." value="27.3°" unit="E" icon="explore" color="#ea580c" sub="IGRF-13 model epoch" />
+                </div>
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '16px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 12, letterSpacing: '0.05em' }}>SEISMOGRAPH LIVE TRACE — BROADBAND SENSOR BB-{activeStation === 'maitri' ? 'M1' : 'B1'}</div>
+                  <div style={{ background: '#0f172a', padding: '12px', height: 80, display: 'flex', alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
+                    <svg width="100%" height="56" style={{ display: 'block' }}>
+                      {Array.from({ length: 200 }).map((_, i) => {
+                        const noise = Math.sin(i * 0.3) * 4 + Math.sin(i * 0.71) * 2 + Math.sin(i * 1.3) * 1
+                        const prevNoise = Math.sin((i-1) * 0.3) * 4 + Math.sin((i-1) * 0.71) * 2 + Math.sin((i-1) * 1.3) * 1
+                        return i === 0 ? null : <line key={i} x1={`${(i - 1) / 200 * 100}%`} y1={28 + prevNoise} x2={`${i / 200 * 100}%`} y2={28 + noise} stroke="#22d3ee" strokeWidth={1.5} />
+                      })}
+                    </svg>
+                    <div style={{ position: 'absolute', bottom: 4, right: 8, fontSize: 9, color: '#22d3ee' }}>BHZ • 100sps • LIVE</div>
+                  </div>
+                </div>
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '16px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 12, letterSpacing: '0.05em' }}>RECENT SEISMIC EVENTS — SOUTHERN OCEAN REGION</div>
+                  {[{ time: '48h ago', mag: 2.1, depth: '12km', loc: '640 km NW — Bouvet', type: 'Teleseismic' },{ time: '5 days ago', mag: 4.7, depth: '8km', loc: '1,240 km W — Scotia Ridge', type: 'Teleseismic' },{ time: '12 days ago', mag: 1.4, depth: '3km', loc: '18 km E — Local ice event', type: 'Icequake' }].map(ev => (
+                    <div key={ev.time} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f1f5f9', fontSize: 11 }}>
+                      <span style={{ fontWeight: 800, color: ev.mag > 4 ? '#dc2626' : ev.mag > 2 ? '#d97706' : '#16a34a', width: 40 }}>M{ev.mag}</span>
+                      <span style={{ flex: 1, color: '#475569' }}>{ev.loc}</span>
+                      <span style={{ color: '#94a3b8', width: 80 }}>{ev.depth}</span>
+                      <span style={{ fontSize: 10, color: '#0b3b60', fontWeight: 700, background: '#f0f9ff', padding: '2px 6px', border: '1px solid #bae6fd' }}>{ev.type}</span>
+                      <span style={{ color: '#94a3b8', width: 80, textAlign: 'right' }}>{ev.time}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {activeTab === 'ocean' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+                  <MetCard label="SEA ICE EXTENT" value="92.4" unit="%" icon="waves" color="#06b6d4" sub="Above 30yr average" />
+                  <MetCard label="OCEAN TEMP (SST)" value="-1.8" unit="°C" icon="thermostat" color="#3b82f6" sub="Southern Ocean Surface" />
+                  <MetCard label="OCEAN SALINITY" value="34.7" unit="PSU" icon="water_drop" color="#7c3aed" sub="Practical Salinity Units" />
+                  <MetCard label="WAVE HEIGHT" value="4.2" unit="m" icon="tsunami" color="#ea580c" sub="Significant wave height" />
+                </div>
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '16px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 14, letterSpacing: '0.05em' }}>ARGO FLOAT & MOORING ARRAY — SOUTHERN OCEAN NETWORK</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                    {[{ name: 'Argo Float WMO-5906235', lat: '70.1°S', lon: '12.3°E', depth: '1,200m', temp: -1.4, sal: 34.6, status: 'ACTIVE' },{ name: 'Argo Float WMO-5906412', lat: '69.8°S', lon: '76.5°E', depth: '2,000m', temp: -1.8, sal: 34.7, status: 'ACTIVE' },{ name: 'NCPOR Mooring M-03', lat: '70.2°S', lon: '11.9°E', depth: '3,400m', temp: -0.8, sal: 34.9, status: 'ONLINE' }].map(f => (
+                      <div key={f.name} style={{ border: '1px solid #e2e8f0', padding: '14px', background: '#f8fafc' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                          <span style={{ fontSize: 10, fontWeight: 800, color: '#0b3b60' }}>{f.name}</span>
+                          <span style={{ fontSize: 9, color: '#16a34a', fontWeight: 800 }}>● {f.status}</span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 10 }}>
+                          <div><span style={{ color: '#94a3b8' }}>Lat: </span><span style={{ fontWeight: 700 }}>{f.lat}</span></div>
+                          <div><span style={{ color: '#94a3b8' }}>Lon: </span><span style={{ fontWeight: 700 }}>{f.lon}</span></div>
+                          <div><span style={{ color: '#94a3b8' }}>Depth: </span><span style={{ fontWeight: 700 }}>{f.depth}</span></div>
+                          <div><span style={{ color: '#94a3b8' }}>Temp: </span><span style={{ fontWeight: 700, color: '#3b82f6' }}>{f.temp}°C</span></div>
+                          <div><span style={{ color: '#94a3b8' }}>Salinity: </span><span style={{ fontWeight: 700 }}>{f.sal} PSU</span></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+      <Footer />
+    </div>
+  )
+}

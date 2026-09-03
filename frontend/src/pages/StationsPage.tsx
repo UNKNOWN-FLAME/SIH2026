@@ -59,14 +59,14 @@ export default function StationsPage() {
   }
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f0f4f8' }}>
       <TopNav />
       <AlertStrip />
 
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flex: 1 }}>
         <Sidebar activeStation={selectedStation} onSwitchStation={() => setSelectedStation(s => s === 'maitri' ? 'bharati' : 'maitri')} />
 
-        <main id="main-content" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', background: '#f0f4f8' }}>
+        <main id="main-content" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: '#f0f4f8' }}>
           <div style={{ flex: 1, padding: '10px 14px' }}>
             {/* Breadcrumbs Bar */}
           <div
@@ -690,10 +690,10 @@ export default function StationsPage() {
             </div>
           )}
           </div>
-
-          <Footer />
         </main>
       </div>
+
+      <Footer />
     </div>
   )
 }

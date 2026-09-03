@@ -12,7 +12,6 @@ export default function TopNav() {
   const { data: dash } = useDashboard()
   const { lang, toggleLang, t } = useLanguage()
   const [timeStr, setTimeStr] = useState<string>('')
-  const [fontSize, setFontSize] = useState<string>('normal')
   const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
@@ -87,46 +86,10 @@ export default function TopNav() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          {/* Skip to main content link (GIGW mandatory) */}
-          <a
-            href="#main-content"
-            style={{
-              color: '#0b3b60',
-              textDecoration: 'none',
-              fontSize: 10.5,
-              fontWeight: 600,
-            }}
-            className="hidden lg:inline hover:underline"
-          >
-            {t('header.skip_main')}
-          </a>
-
           {/* Dynamic Indian Standard Time */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#0b3b60', fontFamily: 'Inter', fontWeight: 700, fontSize: 10.5 }}>
             <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#ea580c' }}>schedule</span>
             <span>{timeStr || 'LIVE IST'}</span>
-          </div>
-
-          {/* Text Size Sizer (A- A A+) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 1, background: '#e2e8f0', border: '1px solid #cbd5e1', padding: '1px 2px' }}>
-            {(['sm', 'normal', 'lg'] as const).map((size) => (
-              <button
-                key={size}
-                onClick={() => setFontSize(size)}
-                style={{
-                  background: fontSize === size ? '#0b3b60' : 'transparent',
-                  color: fontSize === size ? '#ffffff' : '#334155',
-                  border: 'none',
-                  fontSize: size === 'sm' ? 9.5 : size === 'normal' ? 11 : 12.5,
-                  fontWeight: 800,
-                  padding: '1px 5px',
-                  cursor: 'pointer',
-                }}
-                title={`${t('header.text_size')}: ${size}`}
-              >
-                A{size === 'sm' ? '-' : size === 'lg' ? '+' : ''}
-              </button>
-            ))}
           </div>
 
           {/* Language Switch Button */}
