@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useLanguage } from '../../context/LanguageContext'
-import GovtOfIndiaLogo from '../ui/GovtOfIndiaLogo'
 
 export default function TopNav() {
   const navigate = useNavigate()
@@ -117,23 +116,27 @@ export default function TopNav() {
       <div
         style={{
           background: '#ffffff',
-          padding: '10px 20px',
+          padding: '8px 20px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           borderBottom: '2px solid #FF9933',
         }}
       >
-        {/* Left: Government of India Official Logo + Ministry Hierarchy */}
+        {/* Left: Ministry Hierarchy & Application Brand */}
         <div
           onClick={() => navigate('/')}
-          style={{ display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer' }}
-          title="VajraX Home"
+          style={{ display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer' }}
+          title="HIMANTAR Home"
         >
-          {/* Government of India Logo */}
-          <GovtOfIndiaLogo size={50} color="#0b3b60" showGovtText={true} textColor="#0b3b60" />
+          {/* Official Circular NCPOR Logo */}
+          <img
+            src="/ncpor_logo.png"
+            alt="NCPOR Logo"
+            style={{ height: 66, width: 66, objectFit: 'contain', display: 'block', flexShrink: 0 }}
+          />
 
-          <div style={{ borderLeft: '2px solid #cbd5e1', paddingLeft: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             {/* Tier A: Organisation Name */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
               <span style={{ fontSize: 11, fontWeight: 800, color: '#0369a1', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
@@ -144,18 +147,20 @@ export default function TopNav() {
               </span>
             </div>
 
-            {/* Tier B: Main Application Brand & Title */}
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, lineHeight: 1.2 }}>
-              <span style={{ fontSize: 20, fontWeight: 900, color: '#0b3b60', letterSpacing: '-0.02em', fontFamily: 'Inter, sans-serif' }}>
-                {t('app.name')}
-              </span>
-              <span style={{ fontSize: 13.5, fontWeight: 700, color: '#334155', letterSpacing: '-0.01em' }}>
+            {/* Tier B: Main Application Brand Logo & Title */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, lineHeight: 1.2 }}>
+              <img
+                src="/himantar_logo.png"
+                alt="HIMANTAR"
+                style={{ height: 24, width: 'auto', objectFit: 'contain', display: 'block' }}
+              />
+              <span style={{ fontSize: 13.5, fontWeight: 800, color: '#0b3b60', letterSpacing: '-0.01em' }}>
                 {t('app.title')}
               </span>
             </div>
 
             {/* Tier C: Subtitle */}
-            <div style={{ fontSize: 10.5, fontWeight: 500, color: '#64748b', marginTop: 2, letterSpacing: '0.01em' }}>
+            <div style={{ fontSize: 10, fontWeight: 500, color: '#64748b', marginTop: 2, letterSpacing: '0.01em' }}>
               {t('app.subtitle')}
             </div>
           </div>

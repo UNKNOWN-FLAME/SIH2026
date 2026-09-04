@@ -107,14 +107,14 @@ export default function EnergyPage() {
                     background: activeStation === 'maitri' ? '#0b3b60' : '#ffffff',
                     color: activeStation === 'maitri' ? '#ffffff' : '#0b3b60',
                     border: '1px solid #0b3b60',
-                    padding: '3px 10px',
-                    fontSize: 10.5,
+                    padding: '4px 14px',
+                    fontSize: 11,
                     fontWeight: 800,
                     cursor: 'pointer',
                     borderRadius: 3,
                   }}
                 >
-                  मैत्री (Maitri Microgrid)
+                  {lang === 'hi' ? 'मैत्री' : 'Maitri'}
                 </button>
                 <button
                   onClick={() => setActiveStation('bharati')}
@@ -122,14 +122,14 @@ export default function EnergyPage() {
                     background: activeStation === 'bharati' ? '#0b3b60' : '#ffffff',
                     color: activeStation === 'bharati' ? '#ffffff' : '#0b3b60',
                     border: '1px solid #0b3b60',
-                    padding: '3px 10px',
-                    fontSize: 10.5,
+                    padding: '4px 14px',
+                    fontSize: 11,
                     fontWeight: 800,
                     cursor: 'pointer',
                     borderRadius: 3,
                   }}
                 >
-                  भारती (Bharati Microgrid)
+                  {lang === 'hi' ? 'भारती' : 'Bharati'}
                 </button>
               </div>
             </div>
@@ -572,30 +572,6 @@ export default function EnergyPage() {
                         <span style={{ color: '#64748b' }}>CO₂ Saved:</span>
                         <strong style={{ color: '#16a34a' }}>48.2 kg</strong>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Automatic Power Mode */}
-                  <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', padding: 12 }}>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: '#0b3b60', marginBottom: 4 }}>
-                      AUTO POWER MODE
-                    </div>
-                    <div style={{ fontSize: 10, color: '#475569', marginBottom: 8 }}>
-                      Balances generator, solar, and battery to save fuel.
-                    </div>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button
-                        onClick={() => triggerGenAction(1, 'Auto-Sync Optimize')}
-                        style={{ background: '#0b3b60', color: '#ffffff', border: 'none', padding: '6px 10px', fontSize: 10, fontWeight: 800, cursor: 'pointer', borderRadius: 2 }}
-                      >
-                        Auto Mode
-                      </button>
-                      <button
-                        onClick={() => triggerGenAction(selectedGen, 'Manual Override')}
-                        style={{ background: '#ffffff', color: '#0b3b60', border: '1px solid #0b3b60', padding: '6px 10px', fontSize: 10, fontWeight: 800, cursor: 'pointer', borderRadius: 2 }}
-                      >
-                        Manual
-                      </button>
                     </div>
                   </div>
                 </div>

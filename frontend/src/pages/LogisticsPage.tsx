@@ -141,14 +141,14 @@ export default function LogisticsPage() {
                     background: activeStation === 'maitri' ? '#0b3b60' : '#ffffff',
                     color: activeStation === 'maitri' ? '#ffffff' : '#0b3b60',
                     border: '1px solid #0b3b60',
-                    padding: '3px 10px',
-                    fontSize: 10.5,
+                    padding: '4px 14px',
+                    fontSize: 11,
                     fontWeight: 800,
                     cursor: 'pointer',
                     borderRadius: 3,
                   }}
                 >
-                  मैत्री (Maitri Stock)
+                  {lang === 'hi' ? 'मैत्री' : 'Maitri'}
                 </button>
                 <button
                   onClick={() => setActiveStation('bharati')}
@@ -156,14 +156,14 @@ export default function LogisticsPage() {
                     background: activeStation === 'bharati' ? '#0b3b60' : '#ffffff',
                     color: activeStation === 'bharati' ? '#ffffff' : '#0b3b60',
                     border: '1px solid #0b3b60',
-                    padding: '3px 10px',
-                    fontSize: 10.5,
+                    padding: '4px 14px',
+                    fontSize: 11,
                     fontWeight: 800,
                     cursor: 'pointer',
                     borderRadius: 3,
                   }}
                 >
-                  भारती (Bharati Stock)
+                  {lang === 'hi' ? 'भारती' : 'Bharati'}
                 </button>
               </div>
             </div>
@@ -264,7 +264,27 @@ export default function LogisticsPage() {
             </div>
 
             {/* Inventory Management & Filtering Bar */}
-            <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', padding: '12px 16px', marginBottom: 12, boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+            <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderTop: '3px solid #0b3b60', padding: '12px 16px', marginBottom: 12, boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+              {/* Official Government Register Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 12, borderBottom: '1px solid #e2e8f0', paddingBottom: 8 }}>
+                <div>
+                  <h3 style={{ fontSize: 13, fontWeight: 900, color: '#0b3b60', margin: 0, textTransform: 'uppercase' }}>
+                    {lang === 'hi' ? 'राष्ट्रीय ध्रुवीय भंडार सूची' : 'NATIONAL POLAR STOCK REGISTER'}
+                  </h3>
+                  <div style={{ fontSize: 10, color: '#64748b' }}>
+                    Food, fuel, medicines, and machine spare parts for Antarctic stations
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 9.5, fontWeight: 800, background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', border: '1px solid #bae6fd', borderRadius: 2 }}>
+                    GeM Govt Store Linked
+                  </span>
+                  <span style={{ fontSize: 9.5, fontWeight: 800, background: '#dcfce7', color: '#166534', padding: '2px 8px', border: '1px solid #86efac', borderRadius: 2 }}>
+                    ● Stock Verified Safe
+                  </span>
+                </div>
+              </div>
+
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
                 {/* Search Box */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 260 }}>
@@ -273,7 +293,7 @@ export default function LogisticsPage() {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search by item code, name, or storage place..."
+                    placeholder="Search by item name, code, or storage place..."
                     style={{
                       flex: 1,
                       border: '1px solid #cbd5e1',
@@ -303,7 +323,7 @@ export default function LogisticsPage() {
                     }}
                   >
                     <span className="material-symbols-outlined" style={{ fontSize: 14 }}>add_shopping_cart</span>
-                    <span>{lang === 'hi' ? 'सामान का ऑर्डर दें' : 'Request New Stock'}</span>
+                    <span>{lang === 'hi' ? '+ नया सामान मांगें' : '+ Request Supplies'}</span>
                   </button>
 
                   <button
@@ -323,19 +343,19 @@ export default function LogisticsPage() {
                     }}
                   >
                     <span className="material-symbols-outlined" style={{ fontSize: 14 }}>picture_as_pdf</span>
-                    <span>{lang === 'hi' ? 'स्टॉक सूची डाउनलोड करें' : 'Download Stock List (PDF)'}</span>
+                    <span>{lang === 'hi' ? 'स्टॉक रिपोर्ट डाउनलोड करें' : 'Download PDF Report'}</span>
                   </button>
                 </div>
               </div>
 
-              {/* Category Filter Chips */}
+              {/* Category Filter Chips with counts */}
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {[
-                  { id: 'all', label: 'All Items' },
-                  { id: 'fuel', label: '⛽ Fuel & Heating Diesel' },
-                  { id: 'food', label: '🍲 Food & Daily Rations' },
-                  { id: 'medical', label: '🏥 Medicines & First Aid' },
-                  { id: 'spares', label: '⚙️ Generator & Machine Spares' },
+                  { id: 'all', label: 'All Supplies (12)' },
+                  { id: 'fuel', label: '⛽ Fuel & Diesel (2)' },
+                  { id: 'food', label: '🍲 Food Rations (3)' },
+                  { id: 'medical', label: '🏥 Medicines (2)' },
+                  { id: 'spares', label: '⚙️ Machine Spares (5)' },
                 ].map((cat) => (
                   <button
                     key={cat.id}
@@ -365,11 +385,11 @@ export default function LogisticsPage() {
                     <th style={{ padding: '8px 12px', fontWeight: 800 }}>Item Code</th>
                     <th style={{ padding: '8px 12px', fontWeight: 800 }}>Item Name</th>
                     <th style={{ padding: '8px 12px', fontWeight: 800 }}>Category</th>
-                    <th style={{ padding: '8px 12px', fontWeight: 800 }}>In Stock</th>
+                    <th style={{ padding: '8px 12px', fontWeight: 800 }}>Current Stock</th>
                     <th style={{ padding: '8px 12px', fontWeight: 800 }}>Minimum Safe Level</th>
-                    <th style={{ padding: '8px 12px', fontWeight: 800 }}>Usage Rate</th>
-                    <th style={{ padding: '8px 12px', fontWeight: 800 }}>Days Stock Left</th>
-                    <th style={{ padding: '8px 12px', fontWeight: 800 }}>Where Stored</th>
+                    <th style={{ padding: '8px 12px', fontWeight: 800 }}>Daily Use</th>
+                    <th style={{ padding: '8px 12px', fontWeight: 800 }}>Days Left</th>
+                    <th style={{ padding: '8px 12px', fontWeight: 800 }}>Storage Location</th>
                     <th style={{ padding: '8px 12px', fontWeight: 800 }}>Stock Status</th>
                     <th style={{ padding: '8px 12px', fontWeight: 800 }}>Action</th>
                   </tr>
@@ -412,33 +432,34 @@ export default function LogisticsPage() {
                         <td style={{ padding: '8px 12px' }}>
                           <span
                             style={{
-                              fontSize: 9,
+                              fontSize: 9.5,
                               fontWeight: 800,
-                              padding: '2px 6px',
+                              padding: '2px 8px',
                               borderRadius: 2,
-                              background: isLow ? '#fee2e2' : '#dcfce7',
-                              color: isLow ? '#991b1b' : '#166534',
+                              background: isLow ? '#fef2f2' : '#f0fdf4',
+                              color: isLow ? '#b91c1c' : '#15803d',
+                              border: isLow ? '1px solid #fecaca' : '1px solid #bbf7d0',
                             }}
                           >
-                            {isLow ? 'LOW STOCK' : 'IN STOCK'}
+                            {isLow ? '⚠️ REORDER NEEDED' : '✅ SAFE'}
                           </span>
                         </td>
                         <td style={{ padding: '8px 12px' }}>
                           <button
                             onClick={() => handleQuickStockAudit(item.id)}
                             style={{
-                              background: '#f1f5f9',
-                              border: '1px solid #cbd5e1',
+                              background: '#ffffff',
+                              border: '1px solid #0b3b60',
                               color: '#0b3b60',
                               padding: '3px 8px',
                               fontSize: 10,
-                              fontWeight: 700,
+                              fontWeight: 800,
                               cursor: 'pointer',
                               borderRadius: 2,
                             }}
                             title={`Last verified on: ${item.lastAudit}`}
                           >
-                            Verify
+                            ✓ Audit Count
                           </button>
                         </td>
                       </tr>

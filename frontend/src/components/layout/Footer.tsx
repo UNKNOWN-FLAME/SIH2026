@@ -2,7 +2,6 @@ import { useDashboard } from '../../hooks/useDashboard'
 import { useQuery } from '@tanstack/react-query'
 import { useLanguage } from '../../context/LanguageContext'
 import { getHealth } from '../../api/hq'
-import GovtOfIndiaLogo from '../ui/GovtOfIndiaLogo'
 
 export default function Footer() {
   const { data: dash } = useDashboard()
@@ -50,12 +49,9 @@ export default function Footer() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
           {[
-            { label: t('footer.link_india_gov'), url: 'https://www.india.gov.in' },
             { label: t('footer.link_moes'), url: 'https://www.moes.gov.in' },
             { label: t('footer.link_imd'), url: 'https://mausam.imd.gov.in' },
             { label: t('footer.link_digital_india'), url: 'https://www.digitalindia.gov.in' },
-            { label: t('footer.link_mygov'), url: 'https://www.mygov.in' },
-            { label: t('footer.link_rti'), url: 'https://rtionline.gov.in' },
           ].map((item, i) => (
             <a
               key={i}
@@ -76,7 +72,7 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* ── Tier 2: Website Policies & Governance Links (GIGW 3.0 Standard) ── */}
+      {/* ── Tier 2: Website Policies & Governance Links ── */}
       <div
         style={{
           background: '#0b3b60',
@@ -97,31 +93,27 @@ export default function Footer() {
             t('footer.terms'),
             t('footer.privacy'),
             t('footer.copyright_policy'),
-            t('footer.hyperlink'),
-            t('footer.accessibility_stmt'),
-            t('footer.help'),
             t('footer.feedback'),
-          ].map((policy, idx) => (
+          ].map((policy, idx, arr) => (
             <span key={idx} style={{ cursor: 'pointer' }} className="hover:text-white">
               {policy}
-              {idx < 7 && <span style={{ color: '#64748b', marginLeft: 12 }}>|</span>}
+              {idx < arr.length - 1 && <span style={{ color: '#64748b', marginLeft: 12 }}>|</span>}
             </span>
           ))}
         </div>
 
-        {/* Live Visitor Counter & Last Updated (Iconic NIC feature) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: '#94a3b8' }}>
-          <span>
-            {t('footer.last_updated')}: <strong style={{ color: '#ffffff' }}>30 Aug 2026</strong>
+        {/* Right: Authentic Ministry & Expedition Info */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#e2e8f0', fontSize: 10.5 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>🇮🇳</span>
+            <strong style={{ color: '#ffffff' }}>45th Indian Antarctic Expedition (ISEA)</strong>
           </span>
-          <span>•</span>
-          <span>
-            {t('footer.visitors')}: <strong style={{ color: '#ff9933', background: '#082545', padding: '2px 6px', border: '1px solid #1E3A5F' }}>1,42,850</strong>
-          </span>
+          <span style={{ color: '#64748b' }}>•</span>
+          <span style={{ color: '#bae6fd', fontWeight: 600 }}>MoES, Government of India</span>
         </div>
       </div>
 
-      {/* ── Tier 3: Official Ownership, NIC Accreditation & Security Badges ── */}
+      {/* ── Tier 3: Official Ownership & Telemetry ── */}
       <div
         style={{
           background: '#072138',
@@ -133,9 +125,9 @@ export default function Footer() {
           gap: 12,
         }}
       >
-        {/* Left: Government of India Logo + Official Ministry Copyright */}
+        {/* Left: NCPOR Logo + Official Ministry Copyright */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <GovtOfIndiaLogo size={28} color="#ff9933" showGovtText={false} />
+          <img src="/ncpor_logo.png" alt="NCPOR Logo" style={{ height: 32, width: 32, objectFit: 'contain' }} />
           <div style={{ fontSize: 10, color: '#cbd5e1', lineHeight: 1.3 }}>
             <div>
               <span style={{ fontWeight: 800, color: '#ffffff' }}>
@@ -150,7 +142,7 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Right: Real-time Satellite, Security & Encryption Telemetry */}
+        {/* Right: Real-time Telemetry Status */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 10, color: '#cbd5e1' }}>
           {dash && (
             <span>
@@ -161,12 +153,7 @@ export default function Footer() {
             </span>
           )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 12, color: '#ff9933' }}>lock</span>
-            <span>TLS 1.3 / Ed25519</span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, borderLeft: '1px solid #1E3A5F', paddingLeft: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <span style={{ fontWeight: 700, color: online ? '#86efac' : '#fca5a5' }}>
               {t('footer.hq_server')}: {online ? t('footer.connected') : 'OFFLINE'}
             </span>
@@ -181,7 +168,7 @@ export default function Footer() {
             />
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, borderLeft: '1px solid #1E3A5F', paddingLeft: 10 }}>
             <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#ff9933' }}>satellite_alt</span>
             <span style={{ fontWeight: 600 }}>{t('footer.satlink')}: {online ? t('footer.stable') : 'UNKNOWN'}</span>
           </div>

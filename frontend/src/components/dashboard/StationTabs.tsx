@@ -4,11 +4,11 @@ import { useLanguage } from '../../context/LanguageContext'
 interface Props {
   active: string
   onSelect: (s: string) => void
-  timeRange: string
-  onTimeRange: (t: string) => void
+  timeRange?: string
+  onTimeRange?: (t: string) => void
 }
 
-export default function StationTabs({ active, onSelect, timeRange, onTimeRange }: Props) {
+export default function StationTabs({ active, onSelect }: Props) {
   const { data: stations } = useStations()
   const { t } = useLanguage()
 
@@ -120,54 +120,6 @@ export default function StationTabs({ active, onSelect, timeRange, onTimeRange }
             </button>
           )
         })}
-      </div>
-
-      {/* Time Range Selector */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-        }}
-      >
-        <span style={{ fontSize: 11, fontWeight: 700, color: '#334155', letterSpacing: '0.03em' }}>
-          {t('station.interval')}
-        </span>
-        <div
-          style={{
-            display: 'flex',
-            background: '#ffffff',
-            border: '1px solid #cbd5e1',
-            boxShadow: '0 1px 2px 0 rgba(0,0,0,0.05)',
-            overflow: 'hidden',
-          }}
-        >
-          {[
-            { key: '1H', label: t('station.1h') },
-            { key: '6H', label: t('station.6h') },
-            { key: '24H', label: t('station.24h') },
-          ].map(({ key, label }, i) => (
-            <button
-              key={key}
-              onClick={() => onTimeRange(key)}
-              style={{
-                padding: '6px 12px',
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: '0.02em',
-                cursor: 'pointer',
-                fontFamily: 'Inter',
-                border: 'none',
-                borderRight: i < 2 ? '1px solid #cbd5e1' : 'none',
-                transition: 'all 0.15s',
-                background: timeRange === key ? '#0b3b60' : 'transparent',
-                color: timeRange === key ? '#ffffff' : '#475569',
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
       </div>
     </div>
   )
