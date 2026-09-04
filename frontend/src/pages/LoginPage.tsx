@@ -209,26 +209,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Statutory Legal Notice Box (Mandatory GIGW Security clause) */}
-            <div
-              style={{
-                background: '#fffbeb',
-                borderLeft: '4px solid #ea580c',
-                borderTop: '1px solid #fde68a',
-                borderRight: '1px solid #fde68a',
-                borderBottom: '1px solid #fde68a',
-                padding: '8px 12px',
-                marginBottom: 16,
-                fontSize: 9.5,
-                color: '#78350f',
-                lineHeight: 1.4,
-              }}
-            >
-              <div style={{ fontWeight: 800, color: '#b45309', marginBottom: 2 }}>
-                {lang === 'hi' ? 'वैधानिक चेतावनी (STATUTORY WARNING):' : 'STATUTORY WARNING:'}
-              </div>
-              {t('login.statutory_warning')}
-            </div>
 
             {error && (
               <div

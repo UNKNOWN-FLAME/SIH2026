@@ -4,13 +4,6 @@ import type { AlertOut } from '../../api/hq'
 
 interface Props { stationId: string }
 
-const SEV_CLASS: Record<string, string> = {
-  CRITICAL: 'alert-critical',
-  HIGH: 'alert-warning',
-  MEDIUM: 'alert-warning',
-  LOW: 'alert-info',
-}
-
 const SEV_COLOR: Record<string, string> = {
   CRITICAL: '#dc2626',
   HIGH: '#d97706',
@@ -83,33 +76,48 @@ export default function ActiveAlerts({ stationId }: Props) {
         {alerts.map((alert) => (
           <div
             key={alert.alert_id}
-            className={`alert-row ${SEV_CLASS[alert.severity] ?? 'alert-info'}`}
             style={{
-              background: '#f8fafc',
+              background: '#ffffff',
               border: '1px solid #e2e8f0',
-              padding: '6px 8px',
-              cursor: 'default',
-              transition: 'background 0.15s',
+              borderLeft: `4px solid ${SEV_COLOR[alert.severity] ?? '#64748b'}`,
+              padding: '6px 10px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              gap: 6,
+              gap: 8,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
             }}
           >
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
               <span
                 style={{
-                  fontSize: 10.5,
+                  fontSize: 8.5,
                   fontWeight: 800,
-                  color: SEV_COLOR[alert.severity] ?? '#64748b',
-                  fontFamily: 'Inter',
+                  color: '#ffffff',
+                  background: SEV_COLOR[alert.severity] ?? '#64748b',
+                  padding: '2px 6px',
+                  borderRadius: 2,
+                  letterSpacing: '0.04em',
+                  flexShrink: 0,
                 }}
               >
-                [{alert.severity}] {timeLabel(alert.triggered_at)}:
+                {alert.severity}
               </span>
-              <span style={{ fontSize: 11, color: '#1e293b', fontFamily: 'Inter', marginLeft: 4, fontWeight: 500 }}>
-                {alert.description}
-              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 9.5, fontWeight: 700, color: '#64748b', fontFamily: 'monospace' }}>
+                    {timeLabel(alert.triggered_at)} IST
+                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#0f172a' }}>
+                    {alert.description}
+                  </span>
+                </div>
+                {alert.asset_id && (
+                  <div style={{ fontSize: 9, color: '#64748b', marginTop: 1 }}>
+                    Asset: {alert.asset_id} • Domain: {alert.domain}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Acknowledge button */}
@@ -121,7 +129,7 @@ export default function ActiveAlerts({ stationId }: Props) {
                 background: '#ffffff',
                 border: '1px solid #0b3b60',
                 color: '#0b3b60',
-                fontSize: 9.5,
+                fontSize: 9,
                 fontWeight: 800,
                 letterSpacing: '0.04em',
                 padding: '3px 8px',
@@ -129,6 +137,10 @@ export default function ActiveAlerts({ stationId }: Props) {
                 flexShrink: 0,
                 fontFamily: 'Inter',
                 transition: 'all 0.15s',
+                borderRadius: 2,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 3,
               }}
               onMouseOver={(e) => {
                 (e.currentTarget as HTMLElement).style.background = '#0b3b60'
@@ -139,7 +151,8 @@ export default function ActiveAlerts({ stationId }: Props) {
                 ;(e.currentTarget as HTMLElement).style.color = '#0b3b60'
               }}
             >
-              {t('alerts.ack')}
+              <span className="material-symbols-outlined" style={{ fontSize: 12 }}>check</span>
+              <span>{t('alerts.ack')}</span>
             </button>
           </div>
         ))}

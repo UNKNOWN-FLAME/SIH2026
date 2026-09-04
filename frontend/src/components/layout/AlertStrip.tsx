@@ -73,8 +73,6 @@ export default function AlertStrip() {
           position: 'relative',
           display: 'flex',
           alignItems: 'center',
-          maskImage: 'linear-gradient(to right, transparent 0%, black 2%, black 98%, transparent 100%)',
-          WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 2%, black 98%, transparent 100%)',
         }}
         title="Hover to pause ticker / स्क्रॉल रोकने के लिए कर्सर ऊपर लाएं"
       >

@@ -167,11 +167,6 @@ export default function Footer() {
               }}
             />
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, borderLeft: '1px solid #1E3A5F', paddingLeft: 10 }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#ff9933' }}>satellite_alt</span>
-            <span style={{ fontWeight: 600 }}>{t('footer.satlink')}: {online ? t('footer.stable') : 'UNKNOWN'}</span>
-          </div>
         </div>
       </div>
     </footer>

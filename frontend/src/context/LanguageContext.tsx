@@ -91,28 +91,28 @@ export const DICTIONARY: Translations = {
   'nav.digital_india': { en: 'DIGITAL INDIA • MOES POLAR INITIATIVE', hi: 'डिजिटल इंडिया • पृथ्वी विज्ञान मंत्रालय ध्रुवीय पहल' },
 
   // Station Tabs
-  'station.maitri': { en: 'MAITRI STATION', hi: 'मैत्री अनुसंधान केंद्र' },
-  'station.maitri_coords': { en: '70°45′S, 11°44′E (Schirmacher Oasis, Queen Maud Land)', hi: '70°45′द, 11°44′पू (शिरमाकर ओएसिस, क्वीन मौड लैंड)' },
-  'station.bharati': { en: 'BHARATI STATION', hi: 'भारती अनुसंधान केंद्र' },
-  'station.bharati_coords': { en: '69°24′S, 76°11′E (Larsemann Hills, Prydz Bay)', hi: '69°24′द, 76°11′पू (लार्समैन हिल्स, प्राइड्ज बे)' },
-  'station.online': { en: 'ONLINE (Link Nominal)', hi: 'सक्रिय (लिंक सामान्य)' },
-  'station.degraded': { en: 'DEGRADED (Packet Loss)', hi: 'सीमित (पैकेट हानि)' },
-  'station.offline': { en: 'OFFLINE (Severed)', hi: 'विच्छेदित' },
+  'station.maitri': { en: 'MAITRI BASE', hi: 'मैत्री' },
+  'station.maitri_coords': { en: 'East Antarctica (70°45′S)', hi: 'पूर्वी अंटार्कटिका (70°45′द)' },
+  'station.bharati': { en: 'BHARATI BASE', hi: 'भारती' },
+  'station.bharati_coords': { en: 'Larsemann Hills (69°24′S)', hi: 'लार्समैन हिल्स (69°24′द)' },
+  'station.online': { en: 'Online', hi: 'सक्रिय' },
+  'station.degraded': { en: 'Weak Signal', hi: 'कमज़ोर सिग्नल' },
+  'station.offline': { en: 'Offline', hi: 'ऑफ़लाइन' },
   'station.interval': { en: 'INTERVAL:', hi: 'अवधि:' },
   'station.1h': { en: '1 Hour', hi: '1 घंटा' },
   'station.6h': { en: '6 Hours', hi: '6 घंटे' },
   'station.24h': { en: '24 Hours', hi: '24 घंटे' },
 
   // Schematic
-  'schematic.maitri_title': { en: 'MAITRI RESEARCH BASE — PHYSICAL LAYOUT & DIGITAL TWIN', hi: 'मैत्री अनुसंधान केंद्र — भौतिक संरचना आरेख एवं डिजिटल ट्विन' },
-  'schematic.bharati_title': { en: 'BHARATI RESEARCH BASE — STRUCTURAL TWIN & TELEMETRY', hi: 'भारती अनुसंधान केंद्र — संरचनात्मक ट्विन एवं टेलीमेट्री आरेख' },
-  'schematic.confidential': { en: 'CONFIDENTIAL | MOES POLAR TWIN', hi: 'गोपनीय | पृथ्वी विज्ञान मंत्रालय डिजिटल ट्विन' },
-  'schematic.ext_sensors': { en: 'EXTERNAL MET SENSORS', hi: 'वाह्य मौसम संवेदक' },
+  'schematic.maitri_title': { en: 'MAITRI BASE — 3D DIGITAL TWIN & SENSORS', hi: 'मैत्री स्टेशन — 3D डिजिटल ट्विन व लाइव सेंसर' },
+  'schematic.bharati_title': { en: 'BHARATI BASE — 3D DIGITAL TWIN & SENSORS', hi: 'भारती स्टेशन — 3D डिजिटल ट्विन व लाइव सेंसर' },
+  'schematic.confidential': { en: 'OFFICIAL POLAR DIGITAL TWIN • MOES', hi: 'आधिकारिक डिजिटल ट्विन • पृथ्वी विज्ञान मंत्रालय' },
+  'schematic.ext_sensors': { en: 'WEATHER SENSORS', hi: 'मौसम संवेदक' },
   'schematic.temp': { en: 'Temp', hi: 'तापमान' },
   'schematic.humidity': { en: 'Humidity', hi: 'आर्द्रता' },
-  'schematic.gen_sub': { en: 'GENERATOR SUBSTATION', hi: 'मुख्य जनरेटर उपकेंद्र' },
+  'schematic.gen_sub': { en: 'POWER STATION', hi: 'मुख्य विद्युत केंद्र' },
   'schematic.status_active': { en: 'Status: Active', hi: 'स्थिति: कार्यरत' },
-  'schematic.load': { en: 'Grid Load', hi: 'विद्युत भार' },
+  'schematic.load': { en: 'Grid Load', hi: 'विद्युत लोड' },
 
   // Weather Card
   'weather.title': { en: 'WEATHER OBSERVATORY', hi: 'मौसम विज्ञान वेधशाला' },
@@ -142,16 +142,28 @@ export const DICTIONARY: Translations = {
   'met.pressure': { en: 'AIR PRESSURE', hi: 'वायुमंडलीय दबाव' },
   'met.solar_rad': { en: 'SOLAR RADIATION', hi: 'सौर विकिरण' },
 
+  // Life Support & Freshwater
+  'lss.title': { en: 'WATER & LIFE SUPPORT', hi: 'जल व जीवन रक्षा' },
+  'lss.badge': { en: 'ACTIVE', hi: 'सक्रिय' },
+  'lss.storage': { en: 'CLEAN WATER IN TANK', hi: 'टैंक में स्वच्छ पानी' },
+  'lss.heating': { en: 'PIPE FREEZE GUARD', hi: 'पाइप फ्रीज़ बचाव' },
+  'lss.indoor_temp': { en: 'ROOM TEMPERATURE', hi: 'कमरे का तापमान' },
+  'lss.air_quality': { en: 'FRESH AIR (OXYGEN)', hi: 'कमरे की ताज़ा हवा' },
+
   // Glacial & Ice Shelf
   'glacial.title': { en: 'GLACIAL SUB-STRUCTURE & ICE SHELF', hi: 'हिमनद एवं हिम स्तर निगरानी' },
   'glacial.badge': { en: 'ANTARCTIC ICE SHELF RADAR', hi: 'अंटार्कटिक हिम स्तर रडार' },
   'glacial.verified': { en: 'VERIFIED DATA', hi: 'सत्यापित डेटा' },
 
-  // Seismic
-  'seismic.title': { en: 'SEISMIC TELEMETRY NETWORK', hi: 'भूकंपीय वेधशाला नेटवर्क' },
-  'seismic.live_rec': { en: 'LIVE RECORDING', hi: 'लाइव रिकॉर्डिंग' },
-  'seismic.frequency': { en: 'FREQ: 0.1-10Hz (BROADBAND)', hi: 'आवृत्ति: 0.1-10Hz (ब्रॉडबैंड)' },
-  'seismic.station_code': { en: 'STATION CODE', hi: 'केंद्र कोड' },
+  // Edge Resilience & Satellite Sync (Disruption-Tolerant Telemetry)
+  'edge.title': { en: 'EDGE BLACK-BOX & SATELLITE SYNC', hi: 'एज ब्लैक-बॉक्स एवं उपग्रह सिंक' },
+  'edge.badge': { en: 'ISRO / MoES', hi: 'इसरो / एमओईएस' },
+
+  // Seismic & Backup
+  'seismic.title': { en: 'EDGE BLACK-BOX & SATELLITE SYNC', hi: 'एज ब्लैक-बॉक्स एवं उपग्रह सिंक' },
+  'seismic.live_rec': { en: 'LIVE SYNC', hi: 'लाइव सिंक' },
+  'seismic.frequency': { en: 'STORE & FORWARD (DTN)', hi: 'स्टोर एवं फॉरवर्ड (डीटीएन)' },
+  'seismic.station_code': { en: 'EDGE NODE', hi: 'एज नोड' },
 
   // Footer Links & Policies
   'footer.quick_links': { en: 'Government Portal Network', hi: 'सरकारी पोर्टल नेटवर्क' },

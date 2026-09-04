@@ -54,8 +54,8 @@ export default function SchematicPanel({ stationId }: Props) {
         <div style={{ fontSize: 13, fontWeight: 800, color: '#0b3b60', letterSpacing: '0.02em' }}>
           {t(sch.labelKey)}
         </div>
-        <div style={{ fontSize: 9.5, color: '#64748b', fontFamily: 'monospace', fontWeight: 600 }}>
-          {sch.ver} <span style={{ color: '#ea580c' }}>•</span> NIC / MOES TWIN
+        <div style={{ fontSize: 9.5, color: '#475569', fontWeight: 600 }}>
+          Survey of India & NCPOR 3D Geospatial Twin <span style={{ color: '#ff9933' }}>•</span> Live Telemetry
         </div>
       </div>
 
@@ -66,16 +66,46 @@ export default function SchematicPanel({ stationId }: Props) {
           bottom: 12,
           left: 12,
           zIndex: 10,
-          background: 'rgba(255, 255, 255, 0.94)',
+          background: 'rgba(255, 255, 255, 0.95)',
           border: '1px solid #cbd5e1',
+          borderLeft: '3px solid #15803d',
           padding: '4px 10px',
           fontSize: 9,
           fontWeight: 800,
           color: '#0b3b60',
           letterSpacing: '0.04em',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
         }}
       >
-        <span style={{ color: '#ea580c' }}>●</span> {t('schematic.confidential')}
+        <span style={{ color: '#15803d', fontSize: 10 }}>●</span>
+        <span>OFFICIAL DIGITAL TWIN • MoES / NCPOR GOVT. OF INDIA</span>
+      </div>
+
+      {/* Map Legend */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: 12,
+          right: 12,
+          zIndex: 10,
+          background: 'rgba(255, 255, 255, 0.95)',
+          border: '1px solid #cbd5e1',
+          padding: '4px 10px',
+          fontSize: 9,
+          fontWeight: 700,
+          color: '#475569',
+          display: 'flex',
+          gap: 10,
+          alignItems: 'center',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+        }}
+      >
+        <span><span style={{ color: '#0284c7' }}>●</span> Met Sensors</span>
+        <span><span style={{ color: '#ea580c' }}>●</span> Power Grid</span>
+        <span><span style={{ color: '#15803d' }}>●</span> Satellite Link</span>
       </div>
 
       {/* Control buttons */}
@@ -83,6 +113,7 @@ export default function SchematicPanel({ stationId }: Props) {
         {['zoom_in', 'fullscreen'].map((icon) => (
           <button
             key={icon}
+            title={icon === 'zoom_in' ? 'Zoom In' : 'Fullscreen'}
             style={{
               background: '#ffffff',
               border: '1px solid #cbd5e1',
@@ -108,10 +139,11 @@ export default function SchematicPanel({ stationId }: Props) {
             width: '100%',
             height: '100%',
             objectFit: 'cover',
-            opacity: 0.88,
-            mixBlendMode: 'screen',
-            transition: 'opacity 0.3s',
+            opacity: 0.92,
+            display: 'block',
           }}
+          loading="eager"
+          decoding="async"
         />
 
         {/* Overlay: External Sensors */}
@@ -126,16 +158,17 @@ export default function SchematicPanel({ stationId }: Props) {
             borderRight: '1px solid #cbd5e1',
             borderBottom: '1px solid #cbd5e1',
             boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+            padding: '6px 10px',
           }}
         >
           <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.04em', color: '#0284c7', marginBottom: 2 }}>
-            {t('schematic.ext_sensors')}
+            AWS-01 • MET SENSORS
           </div>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', fontFamily: 'Inter' }}>
             {t('schematic.temp')}: {stationId === 'maitri' ? '-18.4°C' : '-12.1°C'}
           </div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', fontFamily: 'Inter' }}>
-            {t('schematic.humidity')}: {stationId === 'maitri' ? '80%' : '65%'}
+          <div style={{ fontSize: 10.5, fontWeight: 600, color: '#475569', fontFamily: 'Inter' }}>
+            {t('schematic.humidity')}: {stationId === 'maitri' ? '80%' : '65%'} • Wind: 32 km/h
           </div>
         </div>
 
@@ -151,6 +184,7 @@ export default function SchematicPanel({ stationId }: Props) {
             borderRight: '1px solid #cbd5e1',
             borderBottom: '1px solid #cbd5e1',
             boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+            padding: '6px 10px',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
@@ -159,14 +193,46 @@ export default function SchematicPanel({ stationId }: Props) {
               style={{ width: 6, height: 6, background: '#ea580c', display: 'inline-block' }}
             />
             <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.04em', color: '#ea580c' }}>
-              {t('schematic.gen_sub')}
+              DG-01 • POWER SUBSTATION
             </div>
           </div>
           <div style={{ fontSize: 11, fontWeight: 600, color: '#475569', fontFamily: 'Inter' }}>
-            {t('schematic.status_active')}
+            Status: Active (Primary)
           </div>
           <div style={{ fontSize: 12, fontWeight: 800, color: '#0f172a', fontFamily: 'Inter' }}>
             {t('schematic.load')}: {stationId === 'maitri' ? '84.0%' : '71.0%'}
+          </div>
+        </div>
+
+        {/* Overlay: Satellite Ground Station */}
+        <div
+          className="schematic-overlay"
+          style={{
+            top: '48%',
+            right: '10%',
+            background: 'rgba(255, 255, 255, 0.95)',
+            borderLeft: '3px solid #15803d',
+            borderTop: '1px solid #cbd5e1',
+            borderRight: '1px solid #cbd5e1',
+            borderBottom: '1px solid #cbd5e1',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+            padding: '6px 10px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+            <span
+              className="rounded-full"
+              style={{ width: 6, height: 6, background: '#15803d', display: 'inline-block' }}
+            />
+            <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.04em', color: '#15803d' }}>
+              VSAT-01 • ISRO GSAT-30 LINK
+            </div>
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#0f172a', fontFamily: 'Inter' }}>
+            Status: {stationId === 'maitri' ? 'Online (99.98%)' : 'Degraded (12.4 dB)'}
+          </div>
+          <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', fontFamily: 'Inter' }}>
+            Telemetry: 14.2 GHz Ku-band
           </div>
         </div>
       </div>

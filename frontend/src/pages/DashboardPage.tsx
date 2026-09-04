@@ -37,22 +37,32 @@ export default function DashboardPage() {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 6,
+                justifyContent: 'space-between',
                 fontSize: 11,
                 color: '#64748b',
                 marginBottom: 10,
-                padding: '5px 12px',
+                padding: '6px 12px',
                 background: '#ffffff',
                 border: '1px solid #cbd5e1',
                 boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
               }}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: 15, color: '#0b3b60' }}>home</span>
-              <span style={{ color: '#0b3b60', fontWeight: 700 }}>{t('crumb.home')}</span>
-              <span>&gt;</span>
-              <span style={{ color: '#0b3b60', fontWeight: 600 }}>{t('crumb.polar_division')}</span>
-              <span>&gt;</span>
-              <span style={{ color: '#ea580c', fontWeight: 800 }}>{t('crumb.twin')}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 15, color: '#0b3b60' }}>home</span>
+                <span style={{ color: '#0b3b60', fontWeight: 700 }}>{t('crumb.home')}</span>
+                <span>&gt;</span>
+                <span style={{ color: '#0b3b60', fontWeight: 600 }}>{t('crumb.polar_division')}</span>
+                <span>&gt;</span>
+                <span style={{ color: '#0b3b60', fontWeight: 800 }}>{t('crumb.twin')}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 10, color: '#0b3b60', background: '#e0f2fe', padding: '3px 10px', fontWeight: 800, border: '1px solid #bae6fd', borderRadius: 2 }}>
+                  🔒 OFFICIAL DIGITAL TWIN
+                </span>
+                <span style={{ fontSize: 10, color: '#15803d', background: '#dcfce7', padding: '3px 10px', fontWeight: 800, border: '1px solid #bbf7d0', borderRadius: 2 }}>
+                  🟢 2/2 STATIONS LIVE
+                </span>
+              </div>
             </div>
 
             <StationTabs
@@ -77,7 +87,7 @@ export default function DashboardPage() {
 
               {/* ── Bottom Row (12 col) ── */}
               <MetMastCard stationId={activeStation} />
-              <GlacialCard />
+              <GlacialCard stationId={activeStation} />
               <SeismicCard stationId={activeStation} />
 
             </div>

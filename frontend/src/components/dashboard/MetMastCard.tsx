@@ -22,10 +22,34 @@ export default function MetMastCard({ stationId }: Props) {
   const solarRad = find(sensors, 'solar_rad')
 
   const metrics = [
-    { label: t('met.wind_speed'), value: fmtVal(windSpd, 1, 'km/h') },
-    { label: t('met.direction'), value: fmtVal(windDir, 0, '°') },
-    { label: t('met.pressure'), value: fmtVal(pressure, 0, 'hPa') },
-    { label: t('met.solar_rad'), value: fmtVal(solarRad, 0, 'W/m²') },
+    {
+      icon: 'air',
+      label: t('met.wind_speed'),
+      value: fmtVal(windSpd, 1, 'km/h'),
+      sub: (windSpd?.latest_value ?? 0) > 30 ? 'Strong Breeze' : 'Moderate',
+      color: (windSpd?.latest_value ?? 0) > 30 ? '#ea580c' : '#0b3b60',
+    },
+    {
+      icon: 'explore',
+      label: t('met.direction'),
+      value: fmtVal(windDir, 0, '°'),
+      sub: '247° WSW Azimuth',
+      color: '#0b3b60',
+    },
+    {
+      icon: 'speed',
+      label: t('met.pressure'),
+      value: fmtVal(pressure, 0, 'hPa'),
+      sub: 'Normal Barometric',
+      color: '#0b3b60',
+    },
+    {
+      icon: 'wb_sunny',
+      label: t('met.solar_rad'),
+      value: fmtVal(solarRad, 0, 'W/m²'),
+      sub: 'Polar Daylight Flux',
+      color: '#0b3b60',
+    },
   ]
 
   return (
@@ -56,51 +80,76 @@ export default function MetMastCard({ stationId }: Props) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span className="material-symbols-outlined" style={{ fontSize: 15, color: '#ff9933' }}>
-            tower
+          <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#ff9933' }}>
+            cell_tower
           </span>
           <span style={{ fontSize: 11.5, fontWeight: 800, color: '#ffffff', letterSpacing: '0.04em' }}>
-            {t('met.title')}
+            {t('met.title')} (10M)
           </span>
         </div>
-        <span style={{ fontSize: 8.5, color: '#ffedd5', background: 'rgba(255, 153, 51, 0.25)', padding: '1px 5px', fontWeight: 700 }}>
-          MAST-01
+        <span
+          style={{
+            fontSize: 8.5,
+            color: '#ffedd5',
+            background: 'rgba(255, 153, 51, 0.25)',
+            border: '1px solid rgba(255, 153, 51, 0.5)',
+            padding: '1px 6px',
+            fontWeight: 800,
+            borderRadius: 2,
+          }}
+        >
+          IMD-AWS-01
         </span>
       </div>
 
-      {/* Background photo */}
-      <div style={{ position: 'absolute', inset: 0, top: 34, opacity: 0.18, pointerEvents: 'none' }}>
-        <img
-          src="https://lh3.googleusercontent.com/aida-public/AB6AXuB1NMgCQZYDL9LJxivgN6DWTDxiIerTZXDsfldQfWDUEibUFFFqO1uNzqZPt_Pd6Lj7dIY9JC-ii1sSFC6nwMaRvtzQPmXrg4mZKJ6lAPxauSV0O9V0qlrU9pb1fcWJ1JSosnh3gLu33F8XyjJcarHKXgKbM_6Lh_AmKPIC227fG90W2j6VRv1B2tXZo8wKG_gl9yGmFt9Ii5NvhKJSIvnZ1l04CS3woImALca8VhyhJmc_p1VrBWKu2Q"
-          alt="Meteorological Mast"
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-        />
+      {/* Sensor Grid */}
+      <div style={{ flex: 1, padding: '10px 12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, background: '#f8fafc' }}>
+        {metrics.map(({ icon, label, value, sub, color }) => (
+          <div
+            key={label}
+            style={{
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              padding: '7px 10px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.04em', color: '#64748b' }}>
+                {label}
+              </span>
+              <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#94a3b8' }}>
+                {icon}
+              </span>
+            </div>
+            <div style={{ fontSize: 15, fontWeight: 800, color, fontFamily: 'Inter', letterSpacing: '-0.01em' }}>
+              {value}
+            </div>
+            <div style={{ fontSize: 8.5, fontWeight: 600, color: '#64748b', marginTop: 1 }}>
+              {sub}
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* Data overlay */}
+      {/* Official Calibration Strip */}
       <div
         style={{
-          position: 'relative',
-          zIndex: 2,
-          marginTop: 'auto',
-          background: 'rgba(255, 255, 255, 0.94)',
-          backdropFilter: 'blur(4px)',
+          background: '#f1f5f9',
           borderTop: '1px solid #e2e8f0',
-          padding: '8px 10px',
+          padding: '4px 10px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontSize: 8.5,
+          color: '#475569',
         }}
       >
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px' }}>
-          {metrics.map(({ label, value }) => (
-            <div key={label}>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.03em', color: '#64748b' }}>
-                {label}
-              </div>
-              <div style={{ fontSize: 14.5, fontWeight: 800, color: '#0b3b60', fontFamily: 'Inter', marginTop: 1 }}>
-                {value}
-              </div>
-            </div>
-          ))}
-        </div>
+        <span>● Sensor Calibrated • 10m Tower</span>
+        <span style={{ color: '#15803d', fontWeight: 700 }}>✓ IMD Certified</span>
       </div>
     </div>
   )

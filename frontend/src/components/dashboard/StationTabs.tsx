@@ -32,15 +32,16 @@ export default function StationTabs({ active, onSelect }: Props) {
         flexWrap: 'wrap',
       }}
     >
-      {/* Station Selector with Official Coordinates */}
+      {/* Station Selector Tabs */}
       <div
         style={{
           display: 'flex',
           background: '#ffffff',
           border: '1px solid #cbd5e1',
-          boxShadow: '0 1px 2px 0 rgba(0,0,0,0.05)',
-          padding: 3,
-          gap: 4,
+          boxShadow: '0 1px 2px 0 rgba(0,0,0,0.04)',
+          padding: 4,
+          gap: 6,
+          flex: 1,
         }}
       >
         {[
@@ -63,64 +64,71 @@ export default function StationTabs({ active, onSelect }: Props) {
               key={id}
               onClick={() => onSelect(id)}
               style={{
+                flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'flex-start',
-                padding: '6px 14px',
-                background: isSelected ? '#0b3b60' : 'transparent',
-                border: isSelected ? '1px solid #0b3b60' : '1px solid transparent',
+                padding: '8px 16px',
+                background: isSelected ? '#0b3b60' : '#f8fafc',
+                border: isSelected ? '1px solid #0b3b60' : '1px solid #e2e8f0',
                 borderLeft: isSelected ? '3px solid #ff9933' : '3px solid transparent',
                 cursor: 'pointer',
                 fontFamily: 'Inter',
                 transition: 'all 0.15s',
+                borderRadius: 2,
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span
-                  className="rounded-full"
-                  style={{
-                    width: 8,
-                    height: 8,
-                    background: dotColor(status),
-                    display: 'inline-block',
-                  }}
-                />
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 800,
-                    letterSpacing: '0.02em',
-                    color: isSelected ? '#ffffff' : '#0f172a',
-                  }}
-                >
-                  {name}
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span
+                    className="rounded-full"
+                    style={{
+                      width: 8,
+                      height: 8,
+                      background: dotColor(status),
+                      display: 'inline-block',
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 800,
+                      letterSpacing: '0.02em',
+                      color: isSelected ? '#ffffff' : '#0f172a',
+                    }}
+                  >
+                    {name}
+                  </span>
+                </div>
                 {isSelected && (
                   <span
                     style={{
                       fontSize: 8.5,
-                      fontWeight: 700,
-                      color: '#ffffff',
-                      background: '#ea580c',
-                      padding: '1px 5px',
+                      fontWeight: 800,
+                      color: '#166534',
+                      background: '#dcfce7',
+                      border: '1px solid #86efac',
+                      padding: '1px 6px',
+                      borderRadius: 2,
                     }}
                   >
-                    ACTIVE
+                    ACTIVE STATION
                   </span>
                 )}
               </div>
 
-              <div style={{ display: 'flex', gap: 8, marginTop: 2, fontSize: 9.5, color: isSelected ? '#cbd5e1' : '#64748b' }}>
+              <div style={{ display: 'flex', gap: 8, marginTop: 3, fontSize: 10.5, color: isSelected ? '#cbd5e1' : '#64748b' }}>
                 <span>{coords}</span>
                 <span>•</span>
-                <span style={{ color: isSelected ? '#86efac' : dotColor(status), fontWeight: 700 }}>
-                  {stateText(status)}
+                <span style={{ color: isSelected ? '#86efac' : '#16a34a', fontWeight: 700 }}>
+                  ● {stateText(status)}
                 </span>
               </div>
             </button>
           )
         })}
       </div>
+
     </div>
   )
 }
