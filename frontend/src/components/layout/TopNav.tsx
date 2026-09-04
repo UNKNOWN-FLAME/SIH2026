@@ -168,31 +168,6 @@ export default function TopNav() {
 
         {/* Right: Digital India Badge + Officer Info */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* Government of India Official Badge */}
-          <div
-            style={{
-              background: '#f8fafc',
-              border: '1.5px solid #cbd5e1',
-              borderTop: '3px solid #FF9933',
-              padding: '4px 12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-            }}
-            className="hidden md:flex"
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#0b3b60' }}>
-              verified_user
-            </span>
-            <div>
-              <div style={{ fontSize: 9, fontWeight: 800, color: '#0b3b60', letterSpacing: '0.06em' }}>
-                {t('badge.govt')}
-              </div>
-              <div style={{ fontSize: 10, fontWeight: 800, color: '#ea580c' }}>
-                {t('badge.restricted')}
-              </div>
-            </div>
-          </div>
 
           {/* Officer Profile & Logout */}
           <div

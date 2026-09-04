@@ -23,6 +23,9 @@ export default function Footer() {
         flexShrink: 0,
         display: 'flex',
         flexDirection: 'column',
+        marginTop: 'auto',
+        position: 'relative',
+        zIndex: 10,
       }}
     >
       {/* ── National Tricolour Accent Line ── */}
@@ -72,46 +75,6 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* ── Tier 2: Website Policies & Governance Links ── */}
-      <div
-        style={{
-          background: '#0b3b60',
-          padding: '8px 20px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 8,
-          borderBottom: '1px solid #0d4775',
-          fontSize: 10.5,
-          color: '#cbd5e1',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          {[
-            t('footer.policies'),
-            t('footer.terms'),
-            t('footer.privacy'),
-            t('footer.copyright_policy'),
-            t('footer.feedback'),
-          ].map((policy, idx, arr) => (
-            <span key={idx} style={{ cursor: 'pointer' }} className="hover:text-white">
-              {policy}
-              {idx < arr.length - 1 && <span style={{ color: '#64748b', marginLeft: 12 }}>|</span>}
-            </span>
-          ))}
-        </div>
-
-        {/* Right: Authentic Ministry & Expedition Info */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#e2e8f0', fontSize: 10.5 }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span>🇮🇳</span>
-            <strong style={{ color: '#ffffff' }}>45th Indian Antarctic Expedition (ISEA)</strong>
-          </span>
-          <span style={{ color: '#64748b' }}>•</span>
-          <span style={{ color: '#bae6fd', fontWeight: 600 }}>MoES, Government of India</span>
-        </div>
-      </div>
 
       {/* ── Tier 3: Official Ownership & Telemetry ── */}
       <div

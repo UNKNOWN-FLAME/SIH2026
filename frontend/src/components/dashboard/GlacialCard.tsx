@@ -7,7 +7,7 @@ interface Props {
 
 export default function GlacialCard({ stationId = 'maitri' }: Props) {
   const { t } = useLanguage()
-  const [viewMode, setViewMode] = useState<'gpr' | 'lss'>('gpr')
+  const [viewMode, setViewMode] = useState<'gpr' | 'lss'>('lss')
 
   const isMaitri = stationId === 'maitri'
 

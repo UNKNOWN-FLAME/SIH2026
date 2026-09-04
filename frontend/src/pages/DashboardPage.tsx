@@ -31,7 +31,7 @@ export default function DashboardPage() {
         <Sidebar activeStation={activeStation} onSwitchStation={toggleStation} />
 
         <main id="main-content" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: '#f0f4f8' }}>
-          <div style={{ flex: 1, padding: '10px 14px' }}>
+          <div style={{ flex: 1, padding: '10px 14px 28px 14px' }}>
             {/* Official Government Breadcrumbs Bar */}
             <div
               style={{
@@ -56,9 +56,6 @@ export default function DashboardPage() {
                 <span style={{ color: '#0b3b60', fontWeight: 800 }}>{t('crumb.twin')}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 10, color: '#0b3b60', background: '#e0f2fe', padding: '3px 10px', fontWeight: 800, border: '1px solid #bae6fd', borderRadius: 2 }}>
-                  🔒 OFFICIAL DIGITAL TWIN
-                </span>
                 <span style={{ fontSize: 10, color: '#15803d', background: '#dcfce7', padding: '3px 10px', fontWeight: 800, border: '1px solid #bbf7d0', borderRadius: 2 }}>
                   🟢 2/2 STATIONS LIVE
                 </span>
@@ -73,7 +70,7 @@ export default function DashboardPage() {
             />
 
             {/* Bento Grid */}
-            <div className="bento-grid" style={{ minHeight: 'calc(100% - 90px)' }}>
+            <div className="bento-grid">
 
               {/* ── Centre: Schematic (8 col) ── */}
               <SchematicPanel stationId={activeStation} />
