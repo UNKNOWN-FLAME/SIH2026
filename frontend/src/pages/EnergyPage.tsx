@@ -5,6 +5,8 @@ import AlertStrip from '../components/layout/AlertStrip'
 import Sidebar from '../components/layout/Sidebar'
 import Footer from '../components/layout/Footer'
 import { useLanguage } from '../context/LanguageContext'
+import { useSensors } from '../hooks/useSensors'
+import { useInventory } from '../hooks/useInventory'
 
 export default function EnergyPage() {
   const navigate = useNavigate()
@@ -12,7 +14,7 @@ export default function EnergyPage() {
 
   const [activeStation, setActiveStation] = useState<'maitri' | 'bharati'>('maitri')
   const [activeTab, setActiveTab] = useState<'overview' | 'generators' | 'fuel' | 'microgrid' | 'prediction'>('overview')
-  
+
   // Interactive Simulation Controls
   const [ambientTemp, setAmbientTemp] = useState<number>(-28)
   const [crewOccupancy, setCrewOccupancy] = useState<number>(24)
@@ -24,6 +26,44 @@ export default function EnergyPage() {
   const [isDiagnosticScanning, setIsDiagnosticScanning] = useState<boolean>(false)
   const [diagnosticReport, setDiagnosticReport] = useState<string | null>(null)
 
+  // ── Live sensor + inventory data from Neon ────────────────────────────────
+  const { data: energySensors } = useSensors(activeStation, 'energy')
+  const { data: inventoryItems } = useInventory(activeStation, 'FUEL')
+
+  /** Find latest sensor value by keyword in sensor_id */
+  function sv(keyword: string): number | null {
+    return energySensors?.find(s => s.sensor_id.toLowerCase().includes(keyword))?.latest_value ?? null
+  }
+
+  // Live derived values (fall back to simulation defaults if DB returns null)
+  const liveKwOutput = sv('kw_output') ?? sv('kw') ?? null
+  const liveFuelPct  = sv('fuel_pct') ?? sv('fuel') ?? null
+  const liveSolar    = sv('solar') ?? null
+  const liveLoad     = sv('load_pct') ?? null
+
+  // Fuel from inventory_items (first FUEL item by name containing 'diesel' or 'generator')
+  const dieselItem = inventoryItems?.find(i =>
+    i.name.toLowerCase().includes('diesel') || i.name.toLowerCase().includes('generator')
+  )
+  const fuelRemainingLitres = dieselItem?.quantity ?? (activeStation === 'maitri' ? 138400 : 210500)
+  const totalCapacityLitres = activeStation === 'maitri' ? 165000 : 250000
+  const fuelPct = liveFuelPct !== null ? liveFuelPct : Math.round((fuelRemainingLitres / totalCapacityLitres) * 100)
+
+  // Simulation-derived values (used for sliders / prediction tab)
+  const baseLoad = liveKwOutput ?? (activeStation === 'maitri' ? 142 : 185)
+  const tempFactor = Math.max(0, (-ambientTemp - 15) * 1.8)
+  const occupancyFactor = (crewOccupancy - 20) * 1.2
+  const currentTotalLoad = Math.round(baseLoad + tempFactor + occupancyFactor)
+
+  const solarGen = liveSolar ?? (ambientTemp > -35 ? (activeStation === 'maitri' ? 18.5 : 34.0) : 0)
+  const windGen = activeStation === 'maitri' ? 24.2 : 16.8
+  const batterySoC = activeStation === 'maitri' ? 91 : 96
+  const genOutput = Math.max(0, currentTotalLoad - solarGen - windGen)
+
+  const hourlyBurnLitres = (genOutput * 0.28).toFixed(1)
+  const dailyBurnLitres = Math.round(parseFloat(hourlyBurnLitres) * 24)
+  const daysOfAutonomy = Math.round(fuelRemainingLitres / (dailyBurnLitres || 1))
+
   function runEngineDiagnostic() {
     setIsDiagnosticScanning(true)
     setDiagnosticReport(null)
@@ -33,30 +73,12 @@ export default function EnergyPage() {
     }, 1000)
   }
 
-  // Derived Values
-  const baseLoad = activeStation === 'maitri' ? 142 : 185
-  const tempFactor = Math.max(0, (-ambientTemp - 15) * 1.8)
-  const occupancyFactor = (crewOccupancy - 20) * 1.2
-  const currentTotalLoad = Math.round(baseLoad + tempFactor + occupancyFactor)
-
-  const solarGen = ambientTemp > -35 ? (activeStation === 'maitri' ? 18.5 : 34.0) : 0
-  const windGen = activeStation === 'maitri' ? 24.2 : 16.8
-  const batterySoC = activeStation === 'maitri' ? 91 : 96
-  const genOutput = Math.max(0, currentTotalLoad - solarGen - windGen)
-
-  const fuelRemainingLitres = activeStation === 'maitri' ? 138400 : 210500
-  const totalCapacityLitres = activeStation === 'maitri' ? 165000 : 250000
-  const fuelPct = Math.round((fuelRemainingLitres / totalCapacityLitres) * 100)
-
-  // Burn rate: roughly 0.28 L per kWh
-  const hourlyBurnLitres = (genOutput * 0.28).toFixed(1)
-  const dailyBurnLitres = Math.round(parseFloat(hourlyBurnLitres) * 24)
-  const daysOfAutonomy = Math.round(fuelRemainingLitres / (dailyBurnLitres || 1))
-
   function triggerGenAction(genId: number, action: string) {
     setActionMessage(`[${new Date().toLocaleTimeString('en-GB')}] ⚙️ Dispatch Command: Generator DG-${genId} -> ${action.toUpperCase()} signal transmitted to station microgrid PLC.`)
     setTimeout(() => setActionMessage(null), 5000)
   }
+
+
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f0f4f8' }}>

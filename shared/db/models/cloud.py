@@ -122,8 +122,16 @@ class ResupplyManifest(Base):
 
     manifest_id = Column(String(36), primary_key=True, default=_gen_uuid)
     station_id = Column(String(32), nullable=False, index=True)
-    arrival_date = Column(DateTime(timezone=True), nullable=False)
     expedition_name = Column(String(256), nullable=True)
+    # e.g. "44th Indian Antarctic Expedition"
+    voyage_year = Column(Integer, nullable=False)
+    ship_name = Column(String(128), nullable=True)
+    # e.g. "MV Vasiliy Golovnin"
+    departure_date = Column(DateTime(timezone=True), nullable=True)
+    arrival_window_start = Column(DateTime(timezone=True), nullable=True)
+    arrival_window_end = Column(DateTime(timezone=True), nullable=True)
+    status = Column(String(32), nullable=False, default="PLANNED")
+    # PLANNED | IN_TRANSIT | DELIVERED
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
     created_by = Column(String(128), nullable=True)
@@ -157,11 +165,17 @@ class AIPrediction(Base):
     prediction_id = Column(String(36), primary_key=True, default=_gen_uuid)
     station_id = Column(String(32), nullable=False, index=True)
     model_name = Column(String(128), nullable=False)
-    # e.g. "fuel_forecast", "logistics_demand"
-    target = Column(String(256), nullable=False)
-    # e.g. "days_until_10pct", "item_id:fuel_diesel"
+    # e.g. "fuel_depletion_prophet_v2", "vibration_anomaly"
+    target_metric = Column(String(64), nullable=False)
+    # e.g. "fuel_pct", "vibration_rms"
+    predicted_for_date = Column(DateTime(timezone=True), nullable=True)
     predicted_value = Column(Float, nullable=True)
-    predicted_json = Column(_JsonType, nullable=True)  # for complex structured outputs
+    confidence_lower = Column(Float, nullable=True)
+    confidence_upper = Column(Float, nullable=True)
+    risk_level = Column(String(16), nullable=False, default="NOMINAL")
+    # NOMINAL | WARNING | CRITICAL
+    predicted_json = Column(_JsonType, nullable=True)
+    # For complex structured outputs (time-series forecast arrays, etc.)
     confidence = Column(Float, nullable=True)
     model_version = Column(String(64), nullable=True)
     data_window_start = Column(DateTime(timezone=True), nullable=True)

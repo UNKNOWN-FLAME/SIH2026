@@ -7,12 +7,16 @@ Endpoints:
   GET  /api/v1/hq/dashboard                       Global summary
   GET  /api/v1/hq/stations                        All station statuses
   GET  /api/v1/hq/stations/{station_id}/status    Single station status
-  GET  /api/v1/hq/alerts                          Paginated alerts (all stations)
+  GET  /api/v1/hq/alerts                          Paginated alerts
   GET  /api/v1/hq/alerts/{alert_id}               Alert detail
-  PATCH /api/v1/hq/alerts/{alert_id}/acknowledge  Acknowledge alert from HQ
-  GET  /api/v1/hq/stations/{station_id}/sensors   Latest sensor readings
+  PATCH /api/v1/hq/alerts/{alert_id}/acknowledge  Acknowledge alert
+  GET  /api/v1/hq/stations/{station_id}/sensors   Latest sensor readings (domain filter)
   GET  /api/v1/hq/stations/{station_id}/sensors/{sensor_id}  Sensor history
   GET  /api/v1/hq/stations/{station_id}/analytics 24h analytics
+  GET  /api/v1/hq/stations/{station_id}/inventory Inventory items
+  GET  /api/v1/hq/stations/{station_id}/assets    Infrastructure assets
+  GET  /api/v1/hq/resupply                        Latest resupply manifest
+  GET  /api/v1/hq/stations/{station_id}/predictions  AI predictions
   GET  /api/v1/hq/health                          Health check
 """
 from __future__ import annotations
@@ -25,15 +29,26 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from shared.db.models.cloud import StationConnection
-from shared.db.models.edge import Alert, SensorReading
+from shared.db.models.cloud import (
+    AIPrediction,
+    Asset,
+    ResupplyLineItem,
+    ResupplyManifest,
+    StationConnection,
+)
+from shared.db.models.edge import Alert, InventoryItem, SensorReading
 from shared.utils.time import utcnow
 from cloud.api.schemas import (
+    AIPredictionOut,
     AlertAcknowledgeIn,
     AlertOut,
     AnalyticsOut,
+    AssetOut,
     DashboardSummaryOut,
+    InventoryItemOut,
     PaginatedResponse,
+    ResupplyManifestOut,
+    ResupplyLineItemOut,
     SensorSummaryOut,
     StationConnectionOut,
 )
@@ -61,6 +76,15 @@ def _station_display(station_id: str) -> str:
     return _STATION_DISPLAY.get(station_id, station_id.title())
 
 
+def _compute_inventory_status(item: InventoryItem) -> str:
+    """Derive NOMINAL / WARNING / CRITICAL from quantity vs threshold."""
+    if item.min_safety_threshold and item.quantity <= item.min_safety_threshold * 0.5:
+        return "CRITICAL"
+    if item.min_safety_threshold and item.quantity <= item.min_safety_threshold:
+        return "WARNING"
+    return "NOMINAL"
+
+
 # ---------------------------------------------------------------------------
 # Dashboard summary
 # ---------------------------------------------------------------------------
@@ -80,7 +104,6 @@ async def get_dashboard(
         )
         conn = conn_result.scalar_one_or_none()
 
-        # Count open alerts
         for sev, target in [("CRITICAL", "critical"), ("HIGH", "high")]:
             cnt_result = await session.execute(
                 select(func.count(Alert.alert_id))
@@ -272,23 +295,26 @@ async def acknowledge_alert(
 @router.get("/stations/{station_id}/sensors", response_model=List[SensorSummaryOut])
 async def get_latest_sensors(
     station_id: str,
+    domain: Optional[str] = Query(None, description="Filter by domain: weather, energy, seismic, glacial"),
     session: AsyncSession = Depends(get_db_session),
 ) -> List[SensorSummaryOut]:
-    """Latest reading + 24h count per sensor for one station."""
+    """Latest reading + 24h count per sensor for one station. Optionally filter by domain."""
     cutoff_24h = utcnow() - timedelta(hours=24)
-    cutoff_5m = utcnow() - timedelta(minutes=5)
+    cutoff_recent = utcnow() - timedelta(days=7)   # 7d window — wide enough for static dev data
 
-    # Latest value per sensor (last 5 min)
-    latest_subq = (
+    # Latest value per sensor (last 2h)
+    latest_q = (
         select(
             SensorReading.sensor_id,
             func.max(SensorReading.timestamp_utc).label("max_ts"),
         )
         .where(SensorReading.station_id == station_id)
-        .where(SensorReading.timestamp_utc >= cutoff_5m)
-        .group_by(SensorReading.sensor_id)
-        .subquery()
+        .where(SensorReading.timestamp_utc >= cutoff_recent)
     )
+    if domain:
+        latest_q = latest_q.where(SensorReading.domain == domain.lower())
+    latest_subq = latest_q.group_by(SensorReading.sensor_id).subquery()
+
     latest_result = await session.execute(
         select(SensorReading)
         .join(
@@ -300,12 +326,14 @@ async def get_latest_sensors(
     latest_rows = {r.sensor_id: r for r in latest_result.scalars().all()}
 
     # 24h count per sensor
-    count_result = await session.execute(
+    count_q = (
         select(SensorReading.sensor_id, func.count(SensorReading.id).label("cnt"))
         .where(SensorReading.station_id == station_id)
         .where(SensorReading.timestamp_utc >= cutoff_24h)
-        .group_by(SensorReading.sensor_id)
     )
+    if domain:
+        count_q = count_q.where(SensorReading.domain == domain.lower())
+    count_result = await session.execute(count_q.group_by(SensorReading.sensor_id))
     counts = {row[0]: row[1] for row in count_result.all()}
 
     out = []
@@ -322,7 +350,7 @@ async def get_latest_sensors(
     return sorted(out, key=lambda x: x.sensor_id)
 
 
-@router.get("/stations/{station_id}/sensors/{sensor_id}", response_model=List[dict])
+@router.get("/stations/{station_id}/sensors/{sensor_id:path}", response_model=List[dict])
 async def get_sensor_history(
     station_id: str,
     sensor_id: str,
@@ -393,6 +421,383 @@ async def get_analytics(
         avg_readings_per_hour=total_readings / max(hours, 1),
         open_alerts_total=open_total,
     )
+
+
+# ---------------------------------------------------------------------------
+# Inventory
+# ---------------------------------------------------------------------------
+
+@router.get("/stations/{station_id}/inventory", response_model=List[InventoryItemOut])
+async def get_inventory(
+    station_id: str,
+    category: Optional[str] = Query(None, description="Filter: FUEL, FOOD, MEDICAL, SPARE_PARTS"),
+    session: AsyncSession = Depends(get_db_session),
+) -> List[InventoryItemOut]:
+    """Return all inventory items for a station with computed status."""
+    q = select(InventoryItem).where(InventoryItem.station_id == station_id)
+    if category:
+        q = q.where(InventoryItem.category == category.upper())
+    q = q.order_by(InventoryItem.category, InventoryItem.name)
+    rows = (await session.execute(q)).scalars().all()
+    return [
+        InventoryItemOut(
+            item_id=r.item_id,
+            station_id=r.station_id,
+            category=r.category,
+            name=r.name,
+            quantity=r.quantity,
+            unit=r.unit,
+            min_safety_threshold=r.min_safety_threshold,
+            daily_burn_rate=r.daily_burn_rate,
+            days_remaining=r.days_remaining,
+            last_updated=r.last_updated,
+            status=_compute_inventory_status(r),
+        )
+        for r in rows
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Assets
+# ---------------------------------------------------------------------------
+
+@router.get("/stations/{station_id}/assets", response_model=List[AssetOut])
+async def get_assets(
+    station_id: str,
+    asset_type: Optional[str] = Query(None, description="Filter by asset_type"),
+    session: AsyncSession = Depends(get_db_session),
+) -> List[AssetOut]:
+    """Return all infrastructure assets for a station."""
+    q = select(Asset).where(Asset.station_id == station_id)
+    if asset_type:
+        q = q.where(Asset.asset_type == asset_type.lower())
+    q = q.order_by(Asset.asset_type, Asset.name)
+    rows = (await session.execute(q)).scalars().all()
+    return [AssetOut.model_validate(r) for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# Resupply Manifests
+# ---------------------------------------------------------------------------
+
+@router.get("/resupply", response_model=List[ResupplyManifestOut])
+async def get_resupply(
+    station_id: Optional[str] = Query(None),
+    session: AsyncSession = Depends(get_db_session),
+) -> List[ResupplyManifestOut]:
+    """Return resupply manifests with their line items, newest first."""
+    q = select(ResupplyManifest).order_by(ResupplyManifest.voyage_year.desc())
+    if station_id:
+        q = q.where(ResupplyManifest.station_id == station_id)
+
+    manifests = (await session.execute(q)).scalars().all()
+    result = []
+    for m in manifests:
+        items_result = await session.execute(
+            select(ResupplyLineItem).where(ResupplyLineItem.manifest_id == m.manifest_id)
+        )
+        line_items = items_result.scalars().all()
+        result.append(ResupplyManifestOut(
+            manifest_id=m.manifest_id,
+            station_id=m.station_id,
+            expedition_name=m.expedition_name,
+            voyage_year=m.voyage_year,
+            ship_name=m.ship_name,
+            departure_date=m.departure_date,
+            arrival_window_start=m.arrival_window_start,
+            arrival_window_end=m.arrival_window_end,
+            status=m.status,
+            notes=m.notes,
+            line_items=[ResupplyLineItemOut.model_validate(li) for li in line_items],
+        ))
+    return result
+
+
+# ---------------------------------------------------------------------------
+# AI Predictions
+# ---------------------------------------------------------------------------
+
+@router.get("/stations/{station_id}/predictions", response_model=List[AIPredictionOut])
+async def get_predictions(
+    station_id: str,
+    session: AsyncSession = Depends(get_db_session),
+) -> List[AIPredictionOut]:
+    """Return AI predictions for a station, newest first."""
+    rows = (await session.execute(
+        select(AIPrediction)
+        .where(AIPrediction.station_id == station_id)
+        .order_by(AIPrediction.generated_at.desc())
+        .limit(20)
+    )).scalars().all()
+    return [AIPredictionOut.model_validate(r) for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# Reports
+# ---------------------------------------------------------------------------
+
+@router.get("/report")
+async def get_report(
+    station_id: Optional[str] = Query(None, description="maitri | bharati | None for both"),
+    report_type: str = Query("daily", description="daily | monthly | incident | scientific | audit"),
+    session: AsyncSession = Depends(get_db_session),
+) -> dict:
+    """
+    Generate a structured report from live DB data.
+    Returns JSON with alerts, sensor readings, inventory, assets and station status.
+    """
+    cfg = get_config()
+    station_ids = [station_id] if station_id else cfg.station_ids
+
+    # --- Station status --------------------------------------------------
+    station_rows = (await session.execute(select(StationConnection))).scalars().all()
+    stations_info = {
+        r.station_id: {
+            "station_id": r.station_id,
+            "display_name": _station_display(r.station_id),
+            "link_state": r.link_state,
+            "open_critical_alerts": r.open_critical_alerts or 0,
+            "open_high_alerts": r.open_high_alerts or 0,
+            "services_healthy": r.services_healthy,
+        }
+        for r in station_rows
+    }
+
+    # --- Alerts (last 30 days) -------------------------------------------
+    cutoff_30d = utcnow() - timedelta(days=30)
+    alert_q = select(Alert).where(Alert.triggered_at >= cutoff_30d)
+    if station_id:
+        alert_q = alert_q.where(Alert.station_id == station_id)
+    alert_q = alert_q.order_by(Alert.triggered_at.desc()).limit(50)
+    alerts = (await session.execute(alert_q)).scalars().all()
+
+    alert_counts: dict = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
+    for a in alerts:
+        alert_counts[a.severity] = alert_counts.get(a.severity, 0) + 1
+
+    # --- Sensor summary (latest per sensor, 7d window) -------------------
+    cutoff_7d = utcnow() - timedelta(days=7)
+    cutoff_24h = utcnow() - timedelta(hours=24)
+
+    sensor_data = {}
+    for sid in station_ids:
+        latest_subq = (
+            select(SensorReading.sensor_id, func.max(SensorReading.timestamp_utc).label("max_ts"))
+            .where(SensorReading.station_id == sid)
+            .where(SensorReading.timestamp_utc >= cutoff_7d)
+            .group_by(SensorReading.sensor_id)
+            .subquery()
+        )
+        rows = (await session.execute(
+            select(SensorReading)
+            .join(latest_subq,
+                  (SensorReading.sensor_id == latest_subq.c.sensor_id)
+                  & (SensorReading.timestamp_utc == latest_subq.c.max_ts))
+        )).scalars().all()
+        count_24h = (await session.execute(
+            select(func.count(SensorReading.id))
+            .where(SensorReading.station_id == sid)
+            .where(SensorReading.timestamp_utc >= cutoff_24h)
+        )).scalar_one() or 0
+        sensor_data[sid] = {
+            "readings_24h": count_24h,
+            "latest": [
+                {"sensor_id": r.sensor_id, "domain": r.domain, "value": r.value,
+                 "unit": r.unit, "ts": r.timestamp_utc.isoformat()}
+                for r in rows
+            ],
+        }
+
+    # --- Inventory --------------------------------------------------------
+    inv_data = {}
+    for sid in station_ids:
+        rows = (await session.execute(
+            select(InventoryItem).where(InventoryItem.station_id == sid)
+            .order_by(InventoryItem.category)
+        )).scalars().all()
+        inv_data[sid] = [
+            {"name": r.name, "category": r.category, "quantity": r.quantity,
+             "unit": r.unit, "days_remaining": r.days_remaining,
+             "status": _compute_inventory_status(r)}
+            for r in rows
+        ]
+
+    # --- Assets -----------------------------------------------------------
+    asset_data = {}
+    for sid in station_ids:
+        rows = (await session.execute(
+            select(Asset).where(Asset.station_id == sid)
+        )).scalars().all()
+        asset_data[sid] = [
+            {"name": r.name, "asset_type": r.asset_type, "status": r.status}
+            for r in rows
+        ]
+
+    return {
+        "report_type": report_type,
+        "generated_at": utcnow().isoformat(),
+        "station_ids": station_ids,
+        "stations": stations_info,
+        "alert_summary": {
+            "counts_by_severity": alert_counts,
+            "total_last_30d": len(alerts),
+            "recent": [
+                {"alert_id": a.alert_id, "severity": a.severity, "domain": a.domain,
+                 "description": a.description, "triggered_at": a.triggered_at.isoformat(),
+                 "ack_state": a.ack_state}
+                for a in alerts[:10]
+            ],
+        },
+        "sensor_summary": sensor_data,
+        "inventory": inv_data,
+        "assets": asset_data,
+    }
+
+
+@router.get("/report/download")
+async def download_report(
+    station_id: Optional[str] = Query(None),
+    report_type: str = Query("daily"),
+    session: AsyncSession = Depends(get_db_session),
+) -> dict:
+    """
+    Generate a downloadable plain-text report from live DB data.
+    Returns a JSON with { filename, content } — frontend triggers blob download.
+    """
+    from fastapi.responses import PlainTextResponse
+
+    cfg = get_config()
+    station_ids = [station_id] if station_id else cfg.station_ids
+    now = utcnow()
+
+    # Fetch all needed data via the same report endpoint logic
+    station_rows = (await session.execute(select(StationConnection))).scalars().all()
+    station_map = {r.station_id: r for r in station_rows}
+
+    cutoff_7d = now - timedelta(days=7)
+    cutoff_30d = now - timedelta(days=30)
+
+    lines = []
+    sep = "=" * 72
+    dash = "-" * 72
+
+    lines.append(sep)
+    lines.append("  VAJRAX — NCPOR ANTARCTIC STATION MONITORING SYSTEM")
+    lines.append(f"  Report Type : {report_type.upper()}")
+    lines.append(f"  Generated   : {now.strftime('%d %b %Y  %H:%M:%S UTC')}")
+    lines.append(f"  Stations    : {', '.join(s.upper() for s in station_ids)}")
+    lines.append(f"  Classification: OFFICIAL")
+    lines.append(sep)
+
+    for sid in station_ids:
+        conn = station_map.get(sid)
+        lines.append("")
+        lines.append(f"  STATION: {sid.upper()} — {_station_display(sid)}")
+        lines.append(dash)
+
+        # Station status
+        if conn:
+            lines.append(f"  Link State        : {conn.link_state}")
+            lines.append(f"  Open Critical     : {conn.open_critical_alerts or 0}")
+            lines.append(f"  Open High         : {conn.open_high_alerts or 0}")
+            lines.append(f"  Services Healthy  : {conn.services_healthy}")
+        else:
+            lines.append("  Status: NO CONNECTION DATA")
+
+        # Sensors
+        lines.append("")
+        lines.append("  SENSOR READINGS (Latest)")
+        lines.append("  " + "-" * 50)
+        latest_subq = (
+            select(SensorReading.sensor_id, func.max(SensorReading.timestamp_utc).label("max_ts"))
+            .where(SensorReading.station_id == sid)
+            .where(SensorReading.timestamp_utc >= cutoff_7d)
+            .group_by(SensorReading.sensor_id)
+            .subquery()
+        )
+        sensor_rows = (await session.execute(
+            select(SensorReading)
+            .join(latest_subq,
+                  (SensorReading.sensor_id == latest_subq.c.sensor_id)
+                  & (SensorReading.timestamp_utc == latest_subq.c.max_ts))
+            .order_by(SensorReading.domain)
+        )).scalars().all()
+
+        cur_domain = ""
+        for r in sensor_rows:
+            if r.domain != cur_domain:
+                lines.append(f"  [{r.domain.upper()}]")
+                cur_domain = r.domain
+            metric = r.sensor_id.rsplit(".", 1)[-1]
+            lines.append(f"    {metric:30} {r.value:10.3f}  {r.unit}")
+
+        if not sensor_rows:
+            lines.append("  No recent sensor data.")
+
+        # Alerts
+        lines.append("")
+        lines.append("  ALERTS — Last 30 Days")
+        lines.append("  " + "-" * 50)
+        alert_q = (
+            select(Alert)
+            .where(Alert.station_id == sid)
+            .where(Alert.triggered_at >= cutoff_30d)
+            .order_by(Alert.triggered_at.desc())
+            .limit(20)
+        )
+        alert_rows = (await session.execute(alert_q)).scalars().all()
+        sev_counts: dict = {}
+        for a in alert_rows:
+            sev_counts[a.severity] = sev_counts.get(a.severity, 0) + 1
+        for sev, cnt in sorted(sev_counts.items()):
+            lines.append(f"    {sev:12} : {cnt}")
+        lines.append("")
+        for a in alert_rows[:8]:
+            ts = a.triggered_at.strftime("%d-%b %H:%M")
+            lines.append(f"    [{a.severity:8}] {ts}  {a.description[:55]}")
+
+        if not alert_rows:
+            lines.append("  No alerts in last 30 days.")
+
+        # Inventory
+        lines.append("")
+        lines.append("  INVENTORY STATUS")
+        lines.append("  " + "-" * 50)
+        inv_rows = (await session.execute(
+            select(InventoryItem)
+            .where(InventoryItem.station_id == sid)
+            .order_by(InventoryItem.category)
+        )).scalars().all()
+        for i in inv_rows:
+            status = _compute_inventory_status(i)
+            flag = "⚠" if status != "NOMINAL" else " "
+            lines.append(f"  {flag} {i.name[:42]:42} {i.quantity:10.1f}  {i.unit:10}  [{status}]")
+
+        if not inv_rows:
+            lines.append("  No inventory data.")
+
+        # Assets
+        lines.append("")
+        lines.append("  ASSETS / INFRASTRUCTURE")
+        lines.append("  " + "-" * 50)
+        asset_rows = (await session.execute(
+            select(Asset).where(Asset.station_id == sid).order_by(Asset.asset_type)
+        )).scalars().all()
+        for a in asset_rows:
+            lines.append(f"  {a.asset_type:20}  {a.name:40}  {a.status}")
+
+        if not asset_rows:
+            lines.append("  No asset data.")
+
+    lines.append("")
+    lines.append(sep)
+    lines.append("  END OF REPORT  —  VajraX Digital Twin Platform  —  NCPOR / MoES")
+    lines.append(sep)
+
+    content = "\n".join(lines)
+    filename = f"VajraX_{report_type}_{now.strftime('%Y%m%d_%H%M%S')}.txt"
+
+    return {"filename": filename, "content": content}
 
 
 # ---------------------------------------------------------------------------

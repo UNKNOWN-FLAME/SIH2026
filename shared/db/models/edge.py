@@ -181,11 +181,13 @@ class InventoryItem(Base):
 
     item_id = Column(String(128), primary_key=True)
     station_id = Column(String(32), nullable=False, index=True)
-    category = Column(String(32), nullable=False)  # consumable | equipment | ppe
+    category = Column(String(32), nullable=False)  # FUEL | SPARE_PARTS | FOOD | MEDICAL
     name = Column(String(256), nullable=False)
     quantity = Column(Float, nullable=False)
     unit = Column(String(32), nullable=False)
-    min_threshold = Column(Float, nullable=True)
+    min_safety_threshold = Column(Float, nullable=True)
+    daily_burn_rate = Column(Float, nullable=True)       # estimated daily consumption
+    days_remaining = Column(Integer, nullable=True)      # quantity / daily_burn_rate
     last_updated = Column(DateTime(timezone=True), nullable=False,
                           default=datetime.utcnow)
     updated_by = Column(String(128), nullable=False, default="system")
@@ -249,9 +251,10 @@ class LinkStatusRecord(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     station_id = Column(String(32), nullable=False, index=True)
-    state = Column(String(16), nullable=False)  # UP | DEGRADED | DOWN
-    latency_ms = Column(Integer, nullable=True)
+    link_state = Column(String(16), nullable=False)  # UP | DEGRADED | DOWN
+    latency_ms = Column(Float, nullable=True)
+    packet_loss_pct = Column(Float, nullable=True)
     queue_depth_bytes = Column(BigInteger, nullable=True)
     queue_item_count = Column(Integer, nullable=True)
-    timestamp_utc = Column(DateTime(timezone=True), nullable=False,
-                           default=datetime.utcnow, index=True)
+    recorded_at = Column(DateTime(timezone=True), nullable=False,
+                         default=datetime.utcnow, index=True)

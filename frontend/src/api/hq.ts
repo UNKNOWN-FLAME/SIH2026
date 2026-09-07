@@ -2,15 +2,6 @@ import api from './client'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export interface DashboardData {
-  total_stations: number
-  online_stations: number
-  total_open_alerts: number
-  critical_alerts: number
-  high_alerts: number
-  generated_at: string
-}
-
 export interface StationStatus {
   station_id: string
   display_name: string
@@ -22,6 +13,15 @@ export interface StationStatus {
   services_healthy: boolean | null
   minutes_since_heartbeat: number | null
 }
+
+export interface DashboardSummaryOut {
+  stations: StationStatus[]
+  total_open_critical: number
+  total_open_high: number
+  total_open_alerts: number
+  generated_at: string
+}
+export type DashboardData = DashboardSummaryOut
 
 export interface AlertOut {
   alert_id: string
@@ -60,44 +60,99 @@ export interface SensorSummary {
 export interface AnalyticsOut {
   station_id: string
   period_hours: number
-  avg_values: Record<string, number>
-  min_values: Record<string, number>
-  max_values: Record<string, number>
-  reading_counts: Record<string, number>
+  alert_counts_by_severity: Record<string, number>
+  total_readings: number
+  avg_readings_per_hour: number
+  open_alerts_total: number
+}
+
+export interface InventoryItem {
+  item_id: string
+  station_id: string
+  category: string
+  name: string
+  quantity: number
+  unit: string
+  min_safety_threshold: number | null
+  daily_burn_rate: number | null
+  days_remaining: number | null
+  last_updated: string | null
+  status: 'NOMINAL' | 'WARNING' | 'CRITICAL'
+}
+
+export interface AssetOut {
+  asset_id: string
+  station_id: string
+  asset_type: string
+  name: string
+  latitude: number | null
+  longitude: number | null
+  elevation_m: number | null
+  status: string
+  commissioned_at: string | null
+}
+
+export interface ResupplyLineItem {
+  line_item_id: string
+  item_name: string
+  quantity_delivered: number
+  unit: string
+}
+
+export interface ResupplyManifest {
+  manifest_id: string
+  station_id: string
+  expedition_name: string | null
+  voyage_year: number
+  ship_name: string | null
+  departure_date: string | null
+  arrival_window_start: string | null
+  arrival_window_end: string | null
+  status: 'PLANNED' | 'IN_TRANSIT' | 'DELIVERED'
+  notes: string | null
+  line_items: ResupplyLineItem[]
+}
+
+export interface AIPrediction {
+  prediction_id: string
+  station_id: string
+  model_name: string
+  target_metric: string
+  predicted_value: number | null
+  confidence_lower: number | null
+  confidence_upper: number | null
+  risk_level: string
+  predicted_for_date: string | null
+  generated_at: string
 }
 
 export interface HealthOut {
   status: string
-  station_id?: string
+  service?: string
 }
 
 // ── API functions ─────────────────────────────────────────────────────────────
 
-/** GET /hq/dashboard — global summary */
-export async function getDashboard(): Promise<DashboardData> {
-  const { data } = await api.get<DashboardData>('/hq/dashboard')
+export async function getDashboard(): Promise<DashboardSummaryOut> {
+  const { data } = await api.get<DashboardSummaryOut>('/hq/dashboard')
   return data
 }
 
-/** GET /hq/health */
 export async function getHealth(): Promise<HealthOut> {
   const { data } = await api.get<HealthOut>('/hq/health')
   return data
 }
 
-/** GET /hq/stations */
 export async function getStations(): Promise<StationStatus[]> {
   const { data } = await api.get<StationStatus[]>('/hq/stations')
   return data
 }
 
-/** GET /hq/stations/{station_id}/status */
 export async function getStationStatus(stationId: string): Promise<StationStatus> {
   const { data } = await api.get<StationStatus>(`/hq/stations/${stationId}/status`)
   return data
 }
 
-/** GET /hq/alerts */
 export async function getAlerts(params?: {
   station_id?: string
   ack_state?: string
@@ -110,7 +165,18 @@ export async function getAlerts(params?: {
   return data
 }
 
-/** GET /hq/stations/{station_id}/sensors */
+export async function getAlert(alertId: string): Promise<AlertOut> {
+  const { data } = await api.get<AlertOut>(`/hq/alerts/${alertId}`)
+  return data
+}
+
+export async function acknowledgeAlert(alertId: string, note?: string): Promise<AlertOut> {
+  const { data } = await api.patch<AlertOut>(`/hq/alerts/${alertId}/acknowledge`, {
+    acknowledged_by: note ?? 'HQ Operator',
+  })
+  return data
+}
+
 export async function getSensors(
   stationId: string,
   domain?: string,
@@ -122,33 +188,84 @@ export async function getSensors(
   return data
 }
 
-/** GET /hq/stations/{station_id}/sensors/{sensor_id} */
-export async function getSensor(
+export async function getSensorHistory(
   stationId: string,
   sensorId: string,
-): Promise<SensorSummary> {
-  const { data } = await api.get<SensorSummary>(
+  hours = 24,
+): Promise<Array<{ timestamp_utc: string; value: number; unit: string; quality: string }>> {
+  const { data } = await api.get(
     `/hq/stations/${stationId}/sensors/${encodeURIComponent(sensorId)}`,
+    { params: { hours } },
   )
   return data
 }
 
-/** GET /hq/stations/{station_id}/analytics */
 export async function getAnalytics(
   stationId: string,
   periodHours = 24,
 ): Promise<AnalyticsOut> {
   const { data } = await api.get<AnalyticsOut>(
     `/hq/stations/${stationId}/analytics`,
-    { params: { period_hours: periodHours } },
+    { params: { hours: periodHours } },
   )
   return data
 }
 
-/** POST /hq/alerts/{alert_id}/acknowledge */
-export async function acknowledgeAlert(alertId: string, note?: string): Promise<AlertOut> {
-  const { data } = await api.post<AlertOut>(`/hq/alerts/${alertId}/acknowledge`, {
-    note: note ?? 'Acknowledged via dashboard',
+export async function getInventory(
+  stationId: string,
+  category?: string,
+): Promise<InventoryItem[]> {
+  const { data } = await api.get<InventoryItem[]>(
+    `/hq/stations/${stationId}/inventory`,
+    { params: category ? { category } : undefined },
+  )
+  return data
+}
+
+export async function getAssets(
+  stationId: string,
+  assetType?: string,
+): Promise<AssetOut[]> {
+  const { data } = await api.get<AssetOut[]>(
+    `/hq/stations/${stationId}/assets`,
+    { params: assetType ? { asset_type: assetType } : undefined },
+  )
+  return data
+}
+
+export async function getResupply(stationId?: string): Promise<ResupplyManifest[]> {
+  const { data } = await api.get<ResupplyManifest[]>(
+    '/hq/resupply',
+    { params: stationId ? { station_id: stationId } : undefined },
+  )
+  return data
+}
+
+export async function getPredictions(stationId: string): Promise<AIPrediction[]> {
+  const { data } = await api.get<AIPrediction[]>(
+    `/hq/stations/${stationId}/predictions`,
+  )
+  return data
+}
+
+export async function getReportData(
+  reportType: string,
+  stationId?: string,
+): Promise<Record<string, unknown>> {
+  const { data } = await api.get<Record<string, unknown>>('/hq/report', {
+    params: { report_type: reportType, ...(stationId ? { station_id: stationId } : {}) },
   })
   return data
 }
+
+export async function downloadReportFile(
+  reportType: string,
+  stationId?: string,
+): Promise<{ filename: string; content: string }> {
+  const { data } = await api.get<{ filename: string; content: string }>(
+    '/hq/report/download',
+    { params: { report_type: reportType, ...(stationId ? { station_id: stationId } : {}) } },
+  )
+  return data
+}
+

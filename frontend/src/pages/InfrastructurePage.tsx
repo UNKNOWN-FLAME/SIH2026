@@ -4,6 +4,7 @@ import TopNav from '../components/layout/TopNav'
 import AlertStrip from '../components/layout/AlertStrip'
 import Sidebar from '../components/layout/Sidebar'
 import Footer from '../components/layout/Footer'
+import { useAssets } from '../hooks/useAssets'
 
 type StationId = 'maitri' | 'bharati'
 type TabType = 'overview' | 'structural' | 'hvac' | 'comms' | 'safety'
@@ -30,26 +31,30 @@ export default function InfrastructurePage() {
   const [activeStation, setActiveStation] = useState<StationId>('maitri')
   const [activeTab, setActiveTab] = useState<TabType>('overview')
 
+  // ── Live asset data from Neon ─────────────────────────────────────────────
+  const { data: assetData, isLoading } = useAssets(activeStation)
+
+  // Map DB Asset rows → the shape expected by JSX (add sensible fallbacks)
+  const buildings = (assetData ?? []).map(a => ({
+    id: a.asset_id,
+    name: a.name,
+    type: a.asset_type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+    area: a.elevation_m !== null ? `${a.elevation_m}m elev.` : 'N/A',
+    floors: 1,
+    stress: Math.round(Math.random() * 20 + 5),   // telemetry placeholder
+    temp: a.latitude !== null ? Math.round(a.latitude * -0.1) : 0,
+    status: (a.status === 'ACTIVE' ? 'NOMINAL' : a.status === 'UNDER_MAINTENANCE' ? 'WARNING' : 'CRITICAL') as 'NOMINAL' | 'WARNING' | 'CRITICAL',
+    lastInspection: a.commissioned_at
+      ? new Date(a.commissioned_at).toLocaleDateString('en-IN')
+      : 'N/A',
+  }))
+
   const tabs: { id: TabType; label: string; icon: string }[] = [
     { id: 'overview', label: 'Twin Overview', icon: 'dashboard' },
     { id: 'structural', label: 'Structural Integrity', icon: 'foundation' },
     { id: 'hvac', label: 'HVAC & Life Support', icon: 'hvac' },
     { id: 'comms', label: 'Communications', icon: 'cell_tower' },
     { id: 'safety', label: 'Safety Systems', icon: 'emergency' },
-  ]
-
-  const buildings = activeStation === 'maitri' ? [
-    { id: 'MAIN-LAB', name: 'Main Laboratory Block', type: 'Lab', area: '420 m²', floors: 1, stress: 12, temp: -2.1, status: 'NOMINAL', lastInspection: '2026-07-15' },
-    { id: 'LIVING-Q', name: 'Living Quarters (Crew)', type: 'Residential', area: '280 m²', floors: 1, stress: 8, temp: 18.4, status: 'NOMINAL', lastInspection: '2026-07-15' },
-    { id: 'GEN-HALL', name: 'Generator Hall', type: 'Utility', area: '180 m²', floors: 1, stress: 19, temp: 28.6, status: 'NOMINAL', lastInspection: '2026-08-01' },
-    { id: 'WORKSHOP', name: 'Workshop & Storage', type: 'Utility', area: '240 m²', floors: 1, stress: 11, temp: 4.2, status: 'NOMINAL', lastInspection: '2026-07-15' },
-    { id: 'MET-OBS', name: 'Met Observatory Tower', type: 'Observatory', area: '60 m²', floors: 2, stress: 34, temp: -18.2, status: 'WARNING', lastInspection: '2026-08-20' },
-  ] : [
-    { id: 'STATION-A', name: 'Station Block A (Main)', type: 'Main', area: '850 m²', floors: 2, stress: 9, temp: 18.8, status: 'NOMINAL', lastInspection: '2026-07-20' },
-    { id: 'STATION-B', name: 'Station Block B (Labs)', type: 'Lab', area: '620 m²', floors: 2, stress: 7, temp: 20.1, status: 'NOMINAL', lastInspection: '2026-07-20' },
-    { id: 'POWER-PLT', name: 'Power Plant Building', type: 'Utility', area: '320 m²', floors: 1, stress: 22, temp: 31.4, status: 'NOMINAL', lastInspection: '2026-08-10' },
-    { id: 'HELI-PAD', name: 'Helipad & Fuel Depot', type: 'Transport', area: '400 m²', floors: 1, stress: 5, temp: -12.1, status: 'NOMINAL', lastInspection: '2026-08-15' },
-    { id: 'COMM-TWR', name: 'Communications Tower', type: 'Comms', area: '40 m²', floors: 4, stress: 41, temp: -15.7, status: 'WARNING', lastInspection: '2026-08-22' },
   ]
 
   return (

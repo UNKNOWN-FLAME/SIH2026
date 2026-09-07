@@ -4,6 +4,7 @@ import TopNav from '../components/layout/TopNav'
 import AlertStrip from '../components/layout/AlertStrip'
 import Sidebar from '../components/layout/Sidebar'
 import Footer from '../components/layout/Footer'
+import { useSensors } from '../hooks/useSensors'
 
 type StationId = 'maitri' | 'bharati'
 type TabType = 'overview' | 'atmosphere' | 'glaciology' | 'seismic' | 'ocean'
@@ -11,6 +12,15 @@ type TabType = 'overview' | 'atmosphere' | 'glaciology' | 'seismic' | 'ocean'
 const STATIONS: Record<StationId, { name: string; coords: string; elevation: string; region: string }> = {
   maitri: { name: 'Maitri Research Station', coords: '70°45′S, 11°44′E', elevation: '130m ASL', region: 'Schirmacher Oasis, Queen Maud Land' },
   bharati: { name: 'Bharati Research Station', coords: '69°24′S, 76°11′E', elevation: '35m ASL', region: 'Larsemann Hills, Prydz Bay' },
+}
+
+type SensorRow = { sensor_id: string; latest_value: number | null }
+function sv(sensors: SensorRow[] | undefined, keyword: string): number | null {
+  if (!sensors) return null
+  return sensors.find(x => x.sensor_id.toLowerCase().includes(keyword))?.latest_value ?? null
+}
+function fmt(v: number | null, decimals = 1): string {
+  return v === null ? '—' : v.toFixed(decimals)
 }
 
 function MetCard({ label, value, unit, icon, color, sub }: { label: string; value: string | number; unit: string; icon: string; color: string; sub?: string }) {
@@ -35,9 +45,24 @@ export default function EnvironmentPage() {
   const [activeStation, setActiveStation] = useState<StationId>('maitri')
   const [activeTab, setActiveTab] = useState<TabType>('overview')
   const st = STATIONS[activeStation]
-  const env = activeStation === 'maitri'
-    ? { temp: -28.4, feels: -41.2, wind: 67, gust: 94, humidity: 78, pressure: 978.4, visibility: 1.2, uv: 0, dewPoint: -34.1, snowDepth: 2.4, iceThickness: 1.85, seismicHz: 0.12, co2: 412, ozone: 287, radiation: 0.18 }
-    : { temp: -21.7, feels: -33.5, wind: 42, gust: 71, humidity: 85, pressure: 1002.1, visibility: 3.8, uv: 1, dewPoint: -27.3, snowDepth: 1.1, iceThickness: 0.92, seismicHz: 0.08, co2: 413, ozone: 291, radiation: 0.22 }
+
+  // ── Live sensor data from Neon ──────────────────────────────────────────
+  const { data: weatherSensors } = useSensors(activeStation, 'weather')
+  const { data: seismicSensors } = useSensors(activeStation, 'seismic')
+
+  const env = {
+    temp:       sv(weatherSensors, 'temperature'),
+    wind:       sv(weatherSensors, 'wind_speed'),
+    wind_dir:   sv(weatherSensors, 'wind_dir'),
+    humidity:   sv(weatherSensors, 'humidity'),
+    pressure:   sv(weatherSensors, 'pressure'),
+    snowfall:   sv(weatherSensors, 'snowfall'),
+    radiation:  sv(weatherSensors, 'radiation'),
+    seismicPgv: sv(seismicSensors, 'pgv'),
+    magnitude:  sv(seismicSensors, 'magnitude'),
+  }
+
+
   const tabs: { id: TabType; label: string; icon: string }[] = [
     { id: 'overview', label: 'Met Overview', icon: 'cloud' },
     { id: 'atmosphere', label: 'Atmosphere', icon: 'air' },
@@ -83,18 +108,18 @@ export default function EnvironmentPage() {
             </div>
             {activeTab === 'overview' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {env.temp < -30 && (<div style={{ background: '#fef3c7', border: '1px solid #f59e0b', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 8 }}><span className="material-symbols-outlined" style={{ color: '#d97706', fontSize: 18 }}>warning</span><span style={{ fontSize: 11, fontWeight: 700, color: '#92400e' }}>SEVERE WEATHER ALERT: Extreme cold advisory active — Temperature below -30°C. All external operations suspended.</span></div>)}
+                {(env.temp !== null && env.temp < -30) && (<div style={{ background: '#fef3c7', border: '1px solid #f59e0b', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 8 }}><span className="material-symbols-outlined" style={{ color: '#d97706', fontSize: 18 }}>warning</span><span style={{ fontSize: 11, fontWeight: 700, color: '#92400e' }}>SEVERE WEATHER ALERT: Extreme cold advisory active — Temperature below -30°C. All external operations suspended.</span></div>)}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-                  <MetCard label="AIR TEMPERATURE" value={env.temp} unit="°C" icon="thermometer" color="#3b82f6" sub={`Feels like ${env.feels}°C`} />
-                  <MetCard label="WIND SPEED" value={env.wind} unit="km/h" icon="air" color="#0b3b60" sub={`Gusts: ${env.gust} km/h`} />
-                  <MetCard label="HUMIDITY" value={env.humidity} unit="%" icon="water_drop" color="#06b6d4" sub={`Dew Point: ${env.dewPoint}°C`} />
-                  <MetCard label="PRESSURE" value={env.pressure} unit="hPa" icon="compress" color="#ea580c" sub="Sea Level Ref." />
+                  <MetCard label="AIR TEMPERATURE" value={fmt(env.temp)} unit="°C" icon="thermometer" color="#3b82f6" sub="Surface level" />
+                  <MetCard label="WIND SPEED" value={fmt(env.wind)} unit="km/h" icon="air" color="#0b3b60" sub={env.wind_dir !== null ? `Dir: ${Math.round(env.wind_dir ?? 0)}°` : 'Live from AWS'} />
+                  <MetCard label="HUMIDITY" value={fmt(env.humidity, 0)} unit="%" icon="water_drop" color="#06b6d4" sub="Relative humidity" />
+                  <MetCard label="PRESSURE" value={fmt(env.pressure, 1)} unit="hPa" icon="compress" color="#ea580c" sub="Sea Level Ref." />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-                  <MetCard label="VISIBILITY" value={env.visibility} unit="km" icon="visibility" color="#8b5cf6" sub={env.visibility < 2 ? '⚠ Poor' : 'Moderate'} />
-                  <MetCard label="UV INDEX" value={env.uv} unit="" icon="wb_sunny" color="#f59e0b" sub={env.uv === 0 ? 'Polar Night' : 'Low'} />
-                  <MetCard label="SNOW DEPTH" value={env.snowDepth} unit="m" icon="ac_unit" color="#06b6d4" sub="Surface accumulation" />
-                  <MetCard label="CO₂ LEVEL" value={env.co2} unit="ppm" icon="co2" color="#16a34a" sub="NOAA ref: 421 ppm" />
+                  <MetCard label="SNOWFALL" value={fmt(env.snowfall, 1)} unit="mm" icon="ac_unit" color="#06b6d4" sub="Fresh accumulation" />
+                  <MetCard label="SEISMIC PGV" value={fmt(env.seismicPgv, 3)} unit="mm/s" icon="vibration" color="#7c3aed" sub="Peak ground velocity" />
+                  <MetCard label="SOLAR RADIATION" value={fmt(env.radiation, 2)} unit="kW/m²" icon="wb_sunny" color="#f59e0b" sub="Global horizontal" />
+                  <MetCard label="MAGNITUDE" value={fmt(env.magnitude, 2)} unit="Mw" icon="crisis_alert" color="#dc2626" sub="Seismic magnitude" />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '16px' }}>
@@ -110,8 +135,10 @@ export default function EnvironmentPage() {
                     <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 12, letterSpacing: '0.05em' }}>IMD / ECMWF 5-DAY FORECAST</div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
                       {['Today', 'D+1', 'D+2', 'D+3', 'D+4'].map((day, i) => {
-                        const temps = [env.temp, env.temp - 3, env.temp + 1, env.temp - 5, env.temp + 2]
-                        const winds = [env.wind, env.wind + 10, env.wind - 8, env.wind + 20, env.wind - 5]
+                        const baseT = env.temp ?? -25
+                        const baseW = env.wind ?? 50
+                        const temps = [0, -3, 1, -5, 2].map(d => baseT + d)
+                        const winds = [0, 10, -8, 20, -5].map(d => baseW + d)
                         const icons = ['storm', 'ac_unit', 'cloud', 'thunderstorm', 'partly_cloudy_day']
                         const labels = ['Blizzard', 'Snow', 'Overcast', 'Storm', 'Clearing']
                         return (<div key={day} style={{ background: i === 0 ? '#f0f9ff' : '#f8fafc', border: `1px solid ${i === 0 ? '#bae6fd' : '#e2e8f0'}`, padding: '10px 6px', textAlign: 'center' }}>
@@ -119,7 +146,7 @@ export default function EnvironmentPage() {
                           <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#3b82f6', margin: '6px 0', display: 'block' }}>{icons[i]}</span>
                           <div style={{ fontSize: 12, fontWeight: 800, color: '#0f172a' }}>{temps[i].toFixed(1)}°</div>
                           <div style={{ fontSize: 8, color: '#64748b' }}>{labels[i]}</div>
-                          <div style={{ fontSize: 8, color: '#475569' }}>💨{winds[i]}</div>
+                          <div style={{ fontSize: 8, color: '#475569' }}>💨{Math.round(winds[i])}</div>
                         </div>)
                       })}
                     </div>
@@ -130,9 +157,9 @@ export default function EnvironmentPage() {
             {activeTab === 'atmosphere' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-                  <MetCard label="OZONE COLUMN" value={env.ozone} unit="DU" icon="layers" color="#7c3aed" sub="Dobson Units — NOAA" />
-                  <MetCard label="CO₂ LEVEL" value={env.co2} unit="ppm" icon="co2" color="#16a34a" sub="Mauna Loa ref: 421" />
-                  <MetCard label="SOLAR RADIATION" value={env.radiation} unit="kW/m²" icon="wb_sunny" color="#f59e0b" sub="Global horizontal" />
+                  <MetCard label="OZONE COLUMN" value="287" unit="DU" icon="layers" color="#7c3aed" sub="Dobson Units — NOAA" />
+                  <MetCard label="CO₂ LEVEL" value="412" unit="ppm" icon="co2" color="#16a34a" sub="Mauna Loa ref: 421" />
+                  <MetCard label="SOLAR RADIATION" value={fmt(env.radiation, 2)} unit="kW/m²" icon="wb_sunny" color="#f59e0b" sub="Global horizontal" />
                   <MetCard label="K-INDEX" value="2" unit="(Quiet)" icon="radio" color="#3b82f6" sub="Geomagnetic activity" />
                 </div>
                 <div style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '16px' }}>
@@ -143,7 +170,7 @@ export default function EnvironmentPage() {
                     <div style={{ fontWeight: 700, color: '#64748b', fontSize: 10, padding: '4px 0', borderBottom: '2px solid #0b3b60' }}>WIND</div>
                     <div style={{ fontWeight: 700, color: '#64748b', fontSize: 10, padding: '4px 0', borderBottom: '2px solid #0b3b60' }}>PRESSURE</div>
                     <div style={{ fontWeight: 700, color: '#64748b', fontSize: 10, padding: '4px 0', borderBottom: '2px solid #0b3b60' }}>HUMIDITY</div>
-                    {[{ alt: '10 km', temp: -56.2, wind: '142 WNW', p: '264 hPa', rh: '18%' },{ alt: '5 km', temp: -38.7, wind: '98 SW', p: '540 hPa', rh: '32%' },{ alt: '2 km', temp: -33.1, wind: '71 SW', p: '790 hPa', rh: '58%' },{ alt: '500 m', temp: -30.4, wind: '54 SSW', p: '920 hPa', rh: '71%' },{ alt: 'Surface', temp: env.temp, wind: `${env.wind} SW`, p: `${Math.round(env.pressure)} hPa`, rh: `${env.humidity}%` }].map(l => (
+                    {[{ alt: '10 km', temp: -56.2, wind: '142 WNW', p: '264 hPa', rh: '18%' },{ alt: '5 km', temp: -38.7, wind: '98 SW', p: '540 hPa', rh: '32%' },{ alt: '2 km', temp: -33.1, wind: '71 SW', p: '790 hPa', rh: '58%' },{ alt: '500 m', temp: -30.4, wind: '54 SSW', p: '920 hPa', rh: '71%' },{ alt: 'Surface', temp: env.temp ?? '—', wind: `${fmt(env.wind)} SW`, p: `${env.pressure !== null ? Math.round(env.pressure) : '—'} hPa`, rh: `${fmt(env.humidity, 0)}%` }].map(l => (
                       [<div key={l.alt+'a'} style={{ padding: '6px 0', borderBottom: '1px solid #f1f5f9', fontWeight: 800, color: '#0b3b60', fontSize: 10 }}>{l.alt}</div>,
                       <div key={l.alt+'t'} style={{ padding: '6px 0', borderBottom: '1px solid #f1f5f9', color: '#3b82f6', fontWeight: 700 }}>{l.temp}°C</div>,
                       <div key={l.alt+'w'} style={{ padding: '6px 0', borderBottom: '1px solid #f1f5f9', color: '#0b3b60', fontWeight: 700 }}>{l.wind}</div>,
@@ -157,8 +184,8 @@ export default function EnvironmentPage() {
             {activeTab === 'glaciology' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-                  <MetCard label="SNOW DEPTH" value={env.snowDepth} unit="m" icon="ac_unit" color="#06b6d4" sub="Fresh: +12cm/wk" />
-                  <MetCard label="ICE THICKNESS" value={env.iceThickness} unit="m" icon="layers" color="#3b82f6" sub="Ground Penetrating Radar" />
+                  <MetCard label="SNOWFALL" value={fmt(env.snowfall, 1)} unit="mm" icon="ac_unit" color="#06b6d4" sub="Fresh accumulation" />
+                  <MetCard label="ICE THICKNESS" value="1.85" unit="m" icon="layers" color="#3b82f6" sub="Ground Penetrating Radar" />
                   <MetCard label="ALBEDO" value="0.87" unit="" icon="light_mode" color="#f59e0b" sub="Snow-covered surface" />
                   <MetCard label="GLACIER FLOW" value="1.2" unit="m/yr" icon="trending_down" color="#8b5cf6" sub="Schirmacher retreat rate" />
                 </div>

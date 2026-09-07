@@ -5,6 +5,8 @@ import AlertStrip from '../components/layout/AlertStrip'
 import Sidebar from '../components/layout/Sidebar'
 import Footer from '../components/layout/Footer'
 import { useLanguage } from '../context/LanguageContext'
+import { useInventory } from '../hooks/useInventory'
+import { useResupply } from '../hooks/useResupply'
 
 interface InventoryItemType {
   id: string
@@ -20,25 +22,14 @@ interface InventoryItemType {
   lastAudit: string
 }
 
-const INITIAL_INVENTORY: Record<'maitri' | 'bharati', InventoryItemType[]> = {
-  maitri: [
-    { id: 'MT-FUEL-01', name: 'Arctic Heating & Generator Diesel (Jet A-1 Spec)', category: 'fuel', quantity: 138400, unit: 'Litres', minThreshold: 35000, burnRate: '38 L/hr', daysLeft: 151, location: 'Main Fuel Tanks (A-D)', status: 'NOMINAL', lastAudit: '28-Aug-2026' },
-    { id: 'MT-FUEL-02', name: 'Helicopter Aviation Fuel (ATF for Chetak/ALH)', category: 'fuel', quantity: 18200, unit: 'Litres', minThreshold: 6000, burnRate: 'On-demand', daysLeft: 210, location: 'Helipad Fuel Depot', status: 'NOMINAL', lastAudit: '28-Aug-2026' },
-    { id: 'MT-FUEL-03', name: 'Cold-Weather Generator Engine Oil (15W-40)', category: 'fuel', quantity: 840, unit: 'Litres', minThreshold: 250, burnRate: '2.5 L/day', daysLeft: 336, location: 'Powerhouse Store', status: 'NOMINAL', lastAudit: '20-Aug-2026' },
-    { id: 'MT-FOOD-01', name: 'Ready-to-Eat Indian Meals (Meal Packs)', category: 'food', quantity: 4200, unit: 'Packs', minThreshold: 1200, burnRate: '30 packs/day', daysLeft: 140, location: 'Dry Food Store Room', status: 'NOMINAL', lastAudit: '25-Aug-2026' },
-    { id: 'MT-FOOD-02', name: 'Frozen Vegetables & Milk Powder', category: 'food', quantity: 680, unit: 'kg', minThreshold: 300, burnRate: '4.8 kg/day', daysLeft: 141, location: 'Cold Storage Room 1', status: 'NOMINAL', lastAudit: '25-Aug-2026' },
-    { id: 'MT-MED-01', name: 'Medical Emergency Oxygen Tanks (High Pressure)', category: 'medical', quantity: 18, unit: 'Tanks', minThreshold: 12, burnRate: 'Emergency Reserve', daysLeft: 360, location: 'Medical Clinic Bay', status: 'NOMINAL', lastAudit: '15-Aug-2026' },
-    { id: 'MT-MED-02', name: 'Emergency Trauma & Frostbite First-Aid Kits', category: 'medical', quantity: 12, unit: 'Kits', minThreshold: 10, burnRate: 'Emergency Reserve', daysLeft: 365, location: 'Doctor Dispensary', status: 'NOMINAL', lastAudit: '15-Aug-2026' },
-    { id: 'MT-SPARE-01', name: 'Generator Spare Filter & Fuel Injector Sets', category: 'spares', quantity: 8, unit: 'Sets', minThreshold: 6, burnRate: '1 set/month', daysLeft: 240, location: 'Mechanical Workshop', status: 'NOMINAL', lastAudit: '22-Aug-2026' },
-    { id: 'MT-SPARE-02', name: 'Pipe Anti-Freeze Heating Cables (50m Drum)', category: 'spares', quantity: 3, unit: 'Drums', minThreshold: 4, burnRate: 'Needed for repair', daysLeft: 45, location: 'Electrical Store', status: 'WARNING', lastAudit: '22-Aug-2026' },
-  ],
-  bharati: [
-    { id: 'BH-FUEL-01', name: 'Arctic Heating & Generator Diesel (Jet A-1 Spec)', category: 'fuel', quantity: 210500, unit: 'Litres', minThreshold: 45000, burnRate: '46 L/hr', daysLeft: 190, location: 'Main Underground Fuel Depot', status: 'NOMINAL', lastAudit: '29-Aug-2026' },
-    { id: 'BH-FUEL-02', name: 'Helicopter Aviation Fuel (ATF Bulk)', category: 'fuel', quantity: 28400, unit: 'Litres', minThreshold: 8000, burnRate: 'On-demand', daysLeft: 280, location: 'Helipad Fuel Tanks', status: 'NOMINAL', lastAudit: '29-Aug-2026' },
-    { id: 'BH-FOOD-01', name: 'Basmati Rice & Packaged Meals (Bulk Rations)', category: 'food', quantity: 5800, unit: 'kg', minThreshold: 1500, burnRate: '35 kg/day', daysLeft: 165, location: 'Kitchen Food Storage', status: 'NOMINAL', lastAudit: '26-Aug-2026' },
-    { id: 'BH-MED-01', name: 'Hospital Telemedicine Units & Heart Defibrillators', category: 'medical', quantity: 6, unit: 'Units', minThreshold: 4, burnRate: 'Active in Ward', daysLeft: 365, location: 'Station Hospital Ward', status: 'NOMINAL', lastAudit: '18-Aug-2026' },
-    { id: 'BH-SPARE-01', name: 'Internet Fiber Cables & Building Control Spares', category: 'spares', quantity: 18, unit: 'Boxes', minThreshold: 10, burnRate: 'Maintenance use', daysLeft: 300, location: 'Computer Server Room', status: 'NOMINAL', lastAudit: '24-Aug-2026' },
-  ],
+/** Map a DB category string to the frontend union */
+function toCategory(cat: string): InventoryItemType['category'] {
+  const c = cat.toUpperCase()
+  if (c.includes('FUEL')) return 'fuel'
+  if (c.includes('FOOD')) return 'food'
+  if (c.includes('MEDICAL')) return 'medical'
+  if (c.includes('SPARE')) return 'spares'
+  return 'spares'
 }
 
 export default function LogisticsPage() {
@@ -48,14 +39,36 @@ export default function LogisticsPage() {
   const [activeStation, setActiveStation] = useState<'maitri' | 'bharati'>('maitri')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [inventory, setInventory] = useState(INITIAL_INVENTORY)
   const [showRequisitionModal, setShowRequisitionModal] = useState(false)
   const [reqItemName, setReqItemName] = useState('')
   const [reqQuantity, setReqQuantity] = useState('')
   const [reqPriority, setReqPriority] = useState('URGENT')
   const [notificationMsg, setNotificationMsg] = useState<string | null>(null)
 
-  const items = inventory[activeStation]
+  // ── Live data from Neon ───────────────────────────────────────────────────
+  const { data: rawInventory, isLoading: invLoading } = useInventory(activeStation)
+  const { data: manifests, isLoading: manifestLoading } = useResupply(activeStation)
+
+  // Map DB InventoryItem rows → InventoryItemType used by JSX
+  const items: InventoryItemType[] = (rawInventory ?? []).map(r => ({
+    id: r.item_id,
+    name: r.name,
+    category: toCategory(r.category),
+    quantity: r.quantity,
+    unit: r.unit,
+    minThreshold: r.min_safety_threshold ?? 0,
+    burnRate: r.daily_burn_rate !== null ? `${r.daily_burn_rate} ${r.unit}/day` : 'N/A',
+    daysLeft: r.days_remaining ?? 0,
+    location: 'Station Store',
+    status: r.status as InventoryItemType['status'],
+    lastAudit: r.last_updated
+      ? new Date(r.last_updated).toLocaleDateString('en-IN')
+      : 'N/A',
+  }))
+
+  const latestManifest = manifests?.[0] ?? null
+
+
   const filteredItems = items.filter((item) => {
     const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

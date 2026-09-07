@@ -26,7 +26,16 @@ from __future__ import annotations
 
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import AsyncGenerator
+
+# ── Load .env before any config module is imported ─────────────────────────
+try:
+    from dotenv import load_dotenv
+    _env_file = Path(__file__).resolve().parent.parent / ".env"
+    load_dotenv(_env_file, override=False)
+except ImportError:
+    pass  # python-dotenv not installed — env vars must be set in shell
 
 import structlog
 from fastapi import FastAPI
@@ -120,20 +129,26 @@ async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
             log.warning("cloud.startup.ws_unavailable", error=str(exc))
             ws_manager = None
 
-    # 6. MQTT subscriber (optional — degrades gracefully)
+    # 6. MQTT subscriber (only started when MQTT_ENABLED=true in .env)
     mqtt_sub = None
-    try:
-        mqtt_sub = CloudMQTTSubscriber(
-            host=cfg.mqtt_host,
-            port=cfg.mqtt_port,
-            ingestion_service=ingestion_svc,
-            tls=cfg.mqtt_tls,
+    if cfg.mqtt_enabled:
+        try:
+            mqtt_sub = CloudMQTTSubscriber(
+                host=cfg.mqtt_host,
+                port=cfg.mqtt_port,
+                ingestion_service=ingestion_svc,
+                tls=cfg.mqtt_tls,
+            )
+            await mqtt_sub.start()
+        except Exception as exc:
+            log.warning("cloud.startup.mqtt_unavailable", error=str(exc),
+                        hint="Check MQTT_BROKER_HOST / MQTT_PORT. Station sync disabled.")
+            mqtt_sub = None
+    else:
+        log.info(
+            "cloud.mqtt.disabled",
+            hint="Set MQTT_ENABLED=true in .env to enable live edge-station sync.",
         )
-        await mqtt_sub.start()
-    except Exception as exc:
-        log.warning("cloud.startup.mqtt_unavailable", error=str(exc),
-                    hint="Start Mosquitto or set MQTT_HOST. Station sync disabled.")
-        mqtt_sub = None
 
     log.info("cloud.startup.done", redis=redis_ok, mqtt=mqtt_sub is not None)
     yield

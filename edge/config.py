@@ -2,7 +2,11 @@
 
 All Edge services (ingestion, alert engine, black-box logger, API, sync agent)
 import this single config object. It is constructed once at module import time
-from environment variables, which are set by Docker Compose or the .env file.
+from environment variables set in the project .env file.
+
+Database URL priority:
+  1. EDGE_DATABASE_URL  (Neon PostgreSQL — preferred for dev)
+  2. DATABASE_URL       (generic fallback)
 """
 from __future__ import annotations
 
@@ -83,13 +87,20 @@ class EdgeConfig:
             "bharati": "Bharati Research Station",
         }[self.station_id]
 
-        self.database_url = os.environ.get(
-            "DATABASE_URL",
-            f"postgresql://vajrax_edge:edge_secret_dev@localhost:5433/vajrax_edge"
+        # EDGE_DATABASE_URL (Neon) takes priority over the generic DATABASE_URL
+        db_url = (
+            os.environ.get("EDGE_DATABASE_URL")
+            or os.environ.get("DATABASE_URL")
         )
+        if not db_url:
+            raise RuntimeError(
+                "No edge database URL configured. "
+                "Set EDGE_DATABASE_URL in your .env file."
+            )
+        self.database_url = db_url
         self.db_echo = os.environ.get("DB_ECHO", "false").lower() == "true"
 
-        self.redis_url = os.environ.get("REDIS_URL", "redis://localhost:6380/0")
+        self.redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
         self.ingest_host = os.environ.get("INGEST_HOST", "0.0.0.0")
         self.ingest_port = int(os.environ.get("INGEST_PORT", "8100"))
