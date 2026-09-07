@@ -1,49 +1,74 @@
-# Python
+# =============================================================================
+# Python (backend/)
+# =============================================================================
 __pycache__/
 *.py[cod]
 *$py.class
 *.egg-info/
-dist/
 build/
 .eggs/
 *.egg
 .venv/
 venv/
 env/
+
+# =============================================================================
+# Environment secrets — NEVER commit these
+# =============================================================================
 .env
 *.env
+!.env.example
+backend/.env
+!backend/.env.example
+frontend/.env.local
+frontend/.env.*.local
+!frontend/.env.example
 
-# Testing
+# =============================================================================
+# Testing / linting
+# =============================================================================
 .pytest_cache/
 .coverage
 htmlcov/
 .mypy_cache/
 .ruff_cache/
 
-# IDE
+# =============================================================================
+# IDE / OS
+# =============================================================================
 .idea/
 .vscode/
 *.swp
 *.swo
 .DS_Store
 
-# Docker
+# =============================================================================
+# Logs
+# =============================================================================
 *.log
 
-# Generated Protobuf bindings (regenerate with make proto-gen)
-shared/schemas/proto_generated/
+# =============================================================================
+# Generated files
+# =============================================================================
+# Protobuf bindings (regenerate with: make proto-gen)
+backend/shared/schemas/proto_generated/
 
-# Dev certificates (generated with make certs)
+# Dev certificates
 infra/certs/dev/*.key
 infra/certs/dev/*.crt
 infra/certs/dev/*.csr
 infra/certs/dev/*.srl
 infra/certs/dev/*.pem
 
-# Environment files
-.env.local
-.env.*.local
-secrets/
+# =============================================================================
+# Frontend (frontend/)
+# =============================================================================
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
 
-# MinIO data (local dev)
+# =============================================================================
+# Misc
+# =============================================================================
 data/
+secrets/
