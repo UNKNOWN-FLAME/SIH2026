@@ -16,10 +16,18 @@ from __future__ import annotations
 import asyncio
 import json
 import ssl
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
-import aiomqtt
 import structlog
+
+# aiomqtt is only needed when MQTT is actually enabled.
+# Import lazily so the app starts cleanly even when MQTT_ENABLED=false.
+try:
+    import aiomqtt
+    _AIOMQTT_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    aiomqtt = None          # type: ignore[assignment]
+    _AIOMQTT_AVAILABLE = False
 
 log = structlog.get_logger(__name__)
 
