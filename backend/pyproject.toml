@@ -84,3 +84,6 @@ asyncio_mode = "auto"
 testpaths = ["tests/unit", "tests/integration"]
 log_cli = true
 log_cli_level = "INFO"
+
+[settings]
+python.github_attestations = false
