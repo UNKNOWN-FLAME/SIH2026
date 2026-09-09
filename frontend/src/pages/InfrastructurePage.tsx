@@ -32,7 +32,7 @@ export default function InfrastructurePage() {
   const [activeTab, setActiveTab] = useState<TabType>('overview')
 
   // ── Live asset data from Neon ─────────────────────────────────────────────
-  const { data: assetData, isLoading } = useAssets(activeStation)
+  const { data: assetData } = useAssets(activeStation)
 
   // Map DB Asset rows → the shape expected by JSX (add sensible fallbacks)
   const buildings = (assetData ?? []).map(a => ({

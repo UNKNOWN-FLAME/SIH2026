@@ -206,7 +206,7 @@ export default function EnvironmentPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
                   <MetCard label="EARTHQUAKE LEVEL" value="Quiet" unit="" icon="vibration" color="#16a34a" sub="No tremors detected in 72h" />
-                  <MetCard label="GROUND VIBRATION" value={env.seismicHz} unit="Hz" icon="waves" color="#3b82f6" sub="Normal background vibration" />
+                  <MetCard label="GROUND VIBRATION" value={env.seismicPgv !== null ? env.seismicPgv.toFixed(3) : '—'} unit="mm/s" icon="waves" color="#3b82f6" sub="Normal background vibration" />
                   <MetCard label="LOCAL GRAVITY" value="-18.4" unit="mGal" icon="height" color="#7c3aed" sub="Natural polar gravity level" />
                   <MetCard label="COMPASS OFFSET" value="27.3°" unit="East" icon="explore" color="#ea580c" sub="Difference from true North" />
                 </div>

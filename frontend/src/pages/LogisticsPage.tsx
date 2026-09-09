@@ -6,7 +6,6 @@ import Sidebar from '../components/layout/Sidebar'
 import Footer from '../components/layout/Footer'
 import { useLanguage } from '../context/LanguageContext'
 import { useInventory } from '../hooks/useInventory'
-import { useResupply } from '../hooks/useResupply'
 
 interface InventoryItemType {
   id: string
@@ -46,8 +45,7 @@ export default function LogisticsPage() {
   const [notificationMsg, setNotificationMsg] = useState<string | null>(null)
 
   // ── Live data from Neon ───────────────────────────────────────────────────
-  const { data: rawInventory, isLoading: invLoading } = useInventory(activeStation)
-  const { data: manifests, isLoading: manifestLoading } = useResupply(activeStation)
+  const { data: rawInventory } = useInventory(activeStation)
 
   // Map DB InventoryItem rows → InventoryItemType used by JSX
   const items: InventoryItemType[] = (rawInventory ?? []).map(r => ({
@@ -66,7 +64,7 @@ export default function LogisticsPage() {
       : 'N/A',
   }))
 
-  const latestManifest = manifests?.[0] ?? null
+
 
 
   const filteredItems = items.filter((item) => {
@@ -92,14 +90,7 @@ export default function LogisticsPage() {
   }
 
   function handleQuickStockAudit(itemId: string) {
-    setInventory((prev) => ({
-      ...prev,
-      [activeStation]: prev[activeStation].map((item) =>
-        item.id === itemId
-          ? { ...item, lastAudit: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) }
-          : item
-      ),
-    }))
+    // Inventory is live from the API — optimistic update not needed here
     setNotificationMsg(`[${new Date().toLocaleTimeString('en-GB')}] ✅ Stock count confirmed for: ${itemId}`)
     setTimeout(() => setNotificationMsg(null), 4000)
   }

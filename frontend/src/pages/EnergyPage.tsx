@@ -39,7 +39,6 @@ export default function EnergyPage() {
   const liveKwOutput = sv('kw_output') ?? sv('kw') ?? null
   const liveFuelPct  = sv('fuel_pct') ?? sv('fuel') ?? null
   const liveSolar    = sv('solar') ?? null
-  const liveLoad     = sv('load_pct') ?? null
 
   // Fuel from inventory_items (first FUEL item by name containing 'diesel' or 'generator')
   const dieselItem = inventoryItems?.find(i =>
