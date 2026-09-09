@@ -89,6 +89,9 @@ class _MockPubSub:
         while True:
             await asyncio.sleep(3600)
 
+    async def aclose(self) -> None:
+        pass
+
 
 async def init_redis(url: str) -> aioredis.Redis:
     global _pool

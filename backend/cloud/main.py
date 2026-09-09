@@ -48,7 +48,7 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from shared.crypto.signing import Signer, Verifier, generate_station_keypair
+from shared.crypto.signing import Verifier, generate_station_keypair
 from shared.db.async_base import get_async_engine
 from shared.utils.logging import configure_logging
 from cloud.auth.router import router as auth_router

@@ -77,9 +77,21 @@ class CloudConfig:
         )
 
         self.mqtt_enabled = os.environ.get("MQTT_ENABLED", "false").lower() == "true"
-        self.mqtt_host = os.environ.get("MQTT_HOST", "localhost")
-        self.mqtt_port = int(os.environ.get("MQTT_PORT", "1883"))
-        self.mqtt_tls = os.environ.get("MQTT_TLS", "false").lower() == "true"
+        # Support both MQTT_BROKER_HOST (preferred) and legacy MQTT_HOST
+        self.mqtt_host = (
+            os.environ.get("MQTT_BROKER_HOST")
+            or os.environ.get("MQTT_HOST", "localhost")
+        )
+        self.mqtt_port = int(
+            os.environ.get("MQTT_BROKER_PORT")
+            or os.environ.get("MQTT_PORT", "1883")
+        )
+        # Support both MQTT_USE_TLS (preferred) and legacy MQTT_TLS
+        _tls_raw = (
+            os.environ.get("MQTT_USE_TLS")
+            or os.environ.get("MQTT_TLS", "false")
+        )
+        self.mqtt_tls = _tls_raw.lower() == "true"
 
         # Station pubkey directory — used only if env-var PEM strings are not set
         self.station_pubkey_dir = os.environ.get("STATION_PUBKEY_DIR", "")
