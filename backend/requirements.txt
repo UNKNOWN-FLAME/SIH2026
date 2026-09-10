@@ -51,7 +51,7 @@ scipy>=1.13.0
 scikit-learn>=1.5.0
 
 # ── Object storage ─────────────────────────────────────────────────────────
-boto3>=1.34.0
+boto3>=1.34.0,<1.35.0            # Pinned: aiobotocore 2.12.3 requires botocore<1.34.70
 minio>=7.2.0
 
 # ── Monitoring & scheduling ────────────────────────────────────────────────
