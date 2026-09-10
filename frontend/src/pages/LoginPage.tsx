@@ -452,26 +452,6 @@ export default function LoginPage() {
                 >
                   <span style={{ fontWeight: 800, color: '#ea580c' }}>Admin:</span> admin / admin123
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setQuickCreds('operator', 'operator123')}
-                  style={{
-                    flex: 1,
-                    background: '#f8fafc',
-                    border: '1px solid #cbd5e1',
-                    color: '#0b3b60',
-                    padding: '6px 8px',
-                    fontSize: 10,
-                    cursor: 'pointer',
-                    fontFamily: 'Inter',
-                    textAlign: 'left',
-                    fontWeight: 700,
-                  }}
-                  onMouseOver={(e) => ((e.currentTarget as HTMLElement).style.borderColor = '#0b3b60')}
-                  onMouseOut={(e) => ((e.currentTarget as HTMLElement).style.borderColor = '#cbd5e1')}
-                >
-                  <span style={{ fontWeight: 800, color: '#ea580c' }}>Operator:</span> operator / operator123
-                </button>
               </div>
             </div>
           </div>
