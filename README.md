@@ -1,204 +1,212 @@
-# VajraX — Digital Twin: Antarctic Research Stations
-### Remote Management Platform | NCPOR / MoES
-**Smart India Hackathon 2026 | Problem Statement 26060**
+# Himantar: Dual-Twin Architecture for Antarctic Stations
+
+**Smart India Hackathon 2026 | Team: VajraX | Problem Statement: Digital Platform for Efficient Remote Management of Indian Antarctic Research Stations**
+
+Project **Himantar** is an offline-resilient, Edge-to-Cloud Digital Twin framework designed specifically for India's Antarctic research stations. It addresses the critical challenges of extreme polar isolation, strictly constrained **4 MHz satellite bandwidth**, and frequent connectivity blackouts.
 
 ---
 
-## Overview
+## 🚀 Quick Links (For Judges)
 
-VajraX is a **dual-backend digital twin** for India's two permanent Antarctic research stations — **Maitri** (Schirmacher Oasis, Dronning Maud Land) and **Bharati** (Larsemann Hills, Prydz Bay) — built for the National Centre for Polar and Ocean Research (NCPOR) under the Ministry of Earth Sciences (MoES). It provides NCPOR operators at headquarters in Goa with a continuously updated, authoritative virtual replica of each station's physical state — spanning energy systems, environmental sensors, infrastructure, logistics, and crew safety alerts — while ensuring that on-site crews retain full operational awareness and automatic safety response capability even when the satellite link to HQ is completely unavailable.
-
-**Hard constraint:** crew safety at the station must never depend on the satellite link being up.
-
----
-
-## High-Level Architecture
-
-The system has three logical tiers connected by an opportunistic VSAT satellite link:
-
-```
-┌─────────────────────────────────────────────────────────┐
-│  STATION EDGE  (runs locally at Maitri / Bharati)        │
-│                                                          │
-│  Sensor Simulator ──► Ingestion Service                  │
-│                              │                           │
-│                       TimescaleDB (local)                │
-│                              │                           │
-│               ┌──────────────┴──────────────┐            │
-│               │                             │            │
-│         Edge AI Engine             Alert Engine          │
-│         (anomaly detect)           (threshold rules)     │
-│               │                             │            │
-│               └──────────────┬──────────────┘            │
-│                        Black-Box Logger                  │
-│                              │                           │
-│                     Outbound Sync Queue ◄── priority     │
-│                         (Redis AOF)         lanes        │
-│                              │                           │
-│                    Edge Local API (FastAPI)               │
-└──────────────────────────────┼──────────────────────────┘
-                               │
-                  ╔════════════╧══════════════╗
-                  ║   SATELLITE LINK (VSAT)   ║
-                  ║  MQTT over TLS 1.3 / mTLS ║
-                  ║  QoS 2 (critical alerts)  ║
-                  ║  QoS 1 (telemetry)        ║
-                  ╚════════════╤══════════════╝
-                               │
-┌──────────────────────────────┼──────────────────────────┐
-│  CLOUD BACKEND  (NCPOR HQ, Goa)                          │
-│               Cloud MQTT Broker (Mosquitto)              │
-│               Ingestion & Verification Service           │
-│        TimescaleDB (cloud) + PostgreSQL                  │
-│                    Cloud AI Engine                       │
-│                  Cloud Public API (FastAPI)               │
-│              REST + WebSocket — station_id-scoped        │
-└──────────────────────────────────────────────────────────┘
-```
+* 🌍 **Live Deployment:** [HIMANTAR](https://sih-2026-two-xi.vercel.app/)
+* 🎥 **Demo Video:** [DEMO VIDEO](https://youtu.be/9kXuhC71zNw)
+* 📊 **Pitch Deck:** [CANVA](https://canva.link/z07c4ggxd0g6vb3)
 
 ---
 
-## Tech Stack
+## ⚠️ The Antarctic Problem
 
-| Layer | Technology |
-|---|---|
-| Language | Python 3.12 |
-| API Framework | FastAPI + Uvicorn |
-| Edge/Cloud DB | TimescaleDB (PostgreSQL 16) |
-| ORM & Migrations | SQLAlchemy 2 + Alembic |
-| Edge Queue | Redis 7 (AOF persistence) |
-| Cloud Object Store | MinIO (S3-compatible) |
-| Messaging | Eclipse Mosquitto (MQTT 5) via gmqtt |
-| Transport Security | TLS 1.3 + mTLS (per-station certificates) |
-| Serialization | Protocol Buffers (proto3) via betterproto |
-| Compression | zstd |
-| Auth | JWT (python-jose) + bcrypt passwords |
-| Signing | Ed25519 (cryptography library) |
-| Monitoring | Prometheus metrics + structlog |
-| Dev Infrastructure | Docker + Docker Compose |
+Monitoring **Maitri** and **Bharati** stations from **Goa HQ (NCPOR)** currently faces four critical bottlenecks:
+
+1. **Bandwidth Starvation:** The shared 4 MHz satellite link degrades during extreme weather conditions.
+2. **Dangerous Cloud Latency:** Relying solely on the cloud for fire and thermal alerts risks delayed emergency responses.
+3. **Zero-Visibility Blackouts:** Vital incident telemetry can be permanently lost during frequent network outages.
+4. **Blind Winter Logistics:** Unpredicted cold snaps can drain fuel reserves before the single annual ship resupply.
 
 ---
 
-## Repository Structure
+## 💡 The Himantar Solution
 
-```
-vajrax/
-├── proto/                    Protocol Buffer schema definitions
-│   ├── enums.proto           Shared enumerations (Severity, Domain, etc.)
-│   ├── sensor.proto          SensorReading, SensorBatch
-│   ├── alert.proto           Alert, AlertAck
-│   ├── blackbox.proto        BlackBoxFrame
-│   ├── logistics.proto       InventoryItem, InventorySnapshot
-│   └── sync.proto            SyncEnvelope, LinkHeartbeat
-│
-├── edge/                     Edge Backend (runs at each station)
-│   ├── ingestion/            Sensor ingestion service
-│   ├── ai_engine/            Local anomaly detection
-│   ├── alert_engine/         Threshold rule evaluation & local alerting
-│   ├── black_box/            Critical event logger (append-only, hash-chained)
-│   ├── sync_agent/           MQTT outbound queue & link manager
-│   ├── api/                  Edge local REST API (FastAPI)
-│   └── config/               Station-specific config (maitri.yaml, bharati.yaml)
-│
-├── cloud/                    Cloud Backend (runs at NCPOR HQ)
-│   ├── receiver/             MQTT ingestion & signature verification
-│   ├── ai_engine/            Predictive analytics (fuel, logistics)
-│   ├── api/                  Cloud public REST + WebSocket API
-│   └── config/               Cloud-side configuration
-│
-├── simulator/                Mock Sensor / IoT Simulation Layer
-│   ├── station_sim/          Per-station sensor data generator
-│   ├── link_sim/             Satellite link outage/degradation simulator
-│   └── scenarios/            Named test scenarios (YAML)
-│
-├── shared/                   Code shared by Edge and Cloud
-│   ├── schemas/              Pydantic models + generated Protobuf bindings
-│   ├── crypto/               Signing & verification utilities
-│   ├── db/                   SQLAlchemy models + Alembic migrations
-│   └── utils/                Logging, config loading, time helpers
-│
-├── infra/                    Infrastructure as configuration
-│   ├── compose/              Docker Compose files (dev, test)
-│   ├── docker/               Dockerfiles + service configs (Mosquitto, etc.)
-│   └── certs/dev/            Dev-only self-signed certs for mTLS
-│
-├── tests/                    Automated test suite
-│   ├── unit/                 Unit tests per service
-│   ├── integration/          Cross-service integration tests
-│   └── e2e/                  Full outage-then-reconnect e2e scenarios
-│
-├── docs/                     Documentation
-│   ├── PRD.md                Product Requirements Document
-│   ├── architecture/         ADRs and convention documents
-│   └── api/                  OpenAPI specs (auto-generated)
-│
-├── pyproject.toml            Root project configuration and dependencies
-├── Makefile                  Convenience targets (dev, migrate, test, etc.)
-└── README.md                 This file
-```
+We built a **Decoupled Dual-Twin Architecture** that processes tactical, life-safety alarms locally on the ice while synchronizing highly compressed predictive intelligence with Goa HQ.
+
+### 🔑 Core USPs
+
+* 📡 **Payload Crushing (Protobuf + MQTT):**
+  Bulky JSON telemetry is converted into compact binary **Protocol Buffers (Protobuf)** payloads. This significantly reduces bandwidth consumption and enables reliable communication over the constrained 4 MHz satellite network.
+
+* ⚡ **Zero-Latency Edge AI:**
+  The **Edge Twin** runs locally on station servers. It can instantly detect thermal spikes and trigger life-safety alarms without relying on cloud connectivity.
+
+* 🔒 **10-Hour Crypto Black Box:**
+  During satellite blackouts, an **Edge InfluxDB** instance queues telemetry data. Critical alerts trigger a **10-hour HMAC-signed telemetry lock**, providing HQ with a tamper-evident "flight recorder" for incident replay.
+
+* 🔮 **Predictive Survival AI:**
+  Cloud-based ML models correlate historical extreme-weather conditions with generator loads to forecast winter fuel consumption, helping optimize annual logistics and resupply planning.
 
 ---
 
-## The `station_id` Convention
+## 🏗️ System Architecture
 
-Every entity in the system carries a `station_id` field:
+The system operates across three resilient layers:
 
-| Value | Station |
-|---|---|
-| `"maitri"` | Maitri Research Station, Schirmacher Oasis, Dronning Maud Land |
-| `"bharati"` | Bharati Research Station, Larsemann Hills, Prydz Bay |
+### 1. Tier 1: Antarctic Edge
 
-Applied consistently across: all Protobuf messages, all database rows, all REST routes (`/api/v1/stations/{station_id}/...`), all MQTT topics (`dt/{station_id}/...`), and all Docker service configurations (`STATION_ID` env var).
+**IoT Sensor Array → Protobuf Serialization → Rugged Edge Server**
 
-**Rule:** No code hardcodes `"maitri"` or `"bharati"` — only configuration files and test fixtures.
+The Edge Server handles:
+
+* Local AI inference
+* Thermal anomaly detection
+* Life-safety alerts
+* Local telemetry storage
+* Black-box incident recording
+
+### 2. Tier 2: Data Pipeline
+
+**MQTTS over TLS (Port 8883) → Constrained 4 MHz Satellite Link**
+
+Telemetry is serialized using Protobuf and transmitted through a secure MQTT/TLS pipeline to minimize bandwidth usage while maintaining data integrity.
+
+### 3. Tier 3: NCPOR Goa HQ
+
+**Cloud Twin Aggregation → Predictive AI Server → Unified Spatial Dashboard**
+
+The HQ layer aggregates station telemetry, runs predictive models, and provides a unified spatial view of the Antarctic stations.
 
 ---
 
-## Local Development Setup
+## 💻 Tech Stack
 
-> **[To be completed after Phase 0 verification.]**
+| Category                | Technologies                         |
+| ----------------------- | ------------------------------------ |
+| **Frontend**            | React.js, Tailwind CSS, Mapbox GL    |
+| **Backend & APIs**      | Node.js, Express.js, Python, FastAPI |
+| **IoT & Data Pipeline** | MQTT, Mosquitto, Protocol Buffers    |
+| **Database**            | InfluxDB, PostgreSQL                 |
+| **AI/ML**               | Scikit-learn, TensorFlow             |
+| **Security**            | HMAC SHA-256, mTLS                   |
+| **Communication**       | MQTTS over TLS                       |
+
+### Frontend
+
+* React.js
+* Tailwind CSS
+* Mapbox GL
+* Spatial Digital Twin Dashboard
+
+### Backend
+
+* Node.js
+* Express.js
+* Python
+* FastAPI
+
+### IoT & Data Pipeline
+
+* MQTT
+* Mosquitto
+* Protocol Buffers (Protobuf)
+
+### Databases
+
+* InfluxDB — Time-series telemetry
+* PostgreSQL — Metadata and application data
+
+### AI/ML
+
+* Scikit-learn
+* TensorFlow
+* Predictive thermal-load modeling
+
+### Security
+
+* HMAC SHA-256
+* Mutual TLS (mTLS)
+
+---
+
+## ⚙️ How to Run Locally
 
 ### Prerequisites
-- Docker & Docker Compose v2
-- Python 3.12
-- `make`
-- `openssl` (for certificate generation)
-- `protoc` + `grpcio-tools` (for `make proto-gen`)
 
-### Quick Start
+Make sure the following are installed:
 
-```bash
-# 1. Generate dev TLS certificates (one-time)
-make certs
-
-# 2. Start all infrastructure (databases, Redis, Mosquitto, MinIO)
-make dev
-
-# 3. Run database migrations
-make migrate-all
-
-# 4. Generate Protobuf Python bindings
-make proto-gen
-
-# 5. Run tests
-make test
-```
-
-### Environment Variables
-
-Each service reads its configuration from environment variables and/or the station config YAML.
-See `edge/config/maitri.yaml` and `edge/config/bharati.yaml` for station-specific configuration.
-
-Key environment variables:
-- `STATION_ID` — `maitri` or `bharati` (required for Edge services)
-- `DATABASE_URL` — PostgreSQL connection URL
-- `REDIS_URL` — Redis connection URL (Edge only)
-- `MQTT_BROKER_HOST` — Cloud MQTT broker hostname
-- `MQTT_BROKER_PORT` — default `8883` (TLS)
-- `MIGRATION_TARGET` — `edge` or `cloud` (for Alembic)
+* [Node.js](https://nodejs.org/) **v18+**
+* [Python](https://www.python.org/) **v3.9+**
+* InfluxDB
+* Mosquitto MQTT Broker
 
 ---
 
-## Project Name
+### 1. Clone the Repository
 
-**VajraX** — *Vajra* (वज्र), the indestructible thunderbolt of Indra, reflects the system's design philosophy: resilient, self-sufficient at the edge, and always operational regardless of external conditions.
+```bash
+git clone https://github.com/YourUsername/Project-Himantar.git
+cd Project-Himantar
+```
+
+---
+
+### 2. Start the Backend
+
+Open a terminal and run:
+
+```bash
+cd backend
+python dev_server.py
+```
+
+---
+
+### 3. Start the Frontend
+
+Open a **new terminal** and run:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend should then be available at the local development URL shown in your terminal, typically:
+
+```text
+http://localhost:5173
+```
+
+---
+
+## 🌐 Live Deployment
+
+The latest deployed version of **Himantar** is available here:
+
+**[HIMANTAR — Live Demo](https://sih-2026-two-xi.vercel.app/)**
+
+---
+
+## 🎯 Key Benefits
+
+* **Offline-first architecture** for Antarctic connectivity blackouts
+* **Edge-based emergency detection** for rapid life-safety response
+* **Bandwidth-efficient telemetry** using Protobuf and MQTT
+* **Secure telemetry transmission** using TLS and HMAC
+* **Tamper-evident incident replay** through the cryptographic black box
+* **Predictive fuel consumption modeling** for winter logistics
+* **Unified digital twin dashboard** for remote station management
+* **Scalable Edge-to-Cloud architecture** for future Antarctic deployments
+
+---
+
+## 🧊 Why Himantar?
+
+Himantar bridges the gap between **extreme environments and modern digital infrastructure**.
+
+By combining **Edge AI, Digital Twins, secure IoT communication, predictive analytics, and offline-resilient data pipelines**, Himantar enables NCPOR to maintain visibility and operational intelligence even when Antarctic stations are disconnected from the mainland.
+
+---
+
+## ❤️ Developed for SIH 2026
+
+**Developed with ❤️ for Smart India Hackathon 2026 by Team VajraX.**
+
+> **Bridging the ice with code.**
