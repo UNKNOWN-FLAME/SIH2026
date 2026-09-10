@@ -6,10 +6,8 @@ let _token: string | null = null
 export function setToken(t: string | null) { _token = t }
 export function getToken() { return _token }
 
-// In production (Vercel): VITE_API_BASE_URL = https://your-backend.up.railway.app
-// In local dev: VITE_API_BASE_URL is empty — Vite proxy handles /api → localhost:8200
 const api = axios.create({
-  baseURL: (import.meta.env.VITE_API_BASE_URL ?? '') + '/api/v1',
+  baseURL: `${import.meta.env.VITE_API_BASE_URL || ''}/api/v1`,
   headers: { 'Content-Type': 'application/json' },
 })
 

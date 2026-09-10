@@ -64,9 +64,6 @@ export default function LogisticsPage() {
       : 'N/A',
   }))
 
-
-
-
   const filteredItems = items.filter((item) => {
     const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -90,7 +87,7 @@ export default function LogisticsPage() {
   }
 
   function handleQuickStockAudit(itemId: string) {
-    // Inventory is live from the API — optimistic update not needed here
+    // Inventory is live from the API — no local state mutation needed
     setNotificationMsg(`[${new Date().toLocaleTimeString('en-GB')}] ✅ Stock count confirmed for: ${itemId}`)
     setTimeout(() => setNotificationMsg(null), 4000)
   }
