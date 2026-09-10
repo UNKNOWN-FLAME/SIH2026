@@ -882,7 +882,7 @@ def upgrade() -> None:
             "(asset_id, station_id, asset_type, name, latitude, longitude, "
             " elevation_m, status, metadata_json, commissioned_at, created_at, updated_at) "
             "VALUES (:asset_id, :station_id, :asset_type, :name, :latitude, :longitude, "
-            "        :elevation_m, :status, :metadata_json::jsonb, :commissioned_at, "
+            "        :elevation_m, :status, :metadata_json, :commissioned_at, "
             "        :created_at, :updated_at)"
         ),
         all_assets,
