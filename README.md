@@ -1,144 +1,364 @@
-# Himantar: Dual-Twin Architecture for Antarctic Stations
+# ❄️ Himantar — SIH 2026 Project Repository
 
-**Smart India Hackathon 2026 | Team: VajraX | Problem Statement: Digital Platform for Efficient Remote Management of Indian Antarctic Research Stations**
+> **Digital Platform for Efficient Remote Management of Indian Antarctic Research Stations**
 
-Project **Himantar** is an offline-resilient, Edge-to-Cloud Digital Twin framework designed specifically for India's Antarctic research stations. It addresses the critical challenges of extreme polar isolation, strictly constrained **4 MHz satellite bandwidth**, and frequent connectivity blackouts.
+**Himantar** is a comprehensive **edge-to-cloud monitoring, digital twin, and synchronization system** designed for remote management of India's Antarctic research stations — **Maitri** and **Bharati**.
 
----
-
-## 🚀 Quick Links (For Judges)
-
-* 🌍 **Live Deployment:** [HIMANTAR](https://sih-2026-two-xi.vercel.app/)
-* 🎥 **Demo Video:** [DEMO VIDEO](https://youtu.be/9kXuhC71zNw)
-* 📊 **Pitch Deck:** [CANVA](https://canva.link/z07c4ggxd0g6vb3)
+The system combines **Edge AI, Digital Twins, predictive analytics, offline-first architecture, IoT monitoring, and bandwidth-efficient synchronization** to operate reliably under extreme environmental conditions and severely constrained connectivity.
 
 ---
 
-## ⚠️ The Antarctic Problem
+## 🏆 Project Information
 
-Monitoring **Maitri** and **Bharati** stations from **Goa HQ (NCPOR)** currently faces four critical bottlenecks:
-
-1. **Bandwidth Starvation:** The shared 4 MHz satellite link degrades during extreme weather conditions.
-2. **Dangerous Cloud Latency:** Relying solely on the cloud for fire and thermal alerts risks delayed emergency responses.
-3. **Zero-Visibility Blackouts:** Vital incident telemetry can be permanently lost during frequent network outages.
-4. **Blind Winter Logistics:** Unpredicted cold snaps can drain fuel reserves before the single annual ship resupply.
-
----
-
-## 💡 The Himantar Solution
-
-We built a **Decoupled Dual-Twin Architecture** that processes tactical, life-safety alarms locally on the ice while synchronizing highly compressed predictive intelligence with Goa HQ.
-
-### 🔑 Core USPs
-
-* 📡 **Payload Crushing (Protobuf + MQTT):**
-  Bulky JSON telemetry is converted into compact binary **Protocol Buffers (Protobuf)** payloads. This significantly reduces bandwidth consumption and enables reliable communication over the constrained 4 MHz satellite network.
-
-* ⚡ **Zero-Latency Edge AI:**
-  The **Edge Twin** runs locally on station servers. It can instantly detect thermal spikes and trigger life-safety alarms without relying on cloud connectivity.
-
-* 🔒 **10-Hour Crypto Black Box:**
-  During satellite blackouts, an **Edge InfluxDB** instance queues telemetry data. Critical alerts trigger a **10-hour HMAC-signed telemetry lock**, providing HQ with a tamper-evident "flight recorder" for incident replay.
-
-* 🔮 **Predictive Survival AI:**
-  Cloud-based ML models correlate historical extreme-weather conditions with generator loads to forecast winter fuel consumption, helping optimize annual logistics and resupply planning.
+| Field             | Details                                                                                |
+| ----------------- | -------------------------------------------------------------------------------------- |
+| **Project Title** | Himantar                                                                               |
+| **Team Name**     | VajraX                                                                                 |
+| **PS ID**         | SIH`26060`                                                                                |
+| **PS Title**      | Digital Platform for efficient remote management of Indian Antarctic Research Stations |
+| **Organization**  | Ministry of Earth Sciences (MoES)                                                      |
+| **Department**    | National Centre for Polar and Ocean Research (NCPOR)                                   |
+| **Category**      | Software                                                                               |
+| **Theme**         | Smart Automation                                                                       |
 
 ---
 
-## 🏗️ System Architecture
+## 🎯 Problem Statement
 
-The system operates across three resilient layers:
+Develop a **Digital Twin framework for Maitri and Bharati stations** integrating:
 
-### 1. Tier 1: Antarctic Edge
+* 🏗️ Infrastructure monitoring
+* ⚡ Energy management
+* 🚢 Logistics planning
+* 🌡️ Environmental monitoring
+* 🤖 Predictive analytics
+* 📡 Remote station synchronization
 
-**IoT Sensor Array → Protobuf Serialization → Rugged Edge Server**
-
-The Edge Server handles:
-
-* Local AI inference
-* Thermal anomaly detection
-* Life-safety alerts
-* Local telemetry storage
-* Black-box incident recording
-
-### 2. Tier 2: Data Pipeline
-
-**MQTTS over TLS (Port 8883) → Constrained 4 MHz Satellite Link**
-
-Telemetry is serialized using Protobuf and transmitted through a secure MQTT/TLS pipeline to minimize bandwidth usage while maintaining data integrity.
-
-### 3. Tier 3: NCPOR Goa HQ
-
-**Cloud Twin Aggregation → Predictive AI Server → Unified Spatial Dashboard**
-
-The HQ layer aggregates station telemetry, runs predictive models, and provides a unified spatial view of the Antarctic stations.
+The primary challenge is maintaining reliable station monitoring despite **extreme weather, intermittent connectivity, and severely constrained satellite bandwidth**.
 
 ---
 
-## 💻 Tech Stack
+## 💡 Proposed Solution
 
-| Category                | Technologies                         |
-| ----------------------- | ------------------------------------ |
-| **Frontend**            | React.js, Tailwind CSS, Mapbox GL    |
-| **Backend & APIs**      | Node.js, Express.js, Python, FastAPI |
-| **IoT & Data Pipeline** | MQTT, Mosquitto, Protocol Buffers    |
-| **Database**            | InfluxDB, PostgreSQL                 |
-| **AI/ML**               | Scikit-learn, TensorFlow             |
-| **Security**            | HMAC SHA-256, mTLS                   |
-| **Communication**       | MQTTS over TLS                       |
+### Himantar — A Dual-Twin Edge-to-Cloud Framework
 
-### Frontend
+Himantar provides a unified digital replica of **Maitri and Bharati Antarctic research stations** through a **Dual-Twin Architecture**.
 
-* React.js
-* Tailwind CSS
-* Mapbox GL
-* Spatial Digital Twin Dashboard
+Instead of continuously transmitting the complete station state to the cloud, Himantar separates computation between the **Edge Twin** and the **Cloud Twin**.
 
-### Backend
+### 🧊 Edge Twin
 
-* Node.js
-* Express.js
-* Python
-* FastAPI
+Runs directly at the Antarctic station.
 
-### IoT & Data Pipeline
+* Operates independently during network outages
+* Performs real-time anomaly detection
+* Generates local life-safety alerts
+* Buffers telemetry locally
+* Runs predictive models close to the source
+* Continues functioning without cloud connectivity
 
-* MQTT
-* Mosquitto
-* Protocol Buffers (Protobuf)
+### ☁️ Cloud Twin
 
-### Databases
+Runs at the central headquarters.
 
-* InfluxDB — Time-series telemetry
-* PostgreSQL — Metadata and application data
+* Provides centralized monitoring
+* Maintains long-term historical data
+* Performs large-scale analytics
+* Supports predictive logistics planning
+* Synchronizes station data when connectivity is available
 
-### AI/ML
-
-* Scikit-learn
-* TensorFlow
-* Predictive thermal-load modeling
-
-### Security
-
-* HMAC SHA-256
-* Mutual TLS (mTLS)
+This architecture prevents the Digital Twin from becoming dependent on the unreliable satellite link.
 
 ---
 
-## ⚙️ How to Run Locally
+# 🚀 Key Features
 
-### Prerequisites
+## 🕵️ Black-Box Incident Recording
 
-Make sure the following are installed:
+Himantar maintains a dedicated incident data window around critical events.
 
-* [Node.js](https://nodejs.org/) **v18+**
-* [Python](https://www.python.org/) **v3.9+**
-* InfluxDB
-* Mosquitto MQTT Broker
+```text
+        INCIDENT
+           │
+           ▼
+◄──────────┼──────────►
+  5 Hours  │  5 Hours
+   Before  │   After
+```
+
+The system preserves telemetry surrounding an incident to support:
+
+* Root-cause analysis
+* Incident investigation
+* System diagnostics
+* Post-event analysis
+* AI model improvement
 
 ---
 
-### 1. Clone the Repository
+## 🔄 Dual-Twin Framework
+
+A synchronized digital representation of **Maitri and Bharati stations** with separate Edge and Cloud intelligence.
+
+---
+
+## 🤖 Predictive Survival AI
+
+The predictive engine correlates:
+
+* Generator loads
+* Historical consumption
+* Weather conditions
+* Environmental parameters
+* Station operational patterns
+
+to forecast **winter fuel consumption and burn-rates**, helping optimize annual ship-based resupply planning.
+
+---
+
+## ⚡ Zero-Latency Edge AI
+
+Critical anomaly detection happens directly on the station.
+
+```text
+IoT Sensors
+     ↓
+Edge Server
+     ↓
+Edge AI Engine
+     ↓
+Anomaly Detected
+     ↓
+Immediate Local Alert
+```
+
+The system does **not require cloud connectivity** to detect and respond to critical local events.
+
+---
+
+## 📦 Payload Crushing
+
+Satellite bandwidth is extremely limited.
+
+Instead of transmitting bulky JSON payloads, Himantar uses **Protocol Buffers (Protobuf)** to serialize telemetry into compact binary messages.
+
+```text
+Large JSON Payload
+       ↓
+   Protobuf
+       ↓
+Compact Binary Payload
+       ↓
+Satellite Link
+       ↓
+Cloud
+```
+
+This significantly reduces the communication overhead and allows the Digital Twin to remain synchronized even under constrained connectivity.
+
+---
+
+
+## 📡 Offline Store-and-Forward
+
+When connectivity is unavailable, station telemetry is stored locally and synchronized once the link becomes available again.
+
+```text
+          Connectivity Available
+                   │
+                   ▼
+Sensor → InfluxDB → Sync Queue → Cloud
+                   ▲
+                   │
+          Connectivity Lost
+                   │
+                   ▼
+             Local Buffer
+```
+
+The Edge Twin continues operating normally while data is safely buffered locally.
+
+---
+
+# 🏗️ System Architecture
+
+```text
+┌──────────────────────────────┐
+│      BHARATI / MAITRI        │
+│          STATION              │
+│            EDGE               │
+├──────────────────────────────┤
+│                              │
+│      IoT Sensor Array        │
+│              │               │
+│              ▼               │
+│      ┌────────────────┐      │
+│      │ Rugged Edge    │      │
+│      │    Server      │      │
+│      │                │      │
+│      │  Edge Twin     │      │
+│      │  + Edge AI     │      │
+│      └───────┬────────┘      │
+│              │               │
+│              ▼               │
+│      ┌────────────────┐      │
+│      │    InfluxDB    │      │
+│      │ Local Buffer   │      │
+│      └────────────────┘      │
+│                              │
+└──────────────┬───────────────┘
+               │
+               │ Satellite Link
+               │
+               │ MQTT + Protobuf
+               │
+               ▼
+┌──────────────────────────────┐
+│       NCPOR HEADQUARTERS     │
+│          CLOUD / GOA         │
+├──────────────────────────────┤
+│                              │
+│      React Web Portal        │
+│              │               │
+│              ▼               │
+│       Cloud API / Server     │
+│              │               │
+│              ▼               │
+│      Cloud Database          │
+│              │               │
+│              ▼               │
+│   Predictive Analytics AI    │
+│                              │
+└──────────────────────────────┘
+```
+
+📖 **Detailed architecture:** `docs/architecture.md`
+
+---
+
+# 🛠️ Technology Stack
+
+## Frontend
+
+* **React.js**
+* **Next.js**
+* **Tailwind CSS**
+* **Recharts**
+* **Framer Motion**
+
+## Backend
+
+* **Node.js**
+* **Express.js**
+* **Python**
+* **Socket.IO**
+
+## AI & Predictive Analytics
+
+* **Python**
+* **Scikit-learn**
+* **Pandas**
+* **TensorFlow**
+
+## Databases
+
+* **PostgreSQL**
+* **Neon**
+* **InfluxDB**
+
+## DevOps & IoT
+
+* **Docker**
+* **Kubernetes**
+* **GitHub**
+* **Render**
+* **Mosquitto MQTT**
+* **Protocol Buffers**
+
+## Security
+
+* **mTLS**
+* **HMAC**
+* **RBAC**
+
+---
+
+# 📁 Repository Structure
+
+```text
+Himantar/
+│
+├── 📁 backend/
+│   ├── 📁 cloud/              # Central HQ API & cloud synchronization
+│   ├── 📁 edge/               # Local station API & Edge AI engine
+│   ├── 📁 proto/              # Protocol Buffer definitions
+│   ├── 📁 shared/
+|   ├── 📁 scripts/            #scripts for toggling 
+|   ├──  📁 tests/      
+│   └── 📁 simulator/          # Link outage & station simulators
+│
+├── 📁 frontend/
+│   ├── 📁 public/              # Static assets, logos & images
+│   └── 📁 src/
+│       ├── 📁 components/      # Dashboards, maps & UI components
+│       ├── 📁 hooks/           # Custom React hooks
+|       ├── 📁 context/
+|       ├── 📁 assets/          #logos
+│       └── 📁 pages/           # Analytics, Energy, Logistics, etc.
+│
+├── 📁 assets1/
+│   └── 📁 screenshots/         # UI screenshots & prototype images
+│
+├── 📄 README.md
+
+```
+
+---
+
+# 🔗 Important Links
+
+### 🌐 Live Application
+
+**Himantar Web Portal**
+
+https://sih-2026-two-xi.vercel.app/login
+
+### 🎨 Final Presentation
+
+**Canva Presentation**
+
+https://www.canva.com/design/DAHU0OfrKqg/0Wo7qd8pr7rvN0hGPtC-dQ/edit
+
+### 🎥 Demo Video
+
+A comprehensive walkthrough of the Himantar platform, architecture, and simulation:
+
+https://www.youtube.com/watch?v=9kXuhC71zNw
+
+---
+
+# 🖼️ Screenshots & Prototype
+
+UI screenshots and prototype images are available in:
+
+```text
+assets/screenshots/
+```
+
+The collection includes interfaces for:
+
+* 📊 Station Dashboard
+* 🗺️ GIS Mapping
+* ⚡ Energy Monitoring
+* 🚢 Logistics Management
+* 📈 Analytics
+* 🌡️ Environmental Monitoring
+
+---
+
+# ⚙️ Installation & Setup
+
+## 1. Clone the Repository
 
 ```bash
 git clone https://github.com/YourUsername/Project-Himantar.git
@@ -147,7 +367,7 @@ cd Project-Himantar
 
 ---
 
-### 2. Start the Backend
+## 2. Start the Backend
 
 Open a terminal and run:
 
@@ -158,9 +378,9 @@ python dev_server.py
 
 ---
 
-### 3. Start the Frontend
+## 3. Start the Frontend
 
-Open a **new terminal** and run:
+Open a new terminal:
 
 ```bash
 cd frontend
@@ -168,7 +388,9 @@ npm install
 npm run dev
 ```
 
-The frontend should then be available at the local development URL shown in your terminal, typically:
+The frontend will be available at the local development URL displayed in your terminal.
+
+Typically:
 
 ```text
 http://localhost:5173
@@ -176,37 +398,114 @@ http://localhost:5173
 
 ---
 
-## 🌐 Live Deployment
+# 🔐 Security Architecture
 
-The latest deployed version of **Himantar** is available here:
+Himantar incorporates multiple security mechanisms to protect station telemetry and communication.
 
-**[HIMANTAR — Live Demo](https://sih-2026-two-xi.vercel.app/)**
-
----
-
-## 🎯 Key Benefits
-
-* **Offline-first architecture** for Antarctic connectivity blackouts
-* **Edge-based emergency detection** for rapid life-safety response
-* **Bandwidth-efficient telemetry** using Protobuf and MQTT
-* **Secure telemetry transmission** using TLS and HMAC
-* **Tamper-evident incident replay** through the cryptographic black box
-* **Predictive fuel consumption modeling** for winter logistics
-* **Unified digital twin dashboard** for remote station management
-* **Scalable Edge-to-Cloud architecture** for future Antarctic deployments
+| Security Layer     | Technology                |
+| ------------------ | ------------------------- |
+| Authentication     | RBAC                      |
+| Transport Security | mTLS                      |
+| Message Integrity  | HMAC                      |
+| Access Control     | Role-Based Access Control |
+| Data Communication | MQTT + Protobuf           |
+| Edge Isolation     | Local Edge Processing     |
 
 ---
 
-## 🧊 Why Himantar?
+# 🧪 Simulation
 
-Himantar bridges the gap between **extreme environments and modern digital infrastructure**.
+The repository includes station and connectivity simulators for testing the system under realistic Antarctic operating conditions.
 
-By combining **Edge AI, Digital Twins, secure IoT communication, predictive analytics, and offline-resilient data pipelines**, Himantar enables NCPOR to maintain visibility and operational intelligence even when Antarctic stations are disconnected from the mainland.
+The simulator can reproduce scenarios such as:
+
+* 📡 Satellite link outages
+* 🔄 Store-and-forward synchronization
+* ⚡ Generator load variations
+* 🌡️ Environmental changes
+* 🚨 Critical incidents
+* 📦 Payload transmission
+* ☁️ Edge-to-cloud synchronization
+
+This allows the complete architecture to be tested without requiring physical Antarctic hardware.
 
 ---
 
-## ❤️ Developed for SIH 2026
+# 🔮 Future Scope
 
-**Developed with ❤️ for Smart India Hackathon 2026 by Team VajraX.**
+## 🌍 Scalability
 
-> **Bridging the ice with code.**
+Expand the Digital Twin framework to additional remote and polar research stations.
+
+## 🌡️ Climate Research Integration
+
+Integrate Himantar's environmental and predictive data with broader climate research initiatives.
+
+## 🤖 Advanced AI
+
+Enhance predictive models for:
+
+* Energy consumption
+* Equipment failures
+* Weather impact
+* Fuel requirements
+* Maintenance scheduling
+
+## 🛰️ Communication Optimization
+
+Further improve synchronization protocols for extremely low-bandwidth and intermittent satellite communication.
+
+## 🔧 Hardware Integration
+
+Deploy ruggedized Edge Computing nodes with localized sensors designed for extreme cold environments.
+
+---
+
+# 🌟 Why Himantar?
+
+Traditional cloud-first monitoring systems depend heavily on network availability.
+
+Antarctic research stations cannot.
+
+Himantar follows an **Edge-first, Cloud-assisted** philosophy:
+
+```text
+             ┌─────────────────────┐
+             │     CLOUD DOWN      │
+             └──────────┬──────────┘
+                        │
+                        ▼
+              ┌──────────────────┐
+              │   EDGE CONTINUES │
+              │     OPERATING    │
+              └────────┬─────────┘
+                       │
+             Local AI + Alerts
+                       │
+                       ▼
+              Local Data Buffer
+                       │
+                       │
+              Connectivity Restored
+                       │
+                       ▼
+                 Cloud Sync
+```
+
+### ❄️ Built for the Edge.
+
+### 📡 Designed for the Disconnect.
+
+### 🤖 Powered by Intelligence.
+
+### 🇮🇳 Built for India's Antarctic Research.
+
+---
+
+## 👥 Team
+
+### VajraX
+
+**Smart Automation | SIH 2026**
+
+> Building resilient digital infrastructure for the world's most extreme environments.
