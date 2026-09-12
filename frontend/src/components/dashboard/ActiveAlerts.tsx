@@ -20,7 +20,7 @@ function timeLabel(iso: string) {
 }
 
 export default function ActiveAlerts({ stationId }: Props) {
-  const { data, isLoading } = useAlerts({ station_id: stationId, ack_state: 'OPEN', page_size: 8 })
+  const { data, isLoading } = useAlerts({ station_id: stationId, ack_state: 'OPEN', page_size: 2 })
   const { mutate: ack, isPending } = useAcknowledgeAlert()
   const { t } = useLanguage()
 

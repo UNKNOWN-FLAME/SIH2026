@@ -67,16 +67,16 @@ export default function EnergyCard({ stationId }: Props) {
         </span>
       </div>
 
-      <div style={{ padding: '10px 12px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ padding: '8px 10px', flex: 1, display: 'flex', flexDirection: 'column' }}>
         {/* Gauges */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 8 }}>
           <GaugeCircle value={power} color="#0284c7" label={t('energy.power')} />
           <GaugeCircle value={solar} color="#ea580c" label={t('energy.solar')} />
           <GaugeCircle value={storage} color="#16a34a" label={t('energy.storage')} />
         </div>
 
         {/* Diesel Fuel Stock Section */}
-        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '8px 10px', marginTop: 'auto' }}>
+        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '6px 8px', marginTop: 'auto', borderRadius: 2 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
             <span style={{ fontSize: 9.5, fontWeight: 800, color: '#0b3b60', letterSpacing: '0.03em' }}>
               {t('energy.fuel')}

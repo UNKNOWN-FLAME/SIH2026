@@ -116,7 +116,7 @@ export default function TopNav() {
       <div
         style={{
           background: '#ffffff',
-          padding: '8px 20px',
+          padding: '5px 16px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -126,14 +126,14 @@ export default function TopNav() {
         {/* Left: Ministry Hierarchy & Application Brand */}
         <div
           onClick={() => navigate('/')}
-          style={{ display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
           title="HIMANTAR Home"
         >
           {/* Official Circular NCPOR Logo */}
           <img
             src="/ncpor_logo.png"
             alt="NCPOR Logo"
-            style={{ height: 66, width: 66, objectFit: 'contain', display: 'block', flexShrink: 0 }}
+            style={{ height: 46, width: 46, objectFit: 'contain', display: 'block', flexShrink: 0 }}
           />
 
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>

@@ -69,68 +69,70 @@ export default function WeatherCard({ stationId }: Props) {
         </span>
       </div>
 
-      <div style={{ padding: '10px 12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+      <div style={{ padding: '8px 10px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
         {/* Maitri */}
         <div
           style={{
-            padding: '8px 10px',
+            padding: '6px 8px',
             background: isMaitriActive ? '#f0f9ff' : '#f8fafc',
             border: isMaitriActive ? '1.5px solid #0284c7' : '1px solid #e2e8f0',
+            borderRadius: 2,
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: isMaitriActive ? '#0369a1' : '#475569' }}>
+            <span style={{ fontSize: 9.5, fontWeight: 800, color: isMaitriActive ? '#0369a1' : '#475569' }}>
               {t('station.maitri')}
             </span>
             {isMaitriActive && (
-              <span style={{ fontSize: 7.5, fontWeight: 800, color: '#0369a1', background: '#e0f2fe', padding: '1px 5px', borderRadius: 2 }}>
+              <span style={{ fontSize: 7, fontWeight: 800, color: '#0369a1', background: '#e0f2fe', padding: '1px 4px', borderRadius: 2 }}>
                 ACTIVE
               </span>
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 2, marginBottom: 2 }}>
-            <span style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
+            <span style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
               {fmt(mTemp, '°')}
             </span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: '#ea580c' }}>C</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#ea580c' }}>C</span>
           </div>
-          <div style={{ fontSize: 10.5, fontWeight: 600, color: '#475569' }}>
-            {t('weather.wind')}: <span style={{ color: '#0f172a', fontWeight: 700 }}>{fmt(mWind, ' km/h')}</span> {mWDir ? `(${mWDir.latest_value?.toFixed(0)}° WSW)` : ''}
+          <div style={{ fontSize: 9.5, fontWeight: 600, color: '#475569', lineHeight: 1.25 }}>
+            {t('weather.wind')}: <span style={{ color: '#0f172a', fontWeight: 700 }}>{fmt(mWind, ' km/h')}</span>{mWDir?.latest_value != null ? ` (${mWDir.latest_value.toFixed(0)}°)` : ''}
           </div>
-          <div style={{ fontSize: 9, color: '#64748b', marginTop: 2 }}>
-            Wind Chill: <strong style={{ color: '#0284c7' }}>-28°C</strong> • Clear
+          <div style={{ fontSize: 8.5, color: '#64748b', marginTop: 2 }}>
+            Chill: <strong style={{ color: '#0284c7' }}>-28°C</strong> • Clear
           </div>
         </div>
 
         {/* Bharati */}
         <div
           style={{
-            padding: '8px 10px',
+            padding: '6px 8px',
             background: !isMaitriActive ? '#f0f9ff' : '#f8fafc',
             border: !isMaitriActive ? '1.5px solid #0284c7' : '1px solid #e2e8f0',
+            borderRadius: 2,
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: !isMaitriActive ? '#0369a1' : '#475569' }}>
+            <span style={{ fontSize: 9.5, fontWeight: 800, color: !isMaitriActive ? '#0369a1' : '#475569' }}>
               {t('station.bharati')}
             </span>
             {!isMaitriActive && (
-              <span style={{ fontSize: 7.5, fontWeight: 800, color: '#0369a1', background: '#e0f2fe', padding: '1px 5px', borderRadius: 2 }}>
+              <span style={{ fontSize: 7, fontWeight: 800, color: '#0369a1', background: '#e0f2fe', padding: '1px 4px', borderRadius: 2 }}>
                 ACTIVE
               </span>
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 2, marginBottom: 2 }}>
-            <span style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
+            <span style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
               {fmt(bTemp, '°')}
             </span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: '#ea580c' }}>C</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#ea580c' }}>C</span>
           </div>
-          <div style={{ fontSize: 10.5, fontWeight: 600, color: '#475569' }}>
-            {t('weather.wind')}: <span style={{ color: '#0f172a', fontWeight: 700 }}>{fmt(bWind, ' km/h')}</span> {bWDir ? `(${bWDir.latest_value?.toFixed(0)}° SSW)` : ''}
+          <div style={{ fontSize: 9.5, fontWeight: 600, color: '#475569', lineHeight: 1.25 }}>
+            {t('weather.wind')}: <span style={{ color: '#0f172a', fontWeight: 700 }}>{fmt(bWind, ' km/h')}</span>{bWDir?.latest_value != null ? ` (${bWDir.latest_value.toFixed(0)}°)` : ''}
           </div>
-          <div style={{ fontSize: 9, color: '#64748b', marginTop: 2 }}>
-            Wind Chill: <strong style={{ color: '#0284c7' }}>-19°C</strong> • Light Snow
+          <div style={{ fontSize: 8.5, color: '#64748b', marginTop: 2 }}>
+            Chill: <strong style={{ color: '#0284c7' }}>-19°C</strong> • Snow
           </div>
         </div>
       </div>

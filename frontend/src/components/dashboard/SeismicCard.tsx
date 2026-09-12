@@ -77,7 +77,7 @@ export default function SeismicCard({ stationId }: Props) {
   return (
     <div
       style={{
-        gridColumn: 'span 4',
+        width: '100%',
         background: '#ffffff',
         border: '1px solid #cbd5e1',
         boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.06)',

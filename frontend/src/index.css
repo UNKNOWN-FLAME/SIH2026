@@ -92,9 +92,34 @@
   flex-shrink: 0;
 }
 
-/* Sharp corners everywhere (institutional design language) */
-*, *::before, *::after { border-radius: 0 !important; }
+/* Sharp corners on structural containers, allow clean radius for pills & indicators */
 .rounded-full { border-radius: 9999px !important; }
+.rounded-pill { border-radius: 12px !important; }
+.rounded-badge { border-radius: 3px !important; }
+
+html {
+  font-size: 13.5px;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (min-width: 1600px) {
+  html {
+    font-size: 14.5px;
+  }
+}
+
+@media (max-width: 1280px) {
+  html {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 960px) {
+  html {
+    font-size: 12.5px;
+  }
+}
 
 body {
   font-family: 'Inter', sans-serif;
@@ -118,11 +143,54 @@ body {
 ::-webkit-scrollbar-thumb { background: #94a3b8; }
 ::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
-/* Bento grid */
+/* Responsive Bento Grid System */
 .bento-grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
-  gap: 12px;
+  gap: 10px;
+  width: 100%;
+}
+
+.bento-schematic {
+  grid-column: span 8;
+  min-width: 0;
+}
+
+.bento-side-stack {
+  grid-column: span 4;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.bento-bottom-card {
+  grid-column: span 4;
+  min-width: 0;
+}
+
+@media (max-width: 1080px) {
+  .bento-schematic {
+    grid-column: span 12;
+  }
+  .bento-side-stack {
+    grid-column: span 12;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 10px;
+  }
+  .bento-bottom-card {
+    grid-column: span 6;
+  }
+}
+
+@media (max-width: 720px) {
+  .bento-side-stack {
+    grid-template-columns: 1fr;
+  }
+  .bento-bottom-card {
+    grid-column: span 12;
+  }
 }
 
 /* Segmented control */

@@ -30,8 +30,8 @@ export default function Sidebar({
       style={{
         background: '#ffffff',
         borderRight: '1px solid #cbd5e1',
-        width: 220,
-        minWidth: 220,
+        width: 195,
+        minWidth: 195,
         display: 'flex',
         flexDirection: 'column',
         position: 'sticky',
@@ -46,23 +46,23 @@ export default function Sidebar({
       <div
         className="sidebar-emblem"
         style={{
-          padding: '12px 14px',
+          padding: '8px 10px',
           borderBottom: '1px solid #cbd5e1',
           background: '#0b3b60',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div
             style={{
-              width: 32,
-              height: 38,
+              width: 28,
+              height: 32,
               background: '#ffffff',
               border: '1px solid #cbd5e1',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0,
-              padding: '2px 3px',
+              padding: '2px',
               borderRadius: 2,
             }}
           >

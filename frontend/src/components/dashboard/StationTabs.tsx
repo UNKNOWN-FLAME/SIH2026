@@ -68,7 +68,7 @@ export default function StationTabs({ active, onSelect }: Props) {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'flex-start',
-                padding: '8px 16px',
+                padding: '5px 12px',
                 background: isSelected ? '#0b3b60' : '#f8fafc',
                 border: isSelected ? '1px solid #0b3b60' : '1px solid #e2e8f0',
                 borderLeft: isSelected ? '3px solid #ff9933' : '3px solid transparent',
