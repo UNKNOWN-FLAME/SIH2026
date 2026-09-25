@@ -10,7 +10,6 @@ import EnvironmentPage from './pages/EnvironmentPage'
 import InfrastructurePage from './pages/InfrastructurePage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import ReportsPage from './pages/ReportsPage'
-import SettingsPage from './pages/SettingsPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token } = useAuth()
@@ -30,7 +29,6 @@ export default function App() {
           <Route path="/infrastructure" element={<ProtectedRoute><InfrastructurePage /></ProtectedRoute>} />
           <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
           <Route path="/*" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         </Routes>
       </AuthProvider>

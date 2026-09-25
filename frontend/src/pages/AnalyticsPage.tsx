@@ -1,13 +1,19 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import TopNav from '../components/layout/TopNav'
 import AlertStrip from '../components/layout/AlertStrip'
 import Sidebar from '../components/layout/Sidebar'
 import Footer from '../components/layout/Footer'
 import { useAnalytics } from '../hooks/useAnalytics'
+import { useSensors } from '../hooks/useSensors'
 
 type StationId = 'maitri' | 'bharati'
-type TabType = 'fuel' | 'energy' | 'anomaly' | 'maintenance' | 'expedition'
+type TabType = 'fuel' | 'energy' | 'weather' | 'anomaly' | 'maintenance' | 'expedition'
+
+function computeWindChill(tempC: number, windKmh: number): number {
+  if (windKmh < 5) return tempC
+  return 13.12 + 0.6215 * tempC - 11.37 * Math.pow(windKmh, 0.16) + 0.3965 * tempC * Math.pow(windKmh, 0.16)
+}
 
 function KpiCard({ label, value, unit, icon, color, trend, sub }: { label: string; value: string | number; unit?: string; icon: string; color: string; trend?: string; sub?: string }) {
   return (
@@ -54,6 +60,7 @@ export default function AnalyticsPage() {
   const tabs: { id: TabType; label: string; icon: string }[] = [
     { id: 'fuel', label: 'Fuel Burn Model', icon: 'local_gas_station' },
     { id: 'energy', label: 'Energy Forecast', icon: 'bolt' },
+    { id: 'weather', label: 'Weather Forecast AI', icon: 'thermostat' },
     { id: 'anomaly', label: 'Anomaly Detection', icon: 'psychology' },
     { id: 'maintenance', label: 'Predictive Maintenance', icon: 'build' },
     { id: 'expedition', label: 'Expedition Planning', icon: 'explore' },
@@ -65,6 +72,120 @@ export default function AnalyticsPage() {
   const fuelPct = Math.round((fuel.remaining / fuel.capacity) * 100)
   const burnHistory = [1210, 1280, 1190, 1320, 1260, 1240, fuel.dailyBurn]
   const burnLabels = ['D-6', 'D-5', 'D-4', 'D-3', 'D-2', 'D-1', 'Today']
+
+  const [forecastView, setForecastView] = useState<'7day' | 'hourly'>('7day')
+  const [selectedDayIdx, setSelectedDayIdx] = useState<number>(0)
+  const [stormSimActive, setStormSimActive] = useState<boolean>(false)
+
+  const { data: weatherSensors } = useSensors(activeStation, 'weather')
+
+  const isM = activeStation === 'maitri'
+  const liveTemp = weatherSensors?.find(s => s.sensor_id.includes('temperature'))?.latest_value ?? (isM ? -15.5 : -12.1)
+  const liveWind = weatherSensors?.find(s => s.sensor_id.includes('wind_speed'))?.latest_value ?? (isM ? 26.0 : 19.0)
+
+  const stormMultiplier = stormSimActive ? 1.32 : 1.0
+
+  const forecast7Day = useMemo(() => {
+    const today = new Date()
+    const daysMeta = [
+      { name: 'Today', offset: 0, dT: 0, dW: 0, icon: liveWind * stormMultiplier > 55 ? 'storm' : 'ac_unit', desc: liveWind * stormMultiplier > 55 ? 'Blizzard Surge' : 'Polar Snow Flurry', p: 75, solar: 280, pres: 986, synoptic: 'High-latitude polar air mass over Queen Maud Land. Local katabatic gradient active off the polar plateau.' },
+      { name: 'Tomorrow', offset: 1, dT: -2.8, dW: 16, icon: 'storm', desc: 'Katabatic Surge', p: 90, solar: 180, pres: 978, synoptic: 'Severe cyclonic trough migrating from Weddell Sea. Sharp pressure drop with katabatic gusts peaking near 65 km/h.' },
+      { name: 'D+2', offset: 2, dT: -1.2, dW: -6, icon: 'partly_cloudy_day', desc: 'Cold Clearing', p: 35, solar: 390, pres: 994, synoptic: 'Post-frontal cold sector stabilization. Cloud cover dissipating with high UV index and excellent visibility.' },
+      { name: 'D+3', offset: 3, dT: +2.1, dW: -18, icon: 'sunny', desc: 'Optimal Polar Sun', p: 10, solar: 440, pres: 1002, synoptic: 'Antarctic high ridge dominating inland coast. Calm winds, zero drift, ideal window for heavy scientific fieldwork.' },
+      { name: 'D+4', offset: 4, dT: +0.8, dW: +4, icon: 'cloud', desc: 'Ice Fog / Stratus', p: 40, solar: 290, pres: 991, synoptic: 'Moist maritime air advection into Schirmacher Oasis. Stratocumulus layer lowering to 800 ft AGL with ice fog.' },
+      { name: 'D+5', offset: 5, dT: -4.2, dW: +24, icon: 'cyclone', desc: 'Polar Low Storm', p: 95, solar: 110, pres: 969, synoptic: 'Deep mesocyclone tracking eastward along Antarctic perimeter. Extreme blizzard hazard and severe rotor turbulence.' },
+      { name: 'D+6', offset: 6, dT: -1.8, dW: -8, icon: 'ac_unit', desc: 'Drifting Snow', p: 55, solar: 320, pres: 985, synoptic: 'Residual snow drift settling. Wind speeds moderating back to seasonal baselines.' },
+    ]
+
+    return daysMeta.map((d) => {
+      const targetDate = new Date(today.getTime() + d.offset * 24 * 60 * 60 * 1000)
+      const dateStr = targetDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+      const weekdayShort = targetDate.toLocaleDateString('en-US', { weekday: 'short' })
+      const weekdayLong = targetDate.toLocaleDateString('en-US', { weekday: 'long' })
+      const computedName = d.offset === 0
+        ? `Today (${weekdayShort})`
+        : d.offset === 1
+        ? `Tomorrow (${weekdayShort})`
+        : weekdayLong
+
+      const dayTemp = Number((liveTemp + d.dT - (stormSimActive ? 2.5 : 0)).toFixed(1))
+      const dayWind = Number((Math.max(12, (liveWind + d.dW) * stormMultiplier)).toFixed(1))
+      const dayGust = Number((dayWind * 1.33).toFixed(1))
+      const dayChill = Number(computeWindChill(dayTemp, dayWind).toFixed(1))
+      const daySnowP = Math.min(100, Math.round(d.p * (stormSimActive ? 1.2 : 1.0)))
+      const daySnowAccum = Number(((daySnowP / 100) * 4.2).toFixed(1))
+
+      // Mission safety statuses
+      let safetyStatus: 'ALL CLEAR' | 'CAUTION' | 'STORM WARNING' = 'ALL CLEAR'
+      let heliStatus: 'APPROVED' | 'STANDBY' | 'NO-GO' = 'APPROVED'
+      let traverseStatus: 'OPTIMAL' | 'CAUTION' | 'SUSPENDED' = 'OPTIMAL'
+
+      if (dayGust >= 60 || daySnowP >= 80) {
+        safetyStatus = 'STORM WARNING'
+        heliStatus = 'NO-GO'
+        traverseStatus = 'SUSPENDED'
+      } else if (dayGust >= 40 || daySnowP >= 50) {
+        safetyStatus = 'CAUTION'
+        heliStatus = 'STANDBY'
+        traverseStatus = 'CAUTION'
+      }
+
+      const phases = [
+        { label: 'Night (00-06 UTC)', temp: (dayTemp - 1.8).toFixed(1), wind: Math.round(dayWind * 0.9), cond: 'Clear Sky / Chill' },
+        { label: 'Morning (06-12 UTC)', temp: (dayTemp + 0.4).toFixed(1), wind: Math.round(dayWind * 1.05), cond: 'Katabatic Onset' },
+        { label: 'Polar Noon (12-18 UTC)', temp: (dayTemp + 2.0).toFixed(1), wind: Math.round(dayWind * 1.15), cond: 'Peak Solar / Gust' },
+        { label: 'Evening (18-24 UTC)', temp: (dayTemp - 0.5).toFixed(1), wind: Math.round(dayWind * 0.95), cond: 'Radiative Inversion' },
+      ]
+
+      return {
+        ...d,
+        name: computedName,
+        weekday: weekdayLong,
+        dateStr,
+        temp: dayTemp,
+        minTemp: Number((dayTemp - 3.4).toFixed(1)),
+        maxTemp: Number((dayTemp + 2.6).toFixed(1)),
+        wind: dayWind,
+        gust: dayGust,
+        chill: dayChill,
+        snowProb: daySnowP,
+        snowAccum: daySnowAccum,
+        solarYield: Math.round((d.solar / 450) * 42),
+        safetyStatus,
+        heliStatus,
+        traverseStatus,
+        phases,
+      }
+    })
+  }, [liveTemp, liveWind, stormMultiplier, stormSimActive])
+
+  const hourlyData = useMemo(() => {
+    return Array.from({ length: 24 }).map((_, i) => {
+      const hour = i
+      const tSine = Math.sin(((hour - 8) / 24) * 2 * Math.PI) * 3.2
+      const wSine = Math.cos(((hour - 4) / 24) * 2 * Math.PI) * 12
+      const sSine = Math.max(0, Math.sin(((hour - 6) / 12) * Math.PI)) * 420
+      const hTemp = Number((liveTemp + tSine - (stormSimActive ? 2.5 : 0)).toFixed(1))
+      const hWind = Math.max(14, Number(((liveWind + wSine) * stormMultiplier).toFixed(1)))
+      const hGust = Number((hWind * 1.32).toFixed(1))
+      const hChill = Number(computeWindChill(hTemp, hWind).toFixed(1))
+      const hSnow = Math.round(Math.max(10, Math.min(95, 45 + Math.sin(hour / 3) * 35)))
+      const hSolar = Math.round(sSine)
+      const hPres = Number((988 - Math.sin(hour / 4) * 6).toFixed(1))
+
+      return {
+        hourIdx: hour,
+        hour: `${String(hour).padStart(2, '0')}:00`,
+        temp: hTemp,
+        wind: hWind,
+        gust: hGust,
+        chill: hChill,
+        snowProb: hSnow,
+        solar: hSolar,
+        pressure: hPres,
+      }
+    })
+  }, [liveTemp, liveWind, stormMultiplier, stormSimActive])
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f0f4f8' }}>
@@ -204,6 +325,685 @@ export default function AnalyticsPage() {
                 </div>
               </div>
             )}
+
+            {activeTab === 'weather' && (() => {
+              const activeDay = forecast7Day[selectedDayIdx] ?? forecast7Day[0]
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {/* Top KPI Strip */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+                    <KpiCard
+                      label="AI PREDICTIVE ENSEMBLE"
+                      value="WRF 4.1 + NCMRWF"
+                      icon="model_training"
+                      color="#0b3b60"
+                      sub="168-Hour Multi-Model Consensus (06 UTC)"
+                    />
+                    <KpiCard
+                      label={`${activeDay.name.toUpperCase()} PEAK GUST`}
+                      value={`${Math.round(activeDay.gust)} km/h`}
+                      unit=""
+                      icon="air"
+                      color={activeDay.gust >= 60 ? '#dc2626' : activeDay.gust >= 45 ? '#ea580c' : '#0284c7'}
+                      trend={activeDay.gust >= 60 ? '▲ Katabatic Warning' : '▲ Nominal Range'}
+                      sub="Direction: 140° SSE • Max at 17:00 UTC"
+                    />
+                    <KpiCard
+                      label="POLAR MISSION STATUS"
+                      value={activeDay.safetyStatus}
+                      icon={activeDay.safetyStatus === 'ALL CLEAR' ? 'verified' : activeDay.safetyStatus === 'CAUTION' ? 'warning' : 'block'}
+                      color={activeDay.safetyStatus === 'ALL CLEAR' ? '#16a34a' : activeDay.safetyStatus === 'CAUTION' ? '#d97706' : '#dc2626'}
+                      sub={`Blizzard Risk: ${activeDay.snowProb}% • Heli: ${activeDay.heliStatus}`}
+                    />
+                    <KpiCard
+                      label="RENEWABLE MICROGRID OFFSET"
+                      value={`+${activeDay.solarYield + Math.round(activeDay.wind * 0.7)} kW`}
+                      icon="bolt"
+                      color="#3b82f6"
+                      trend="▲ Eco Dispatch"
+                      sub={`Solar: ${activeDay.solarYield}kW • Wind: ${Math.round(activeDay.wind * 0.7)}kW`}
+                    />
+                  </div>
+
+                  {/* Synoptic Forecast Header & Mode Switcher */}
+                  <div
+                    style={{
+                      background: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      padding: '12px 14px',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: '#0b3b60', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#0284c7' }}>
+                          calendar_month
+                        </span>
+                        {forecastView === '7day' ? '7-DAY SYNOPTIC POLAR FORECAST (CLICK ANY DAY TO INSPECT)' : '24-HOUR HOURLY MICRO-FORECAST'}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 9.5, color: '#64748b' }}>
+                          Anchored to Live Sensors ({liveTemp}°C, {liveWind} km/h)
+                        </span>
+
+                        {/* View Switcher: 7-Day vs 24-Hr */}
+                        <div style={{ display: 'flex', border: '1.5px solid #0b3b60', borderRadius: 2, overflow: 'hidden' }}>
+                          <button
+                            type="button"
+                            onClick={() => setForecastView('7day')}
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 800,
+                              padding: '3px 9px',
+                              background: forecastView === '7day' ? '#0b3b60' : '#ffffff',
+                              color: forecastView === '7day' ? '#ffffff' : '#0b3b60',
+                              border: 'none',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            7-Day
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setForecastView('hourly')}
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 800,
+                              padding: '3px 9px',
+                              background: forecastView === 'hourly' ? '#0b3b60' : '#ffffff',
+                              color: forecastView === 'hourly' ? '#ffffff' : '#0b3b60',
+                              border: 'none',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            24-Hr
+                          </button>
+                        </div>
+
+                        {/* Storm Simulation Stress-Test Button */}
+                        <button
+                          type="button"
+                          onClick={() => setStormSimActive(s => !s)}
+                          style={{
+                            fontSize: 9.5,
+                            fontWeight: 700,
+                            padding: '3px 8px',
+                            background: stormSimActive ? '#fee2e2' : '#f8fafc',
+                            color: stormSimActive ? '#b91c1c' : '#475569',
+                            border: `1.5px solid ${stormSimActive ? '#f87171' : '#cbd5e1'}`,
+                            cursor: 'pointer',
+                            borderRadius: 2,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                          }}
+                          title="Simulate +30% Polar Storm Surge across all predictive neural models"
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: 13, color: stormSimActive ? '#b91c1c' : '#64748b' }}>
+                            {stormSimActive ? 'cyclone' : 'tune'}
+                          </span>
+                          {stormSimActive ? '⚠️ Blizzard Surge Active (+30%)' : 'Simulate Storm (+30%)'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {forecastView === '7day' ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 12 }}>
+                        {forecast7Day.map((d, idx) => {
+                          const isSelected = selectedDayIdx === idx
+                          return (
+                            <div
+                              key={d.name}
+                              onClick={() => setSelectedDayIdx(idx)}
+                              style={{
+                                background: isSelected ? 'linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%)' : '#ffffff',
+                                border: isSelected ? '2.5px solid #0b3b60' : '1px solid #cbd5e1',
+                                padding: '14px 12px',
+                                minHeight: 250,
+                                cursor: 'pointer',
+                                position: 'relative',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                borderRadius: 4,
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                boxShadow: isSelected
+                                  ? '0 8px 20px rgba(11, 59, 96, 0.16)'
+                                  : '0 1px 4px rgba(0,0,0,0.05)',
+                                transform: isSelected ? 'translateY(-2px)' : 'none',
+                              }}
+                            >
+                              {/* Top MoES Navy Accent for Selected Card */}
+                              {isSelected && (
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    height: 4,
+                                    background: '#0b3b60',
+                                    borderTopLeftRadius: 2,
+                                    borderTopRightRadius: 2,
+                                  }}
+                                />
+                              )}
+
+                              {/* Card Header: Day Name & Date Pill */}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                <div style={{ fontSize: 13, fontWeight: 900, color: isSelected ? '#0b3b60' : '#0f172a' }}>
+                                  {d.name}
+                                </div>
+                                <span
+                                  style={{
+                                    fontSize: 9.5,
+                                    color: isSelected ? '#0369a1' : '#64748b',
+                                    background: isSelected ? '#e0f2fe' : '#f1f5f9',
+                                    fontWeight: 700,
+                                    padding: '2px 7px',
+                                    borderRadius: 10,
+                                  }}
+                                >
+                                  {d.dateStr}
+                                </span>
+                              </div>
+
+                              {/* Weather Icon & Phenomenon Label */}
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', margin: '6px 0 8px 0' }}>
+                                <span
+                                  className="material-symbols-outlined"
+                                  style={{
+                                    fontSize: 32,
+                                    color: d.icon === 'sunny'
+                                      ? '#f59e0b'
+                                      : d.icon === 'storm' || d.icon === 'cyclone'
+                                      ? '#ea580c'
+                                      : '#0284c7',
+                                  }}
+                                >
+                                  {d.icon}
+                                </span>
+                                <div
+                                  style={{
+                                    fontSize: 10.5,
+                                    fontWeight: 700,
+                                    color: '#334155',
+                                    marginTop: 3,
+                                    lineHeight: 1.2,
+                                    minHeight: 25,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                  }}
+                                >
+                                  {d.desc}
+                                </div>
+                              </div>
+
+                              {/* Hero Temperature & Range */}
+                              <div style={{ textAlign: 'center', marginBottom: 10 }}>
+                                <div style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em', lineHeight: 1 }}>
+                                  {d.temp.toFixed(1)}°<span style={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>C</span>
+                                </div>
+                                <div style={{ fontSize: 10, color: '#64748b', marginTop: 3, display: 'flex', justifyContent: 'center', gap: 6 }}>
+                                  <span>L: <strong style={{ color: '#0284c7' }}>{d.minTemp.toFixed(0)}°</strong></span>
+                                  <span>•</span>
+                                  <span>H: <strong style={{ color: '#ea580c' }}>{d.maxTemp.toFixed(0)}°</strong></span>
+                                </div>
+                              </div>
+
+                              {/* Metric Chips (Wind & Snow) */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 8 }}>
+                                <div
+                                  style={{
+                                    background: '#f8fafc',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: 3,
+                                    padding: '4px 6px',
+                                    fontSize: 9.5,
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                  }}
+                                >
+                                  <span style={{ color: '#475569' }}>💨 {Math.round(d.wind)} km/h</span>
+                                  <span style={{ color: d.gust >= 55 ? '#dc2626' : '#ea580c', fontWeight: 800 }}>
+                                    ⚡ {Math.round(d.gust)}
+                                  </span>
+                                </div>
+
+                                <div
+                                  style={{
+                                    background: '#f8fafc',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: 3,
+                                    padding: '4px 6px',
+                                    fontSize: 9.5,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 3,
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ color: '#475569' }}>❄️ Snow Risk</span>
+                                    <span style={{ color: d.snowProb > 70 ? '#dc2626' : '#16a34a', fontWeight: 800 }}>
+                                      {d.snowProb}%
+                                    </span>
+                                  </div>
+                                  <div style={{ height: 3, background: '#e2e8f0', borderRadius: 2, overflow: 'hidden' }}>
+                                    <div
+                                      style={{
+                                        height: '100%',
+                                        width: `${d.snowProb}%`,
+                                        background: d.snowProb > 70 ? '#dc2626' : d.snowProb > 40 ? '#f59e0b' : '#10b981',
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Operational Status Pill */}
+                              <div style={{ marginTop: 'auto' }}>
+                                <div
+                                  style={{
+                                    fontSize: 9.5,
+                                    fontWeight: 800,
+                                    padding: '4px 6px',
+                                    borderRadius: 3,
+                                    textAlign: 'center',
+                                    background: d.safetyStatus === 'ALL CLEAR' ? '#dcfce7' : d.safetyStatus === 'CAUTION' ? '#fef3c7' : '#fee2e2',
+                                    color: d.safetyStatus === 'ALL CLEAR' ? '#15803d' : d.safetyStatus === 'CAUTION' ? '#92400e' : '#b91c1c',
+                                    border: `1px solid ${d.safetyStatus === 'ALL CLEAR' ? '#86efac' : d.safetyStatus === 'CAUTION' ? '#fde047' : '#fca5a5'}`,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 3,
+                                  }}
+                                >
+                                  <span className="material-symbols-outlined" style={{ fontSize: 13 }}>
+                                    {d.safetyStatus === 'ALL CLEAR' ? 'check_circle' : d.safetyStatus === 'CAUTION' ? 'warning' : 'block'}
+                                  </span>
+                                  {d.safetyStatus === 'ALL CLEAR' ? 'ALL CLEAR' : d.safetyStatus === 'CAUTION' ? 'CAUTION' : 'LOCKDOWN'}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 8, maxHeight: 280, overflowY: 'auto', padding: 2 }}>
+                        {hourlyData.map((h, idx) => (
+                          <div
+                            key={h.hour}
+                            style={{
+                              background: idx === 0 ? '#f0f9ff' : '#ffffff',
+                              border: `1px solid ${idx === 0 ? '#bae6fd' : '#cbd5e1'}`,
+                              borderRadius: 4,
+                              padding: '10px 10px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 4,
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: 11, fontWeight: 900, color: '#0b3b60' }}>{h.hour} UTC</span>
+                              <span style={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>{h.temp}°C</span>
+                            </div>
+                            <div style={{ fontSize: 9.5, color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
+                              <span>💨 Wind: {h.wind} km/h</span>
+                              <span style={{ color: '#ea580c', fontWeight: 800 }}>⚡ {h.gust}</span>
+                            </div>
+                            <div style={{ fontSize: 9.5, color: '#475569', display: 'flex', justifyContent: 'space-between' }}>
+                              <span>Chill: <strong>{h.chill}°C</strong></span>
+                              <span style={{ color: '#16a34a', fontWeight: 700 }}>❄️ {h.snowProb}%</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Photo-Rich Minimal AI Future Hazards & Problem Predictor (Linked to Selected Day) */}
+                  {(() => {
+                    const d = forecast7Day[selectedDayIdx] ?? forecast7Day[0]
+
+                    // Dynamic hazard profile customized to the selected day's exact numerical forecast
+                    const dayThreat = (() => {
+                      if (selectedDayIdx === 0) {
+                        return {
+                          label: `${d.name} (${d.dateStr})`,
+                          statusText: d.safetyStatus,
+                          risk: Math.min(95, Math.round(55 * stormMultiplier)),
+                          severityColor: d.safetyStatus === 'STORM WARNING' ? '#dc2626' : '#ea580c',
+                          image: '/threats/turbine.jpg',
+                          title: 'Active Katabatic Drift & Wind Chill Inversion',
+                          tags: [`🌡️ ${d.temp}°C Temp`, `💨 ${Math.round(d.gust)} km/h Gust`, `🥶 ${Math.round(d.chill)}°C Chill`, `❄️ ${d.snowProb}% Drift`],
+                          problems: [
+                            'Rapid temperature inversion; severe frostbite hazard on outside crew transit beyond 15 mins.',
+                            'Blowing drift snow beginning to cover exterior electrical junction boxes.',
+                          ],
+                          actions: [
+                            'Level-2 thermal PPE mandatory for all outside station personnel.',
+                            'Keep emergency heated PistenBully vehicle on warm-idle standby.',
+                          ],
+                          heli: d.heliStatus,
+                          traverse: d.traverseStatus,
+                        }
+                      } else if (selectedDayIdx === 1) {
+                        return {
+                          label: `${d.name} (${d.dateStr})`,
+                          statusText: 'STORM WARNING',
+                          risk: Math.min(98, Math.round(94 * stormMultiplier)),
+                          severityColor: '#dc2626',
+                          image: '/threats/blizzard.jpg',
+                          title: 'Severe Whiteout Blizzard & Katabatic Gale Surge',
+                          tags: [`📉 ${d.pres} hPa (Drop)`, `💨 ${Math.round(d.gust)} km/h Peak Gust`, `🥶 ${Math.round(d.chill)}°C Chill`, '❄️ <5m Visibility'],
+                          problems: [
+                            'Zero outdoor visibility (<5m). High disorientation hazard outside living modules.',
+                            'Wind turbine rotor overspeed trip risk (185 RPM) & Ku-band VSAT tracking drift.',
+                          ],
+                          actions: [
+                            'Level-3 Station Lockdown: exterior transit restricted to fixed lifeline guide ropes.',
+                            'Auto-feather turbine blades; park satellite dish to 90° survival stow.',
+                          ],
+                          heli: 'NO-GO',
+                          traverse: 'SUSPENDED',
+                        }
+                      } else if (selectedDayIdx === 2) {
+                        return {
+                          label: `${d.name} (${d.dateStr})`,
+                          statusText: 'CAUTION',
+                          risk: 38,
+                          severityColor: '#0284c7',
+                          image: '/threats/turbine.jpg',
+                          title: 'Post-Frontal Freeze & Apron Black Ice',
+                          tags: [`📈 ${d.pres} hPa (Rising)`, `💨 ${Math.round(d.wind)} km/h Wind`, `🥶 ${Math.round(d.chill)}°C Chill`, '☀️ High UV Glare'],
+                          problems: [
+                            'Flash-freeze creates invisible black ice across helipad apron and metal gangways.',
+                            'High UV reflection off fresh snow sheet causing temporary snow blindness.',
+                          ],
+                          actions: [
+                            'Apply coarse grit/salt on station gangways and helipad perimeter.',
+                            'Category-4 polar sunglasses mandatory for all outside technical crews.',
+                          ],
+                          heli: 'STANDBY',
+                          traverse: 'CAUTION',
+                        }
+                      } else if (selectedDayIdx === 3) {
+                        return {
+                          label: `${d.name} (${d.dateStr})`,
+                          statusText: 'ALL CLEAR',
+                          risk: 12,
+                          severityColor: '#16a34a',
+                          image: '/threats/traverse.jpg',
+                          title: 'Optimal Weather Window (Calm High-Pressure Ridge)',
+                          tags: [`☀️ ${d.solar} W/m² Solar`, `💨 ${Math.round(d.wind)} km/h Gentle`, `🌡️ ${d.temp}°C Mild`, '🛡️ Minimal Hazard'],
+                          problems: [
+                            'No critical atmospheric hazards detected. Atmospheric stability at weekly peak.',
+                            'Minor solar glare on exterior telemetry optical lenses.',
+                          ],
+                          actions: [
+                            'Green flag: Ideal window for heavy logistics, fuel bunkering, and scientific field trips.',
+                            'Perform preventive maintenance on exterior wind turbines and solar PV arrays.',
+                          ],
+                          heli: 'APPROVED',
+                          traverse: 'OPTIMAL',
+                        }
+                      } else if (selectedDayIdx === 4) {
+                        return {
+                          label: `${d.name} (${d.dateStr})`,
+                          statusText: 'CAUTION',
+                          risk: 74,
+                          severityColor: '#ea580c',
+                          image: '/threats/traverse.jpg',
+                          title: 'Tropospheric Ice Fog & Flat Light Crevasse Risk',
+                          tags: [`🌫️ 800ft Ceiling`, `🕳️ Crevasse Risk`, `💨 ${Math.round(d.wind)} km/h`, '📡 VSAT Loss +4.8dB'],
+                          problems: [
+                            'Flat light eliminates surface shadows; concealed 30m-deep crevasse snow bridges invisible.',
+                            'Moist maritime air induces rime icing on radar domes and Ku-band communications.',
+                          ],
+                          actions: [
+                            'Suspend overland PistenBully traverse beyond 3 km station safety perimeter.',
+                            'Turn on radome quartz heating de-icers 2 hours in advance of satellite sync pass.',
+                          ],
+                          heli: 'STANDBY',
+                          traverse: 'SUSPENDED',
+                        }
+                      } else if (selectedDayIdx === 5) {
+                        return {
+                          label: `${d.name} (${d.dateStr})`,
+                          statusText: 'STORM WARNING',
+                          risk: 96,
+                          severityColor: '#dc2626',
+                          image: '/threats/blizzard.jpg',
+                          title: 'Deep Mesocyclone Low & Diesel Fuel Line Gelling',
+                          tags: [`📉 969 hPa Deep Low`, `💨 ${Math.round(d.gust)} km/h Gust`, `🥶 -42°C Skin Chill`, '❄️ 95% Snow Blizzard'],
+                          problems: [
+                            'HSD fuel lines wax crystallization approaching pour point (-24°C); generator starvation risk.',
+                            'Violent blizzard winds cause heavy structural windward vibration and snow drift packing.',
+                          ],
+                          actions: [
+                            'Engage 100% duty cycle electric heat-tracing on exterior fuel pipelines FP-1 & FP-2.',
+                            'Switch station microgrid to dual-generator load sharing; lockdown all non-essential doors.',
+                          ],
+                          heli: 'NO-GO',
+                          traverse: 'SUSPENDED',
+                        }
+                      } else {
+                        return {
+                          label: `${d.name} (${d.dateStr})`,
+                          statusText: 'CAUTION',
+                          risk: 48,
+                          severityColor: '#0284c7',
+                          image: '/threats/traverse.jpg',
+                          title: 'Post-Storm Snow Drift Silt & Intake Obstruction',
+                          tags: [`❄️ Heavy Drift Snow`, `💨 ${Math.round(d.wind)} km/h Moderating`, `🌡️ ${d.temp}°C`, '🚜 Snow Clearing'],
+                          problems: [
+                            'Massive 2-meter snow drifts accumulating against generator air intake louvers.',
+                            'Containerized storage doors and emergency egress hatches blocked by wind-packed snow.',
+                          ],
+                          actions: [
+                            'Deploy PistenBully snow blade crew for prioritized clearance of life-support air intakes.',
+                            'Inspect structural stay wires and communications masts for storm wind drift looseness.',
+                          ],
+                          heli: 'STANDBY',
+                          traverse: 'CAUTION',
+                        }
+                      }
+                    })()
+
+                    return (
+                      <div
+                        style={{
+                          background: '#ffffff',
+                          border: '1px solid #cbd5e1',
+                          padding: '14px 16px',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 12,
+                        }}
+                      >
+                        {/* Header with Selected Day Indicator */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 900, color: '#0b3b60', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span className="material-symbols-outlined" style={{ fontSize: 18, color: dayThreat.severityColor }}>
+                                warning
+                              </span>
+                              AI FUTURE THREAT & OPERATIONAL PROBLEM PREDICTOR
+                            </div>
+                            <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 1 }}>
+                              Target Day Analysis: <strong style={{ color: '#0b3b60' }}>{dayThreat.label}</strong> — <span style={{ color: '#475569' }}>{d.desc}</span>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 9.5, fontWeight: 800, color: '#0b3b60', background: '#f0f9ff', padding: '3px 9px', borderRadius: 3, border: '1px solid #bae6fd' }}>
+                              📍 DAY {selectedDayIdx + 1} OF 7 SELECTED (Click any day card above to switch)
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Focused 2-Column Card for Selected Day */}
+                        <div
+                          style={{
+                            background: '#ffffff',
+                            border: `1.5px solid ${dayThreat.severityColor}40`,
+                            borderRadius: 6,
+                            overflow: 'hidden',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
+                            display: 'grid',
+                            gridTemplateColumns: '380px 1fr',
+                            gap: 0,
+                          }}
+                        >
+                          {/* Left Column: Photo Banner */}
+                          <div style={{ position: 'relative', minHeight: 180, background: '#0f172a', overflow: 'hidden' }}>
+                            <img
+                              src={dayThreat.image}
+                              alt={dayThreat.title}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                display: 'block',
+                                filter: 'brightness(0.92)',
+                              }}
+                            />
+                            {/* Vignette Gradient */}
+                            <div
+                              style={{
+                                position: 'absolute',
+                                inset: 0,
+                                background: 'linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.1) 40%, rgba(0,0,0,0.9) 100%)',
+                              }}
+                            />
+                            {/* Floating Badges */}
+                            <div style={{ position: 'absolute', top: 9, left: 10, right: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span
+                                style={{
+                                  fontSize: 9,
+                                  fontWeight: 800,
+                                  padding: '2px 7px',
+                                  borderRadius: 3,
+                                  background: 'rgba(15, 23, 42, 0.85)',
+                                  color: '#f8fafc',
+                                  backdropFilter: 'blur(4px)',
+                                  border: '1px solid rgba(255,255,255,0.2)',
+                                }}
+                              >
+                                📅 {dayThreat.label}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: 9,
+                                  fontWeight: 900,
+                                  padding: '2px 8px',
+                                  borderRadius: 3,
+                                  background: dayThreat.severityColor,
+                                  color: '#ffffff',
+                                  boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                                  letterSpacing: '0.03em',
+                                }}
+                              >
+                                {dayThreat.risk}% RISK • {dayThreat.statusText}
+                              </span>
+                            </div>
+
+                            {/* Bottom Title on Image */}
+                            <div style={{ position: 'absolute', bottom: 10, left: 10, right: 10 }}>
+                              <div style={{ fontSize: 13, fontWeight: 900, color: '#ffffff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>
+                                {dayThreat.title}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Right Column: Minimal Problems, Actions & Clearance */}
+                          <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8, justifyContent: 'space-between' }}>
+                            {/* Row 1: Trigger Badges */}
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                              {dayThreat.tags.map((t, idx) => (
+                                <span
+                                  key={idx}
+                                  style={{
+                                    fontSize: 9.5,
+                                    fontWeight: 800,
+                                    padding: '2px 8px',
+                                    background: '#f8fafc',
+                                    color: '#334155',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: 3,
+                                  }}
+                                >
+                                  {t}
+                                </span>
+                              ))}
+                            </div>
+
+                            {/* Row 2: Predicted Problems */}
+                            <div
+                              style={{
+                                background: '#fff7ed',
+                                border: '1px solid #ffedd5',
+                                borderRadius: 4,
+                                padding: '7px 10px',
+                                fontSize: 10,
+                                color: '#9a3412',
+                                lineHeight: 1.4,
+                              }}
+                            >
+                              <div style={{ fontWeight: 900, color: '#c2410c', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <span>⚠️ Predicted Operational Problems:</span>
+                              </div>
+                              <ul style={{ margin: 0, paddingLeft: 14, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                {dayThreat.problems.map((p, idx) => (
+                                  <li key={idx}>{p}</li>
+                                ))}
+                              </ul>
+                            </div>
+
+                            {/* Row 3: Action Protocol */}
+                            <div
+                              style={{
+                                background: '#f0fdf4',
+                                border: '1px solid #dcfce7',
+                                borderRadius: 4,
+                                padding: '7px 10px',
+                                fontSize: 10,
+                                color: '#166534',
+                                lineHeight: 1.4,
+                              }}
+                            >
+                              <div style={{ fontWeight: 900, color: '#15803d', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <span>🛡️ Mandatory Station Protocol:</span>
+                              </div>
+                              <ul style={{ margin: 0, paddingLeft: 14, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                {dayThreat.actions.map((a, idx) => (
+                                  <li key={idx}>{a}</li>
+                                ))}
+                              </ul>
+                            </div>
+
+                            {/* Row 4: Mission Clearance Badges */}
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', paddingTop: 2 }}>
+                              <div style={{ fontSize: 9.5, color: '#64748b' }}>
+                                Helipad Air Sortie: <strong style={{ color: dayThreat.heli === 'NO-GO' ? '#dc2626' : dayThreat.heli === 'STANDBY' ? '#d97706' : '#16a34a' }}>{dayThreat.heli}</strong>
+                              </div>
+                              <span style={{ color: '#cbd5e1' }}>•</span>
+                              <div style={{ fontSize: 9.5, color: '#64748b' }}>
+                                Overland Traverse: <strong style={{ color: dayThreat.traverse === 'SUSPENDED' ? '#dc2626' : dayThreat.traverse === 'CAUTION' ? '#d97706' : '#16a34a' }}>{dayThreat.traverse}</strong>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })()}
+                </div>
+              )
+            })()}
 
             {activeTab === 'anomaly' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

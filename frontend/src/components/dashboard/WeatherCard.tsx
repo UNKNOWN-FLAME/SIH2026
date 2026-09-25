@@ -9,6 +9,13 @@ function fmt(s: SensorSummary | undefined, unit = '') {
   return `${s.latest_value.toFixed(1)}${unit}`
 }
 
+function computeChill(temp: number | null | undefined, wind: number | null | undefined): string {
+  if (temp == null || wind == null) return '---'
+  if (wind < 5) return `${temp.toFixed(0)}°C`
+  const chill = 13.12 + 0.6215 * temp - 11.37 * Math.pow(wind, 0.16) + 0.3965 * temp * Math.pow(wind, 0.16)
+  return `${Math.round(chill)}°C`
+}
+
 export default function WeatherCard({ stationId }: Props) {
   const { data: maitriSensors } = useSensors('maitri', 'weather')
   const { data: bharatiSensors } = useSensors('bharati', 'weather')
@@ -25,6 +32,7 @@ export default function WeatherCard({ stationId }: Props) {
   const bWDir = find(bharatiSensors, 'wind_dir')
 
   const isMaitriActive = stationId === 'maitri'
+
 
   return (
     <div
@@ -99,7 +107,7 @@ export default function WeatherCard({ stationId }: Props) {
             {t('weather.wind')}: <span style={{ color: '#0f172a', fontWeight: 700 }}>{fmt(mWind, ' km/h')}</span>{mWDir?.latest_value != null ? ` (${mWDir.latest_value.toFixed(0)}°)` : ''}
           </div>
           <div style={{ fontSize: 8.5, color: '#64748b', marginTop: 2 }}>
-            Chill: <strong style={{ color: '#0284c7' }}>-28°C</strong> • Clear
+            Chill: <strong style={{ color: '#0284c7' }}>{computeChill(mTemp?.latest_value, mWind?.latest_value)}</strong> • Clear
           </div>
         </div>
 
@@ -132,7 +140,7 @@ export default function WeatherCard({ stationId }: Props) {
             {t('weather.wind')}: <span style={{ color: '#0f172a', fontWeight: 700 }}>{fmt(bWind, ' km/h')}</span>{bWDir?.latest_value != null ? ` (${bWDir.latest_value.toFixed(0)}°)` : ''}
           </div>
           <div style={{ fontSize: 8.5, color: '#64748b', marginTop: 2 }}>
-            Chill: <strong style={{ color: '#0284c7' }}>-19°C</strong> • Snow
+            Chill: <strong style={{ color: '#0284c7' }}>{computeChill(bTemp?.latest_value, bWind?.latest_value)}</strong> • Snow
           </div>
         </div>
       </div>
