@@ -11,6 +11,7 @@ import InfrastructurePage from './pages/InfrastructurePage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import ReportsPage from './pages/ReportsPage'
 import SettingsPage from './pages/SettingsPage'
+import LiveTelemetryPage from './pages/LiveTelemetryPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token } = useAuth()
@@ -23,6 +24,7 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/telemetry" element={<ProtectedRoute><LiveTelemetryPage /></ProtectedRoute>} />
           <Route path="/stations" element={<ProtectedRoute><StationsPage /></ProtectedRoute>} />
           <Route path="/energy" element={<ProtectedRoute><EnergyPage /></ProtectedRoute>} />
           <Route path="/logistics" element={<ProtectedRoute><LogisticsPage /></ProtectedRoute>} />
