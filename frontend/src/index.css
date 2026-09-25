@@ -297,3 +297,21 @@ main {
     opacity: 0.3;
   }
 }
+
+/* Print Styles for Official Government Documents */
+@media print {
+  nav, aside, header, footer, .no-print {
+    display: none !important;
+  }
+  body, main {
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .gazette-modal-container {
+    max-width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+}
+

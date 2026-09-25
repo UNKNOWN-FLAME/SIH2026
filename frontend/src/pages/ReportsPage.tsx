@@ -6,8 +6,9 @@ import Sidebar from '../components/layout/Sidebar'
 import Footer from '../components/layout/Footer'
 import { useReport } from '../hooks/useReport'
 import { downloadReportFile } from '../api/hq'
+import ArchivedGazetteModal from '../components/telemetry/ArchivedGazetteModal'
 
-type ReportType = 'daily' | 'monthly' | 'incident' | 'scientific' | 'audit'
+type ReportType = 'daily' | 'monthly' | 'incident' | 'scientific' | 'audit' | 'sitrep'
 
 // ── Types matching backend response ────────────────────────────────────────
 interface AlertRow {
@@ -69,14 +70,18 @@ export default function ReportsPage() {
   const stationId = selectedStation === 'both' ? undefined : selectedStation
 
   // ── Live DB data via backend ────────────────────────────────────────────
-  const { data: reportData, isLoading, error } = useReport(activeTab, stationId)
+  const { data: reportData, isLoading, error } = useReport(
+    activeTab === 'sitrep' ? 'daily' : activeTab,
+    stationId,
+  )
 
-  const tabs: { id: ReportType; label: string; icon: string }[] = [
+  const tabs: { id: ReportType; label: string; icon: string; badge?: string }[] = [
     { id: 'daily',      label: 'Daily Ops',           icon: 'today' },
     { id: 'monthly',    label: 'Monthly Summary',      icon: 'calendar_month' },
     { id: 'incident',   label: 'Incident / Alerts',    icon: 'report' },
     { id: 'scientific', label: 'Scientific / Sensors', icon: 'science' },
     { id: 'audit',      label: 'Audit / Inventory',    icon: 'fact_check' },
+    { id: 'sitrep',     label: 'Weekly SitReps (>7d)', icon: 'policy', badge: 'GAZETTE PDF' },
   ]
 
   // Convenience accessors into the report JSON
@@ -160,15 +165,55 @@ export default function ReportsPage() {
             )}
 
             {/* Report Type Tabs */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 8, marginBottom: 12 }}>
               {tabs.map(tab => (
-                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 12px', border: `2px solid ${activeTab === tab.id ? '#0b3b60' : '#e2e8f0'}`, background: activeTab === tab.id ? '#0b3b60' : '#fff', color: activeTab === tab.id ? '#fff' : '#475569', cursor: 'pointer', fontWeight: activeTab === tab.id ? 800 : 600, fontSize: 11 }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{tab.icon}</span>
-                  <div style={{ textAlign: 'left' }}><div>{tab.label}</div><div style={{ fontSize: 9, opacity: 0.7 }}>Live from DB</div></div>
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '10px 10px',
+                    border: `2px solid ${activeTab === tab.id ? (tab.id === 'sitrep' ? '#ea580c' : '#0b3b60') : '#e2e8f0'}`,
+                    background: activeTab === tab.id ? (tab.id === 'sitrep' ? '#0b3b60' : '#0b3b60') : '#fff',
+                    color: activeTab === tab.id ? '#fff' : '#475569',
+                    cursor: 'pointer',
+                    fontWeight: activeTab === tab.id ? 800 : 600,
+                    fontSize: 10.5,
+                  }}
+                >
+                  <span
+                    className="material-symbols-outlined"
+                    style={{
+                      fontSize: 16,
+                      color: tab.id === 'sitrep' ? (activeTab === tab.id ? '#ff9933' : '#ea580c') : undefined,
+                    }}
+                  >
+                    {tab.icon}
+                  </span>
+                  <div style={{ textAlign: 'left' }}>
+                    <div>{tab.label}</div>
+                    <div style={{ fontSize: 8.5, color: tab.badge ? (activeTab === tab.id ? '#ff9933' : '#ea580c') : undefined, opacity: tab.badge ? 1 : 0.7, fontWeight: tab.badge ? 800 : 500 }}>
+                      {tab.badge ? `★ ${tab.badge}` : 'Live from DB'}
+                    </div>
+                  </div>
                 </button>
               ))}
             </div>
+
+            {/* When Weekly SitRep tab is selected: show embedded Government Gazette Viewer */}
+            {activeTab === 'sitrep' && (
+              <div style={{ marginTop: 4 }}>
+                <ArchivedGazetteModal
+                  stationId={selectedStation === 'bharati' ? 'bharati' : 'maitri'}
+                  inline={true}
+                />
+              </div>
+            )}
+
+            {activeTab !== 'sitrep' && (
+              <>
 
             {/* Loading / Error states */}
             {isLoading && (
@@ -358,19 +403,61 @@ export default function ReportsPage() {
                   </div>
                 )}
 
-                {/* Download Button */}
-                <div style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '14px 16px', marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                {/* Download / Export Bar */}
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '12px 16px', marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
                   <div style={{ fontSize: 10, color: '#64748b' }}>
                     Report generated from live Neon DB &nbsp;•&nbsp; Generated: {reportData?.generated_at ? new Date(reportData.generated_at as string).toLocaleString('en-IN') : '—'}
                   </div>
-                  <button
-                    onClick={handleDownload}
-                    disabled={isDownloading}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, background: isDownloading ? '#94a3b8' : '#0b3b60', color: '#fff', border: 'none', padding: '8px 18px', cursor: isDownloading ? 'not-allowed' : 'pointer', fontWeight: 800, fontSize: 11 }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>download</span>
-                    {isDownloading ? 'Generating…' : `Download ${activeTab.toUpperCase()} Report (.txt)`}
-                  </button>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      onClick={() => window.print()}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        background: '#ea580c',
+                        color: '#fff',
+                        border: 'none',
+                        padding: '7px 14px',
+                        cursor: 'pointer',
+                        fontWeight: 800,
+                        fontSize: 10.5,
+                        borderRadius: 2,
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+                      }}
+                      title="Print or export current operational report as official PDF"
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 15 }}>print</span>
+                      <span>Print / Save Official PDF</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleDownload}
+                      disabled={isDownloading}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        background: isDownloading ? '#94a3b8' : '#0b3b60',
+                        color: '#fff',
+                        border: 'none',
+                        padding: '7px 14px',
+                        cursor: isDownloading ? 'not-allowed' : 'pointer',
+                        fontWeight: 800,
+                        fontSize: 10.5,
+                        borderRadius: 2,
+                      }}
+                      title="Download raw plain-text audit record"
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 15 }}>download</span>
+                      <span>{isDownloading ? 'Generating…' : `Raw Audit Log (.txt)`}</span>
+                    </button>
+                  </div>
                 </div>
+              </>
+            )}
               </>
             )}
 
