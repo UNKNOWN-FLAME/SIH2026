@@ -19,7 +19,7 @@ app.add_middleware(
 )
 
 # Initialize the God Engine (Normal speed 1x, dynamically accelerates when faults are active)
-engine = SimulationEngine(use_real_clock=False, time_acceleration=1)
+engine = SimulationEngine(use_real_clock=True, time_acceleration=1)
 connected_clients: List[WebSocket] = []
 
 class FaultRequest(BaseModel):
