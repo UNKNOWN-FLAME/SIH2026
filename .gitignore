@@ -77,3 +77,9 @@ package-lock.json
 # =============================================================================
 data/
 secrets/
+
+# Added as per user instructions for GitHub Push
+*.md
+frontend/
+bharati_dashboard/
+assets1/
