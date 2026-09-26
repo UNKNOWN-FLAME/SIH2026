@@ -9,6 +9,8 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts'
+import TopNav from '../components/layout/TopNav'
+import Footer from '../components/layout/Footer'
 import emblemOfIndia from '../assets/emblem_of_india.svg'
 
 type StationId = 'maitri' | 'bharati'
@@ -19,25 +21,25 @@ interface IncidentConfig {
   stationName: string
   incidentName: string
   incidentDate: string
-  hash: string
+  sitrepNumber: string
 }
 
 const INCIDENTS: Record<StationId, IncidentConfig> = {
   maitri: {
-    id: 'BB-MAITRI-0924',
+    id: 'BB-MAI-2026-0924',
     stationId: 'maitri',
     stationName: 'Maitri Research Station',
-    incidentName: 'Katabatic Blizzard Generator Stall & Power Blackout',
-    incidentDate: '24 September 2026 • 02:40 UTC',
-    hash: 'SHA256:7f8b92c4...e7b',
+    incidentName: 'DG-1 Fuel Line Freeze & Full Station Power Blackout',
+    incidentDate: '24 Sep 2026 • 02:40 UTC (08:10 IST)',
+    sitrepNumber: 'NCPOR/SITREP/45-ISEA/MAI/BLACKOUT-01',
   },
   bharati: {
-    id: 'BB-BHARATI-0922',
+    id: 'BB-BHA-2026-0922',
     stationId: 'bharati',
     stationName: 'Bharati Research Station',
-    incidentName: 'HVAC Intake Damper Freeze & Habitat Thermal Surge',
-    incidentDate: '22 September 2026 • 18:15 UTC',
-    hash: 'SHA256:3a1c9e88...199',
+    incidentName: 'Larsemann Habitat HVAC Damper Jam & Thermal Coil Overload',
+    incidentDate: '22 Sep 2026 • 18:15 UTC (23:45 IST)',
+    sitrepNumber: 'NCPOR/SITREP/45-ISEA/BHA/THERMAL-02',
   },
 }
 
@@ -170,123 +172,151 @@ export default function BlackBoxPage() {
   }, [navigate])
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        width: '100vw',
-        background: '#0a0f1d',
-        color: '#f8fafc',
-        fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      {/* ── Top Bar ── */}
-      <header
-        style={{
-          background: '#070b14',
-          borderBottom: '1px solid #1e293b',
-          padding: '10px 24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 12,
-        }}
-      >
-        {/* Left: Branding & Incident Identity */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div
-            style={{
-              width: 32,
-              height: 38,
-              background: '#ffffff',
-              borderRadius: 3,
-              padding: 2,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <img src={emblemOfIndia} alt="India Emblem" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-          </div>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f0f4f8' }}>
+      {/* Official Government Top Navigation */}
+      <TopNav />
 
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span
-                style={{
-                  background: '#dc2626',
-                  color: '#ffffff',
-                  fontSize: 10,
-                  fontWeight: 900,
-                  padding: '2px 6px',
-                  borderRadius: 2,
-                  fontFamily: 'monospace',
-                  letterSpacing: '0.05em',
-                }}
-              >
-                RECORDER REPLAY
-              </span>
-              <span style={{ fontSize: 13, fontWeight: 800, color: '#f8fafc' }}>
-                POLAR STATION BLACK BOX
-              </span>
-              <span style={{ fontSize: 11, color: '#64748b' }}>•</span>
-              <span style={{ fontSize: 11, color: '#94a3b8' }}>{incident.incidentDate}</span>
-            </div>
-            <div style={{ fontSize: 11, color: '#cbd5e1', fontWeight: 600, marginTop: 2 }}>
-              {incident.stationName} — <span style={{ color: '#ef4444' }}>{incident.incidentName}</span>
-            </div>
+      {/* Main Content Area */}
+      <main style={{ flex: 1, padding: '12px 20px 24px 20px', maxWidth: 1540, width: '100%', margin: '0 auto' }}>
+        
+        {/* Government Breadcrumb Bar */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: 11,
+            color: '#64748b',
+            marginBottom: 10,
+            padding: '5px 12px',
+            background: '#ffffff',
+            border: '1px solid #cbd5e1',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#0b3b60' }}>home</span>
+            <span style={{ color: '#0b3b60', fontWeight: 700 }}>HOME</span>
+            <span>&gt;</span>
+            <span style={{ color: '#0b3b60', fontWeight: 600 }}>POLAR OPERATIONS DIVISION</span>
+            <span>&gt;</span>
+            <span style={{ color: '#0b3b60', fontWeight: 800 }}>POLAR STATION BLACK BOX (CSMU RECORDER)</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 10, color: '#991b1b', background: '#fee2e2', padding: '2px 8px', fontWeight: 800, border: '1px solid #fecaca', borderRadius: 2 }}>
+              FORENSIC AUDIT RECORD • {incident.sitrepNumber}
+            </span>
           </div>
         </div>
 
-        {/* Center: Incident Toggle Tabs */}
-        <div style={{ display: 'flex', alignItems: 'center', background: '#0f172a', padding: 3, borderRadius: 6, border: '1px solid #1e293b' }}>
-          <button
-            onClick={() => {
-              setStationId('maitri')
-              setPlayheadOffset(0.0)
-            }}
-            style={{
-              padding: '6px 14px',
-              fontSize: 11,
-              fontWeight: 700,
-              cursor: 'pointer',
-              background: stationId === 'maitri' ? '#1e293b' : 'transparent',
-              color: stationId === 'maitri' ? '#38bdf8' : '#64748b',
-              border: 'none',
-              borderRadius: 4,
-              transition: 'all 0.15s ease',
-            }}
-          >
-            Maitri: DG-1 Blackout
-          </button>
-          <button
-            onClick={() => {
-              setStationId('bharati')
-              setPlayheadOffset(0.0)
-            }}
-            style={{
-              padding: '6px 14px',
-              fontSize: 11,
-              fontWeight: 700,
-              cursor: 'pointer',
-              background: stationId === 'bharati' ? '#1e293b' : 'transparent',
-              color: stationId === 'bharati' ? '#38bdf8' : '#64748b',
-              border: 'none',
-              borderRadius: 4,
-              transition: 'all 0.15s ease',
-            }}
-          >
-            Bharati: HVAC Damper Trip
-          </button>
-        </div>
+        {/* ── Official Black Box Mission Control Header ── */}
+        <div
+          style={{
+            background: '#ffffff',
+            border: '1px solid #cbd5e1',
+            borderTop: '3px solid #0b3b60',
+            padding: '12px 16px',
+            marginBottom: 12,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 12,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+          }}
+        >
+          {/* Left: Station & Incident Identification */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div
+              style={{
+                width: 36,
+                height: 42,
+                background: '#ffffff',
+                border: '1px solid #cbd5e1',
+                borderRadius: 3,
+                padding: 3,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <img src={emblemOfIndia} alt="National Emblem of India" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            </div>
 
-        {/* Right: Exit Button */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 10, color: '#64748b', fontFamily: 'monospace' }}>
-            {incident.hash}
-          </span>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span
+                  style={{
+                    background: '#b91c1c',
+                    color: '#ffffff',
+                    fontSize: 9.5,
+                    fontWeight: 900,
+                    padding: '2px 7px',
+                    borderRadius: 2,
+                    letterSpacing: '0.06em',
+                    fontFamily: 'monospace',
+                  }}
+                >
+                  BLACK BOX FLIGHT RECORDER
+                </span>
+                <span style={{ fontSize: 14, fontWeight: 800, color: '#0b3b60' }}>
+                  {incident.stationName}
+                </span>
+                <span style={{ fontSize: 12, color: '#64748b' }}>•</span>
+                <span style={{ fontSize: 12, color: '#b91c1c', fontWeight: 700 }}>
+                  {incident.incidentName}
+                </span>
+              </div>
+              <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>
+                Recorded Incident Timestamp: <strong>{incident.incidentDate}</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Center: Incident Station Switcher */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f1f5f9', padding: 4, borderRadius: 4, border: '1px solid #cbd5e1' }}>
+            <button
+              onClick={() => {
+                setStationId('maitri')
+                setPlayheadOffset(0.0)
+              }}
+              style={{
+                padding: '6px 12px',
+                fontSize: 11,
+                fontWeight: 800,
+                cursor: 'pointer',
+                background: stationId === 'maitri' ? '#0b3b60' : 'transparent',
+                color: stationId === 'maitri' ? '#ffffff' : '#334155',
+                border: 'none',
+                borderRadius: 3,
+                transition: 'all 0.15s ease',
+              }}
+            >
+              📍 Maitri: DG-1 Blackout
+            </button>
+            <button
+              onClick={() => {
+                setStationId('bharati')
+                setPlayheadOffset(0.0)
+              }}
+              style={{
+                padding: '6px 12px',
+                fontSize: 11,
+                fontWeight: 800,
+                cursor: 'pointer',
+                background: stationId === 'bharati' ? '#0b3b60' : 'transparent',
+                color: stationId === 'bharati' ? '#ffffff' : '#334155',
+                border: 'none',
+                borderRadius: 3,
+                transition: 'all 0.15s ease',
+              }}
+            >
+              📍 Bharati: HVAC Trip
+            </button>
+          </div>
+
+          {/* Right: Return to Operations Button */}
           <button
             onClick={() => navigate(-1)}
             style={{
@@ -294,49 +324,52 @@ export default function BlackBoxPage() {
               alignItems: 'center',
               gap: 6,
               padding: '6px 14px',
-              background: '#1e293b',
-              color: '#f8fafc',
-              border: '1px solid #334155',
-              borderRadius: 4,
+              background: '#0b3b60',
+              color: '#ffffff',
+              border: '1px solid #0b3b60',
+              borderRadius: 3,
               fontSize: 11.5,
               fontWeight: 700,
               cursor: 'pointer',
+              boxShadow: '0 1px 2px rgba(11, 59, 96, 0.2)',
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = '#334155')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = '#1e293b')}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#082a45')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#0b3b60')}
           >
-            <span>Exit Replay</span>
-            <span style={{ fontSize: 10, color: '#94a3b8' }}>(ESC)</span>
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>arrow_back</span>
+            <span>Return to Dashboard</span>
+            <span style={{ fontSize: 9.5, opacity: 0.8 }}>(ESC)</span>
           </button>
         </div>
-      </header>
 
-      {/* ── Main Forensic Deck ── */}
-      <main style={{ flex: 1, padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 1600, width: '100%', margin: '0 auto' }}>
-        
-        {/* ── Section 1: 10-Hour Incident Timeline Chart ── */}
+        {/* ── Main Forensic Chart Card ── */}
         <div
           style={{
-            background: '#0d1424',
-            border: '1px solid #1e293b',
-            borderRadius: 6,
+            background: '#ffffff',
+            border: '1px solid #cbd5e1',
+            borderRadius: 3,
             padding: '14px 18px',
+            marginBottom: 12,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#94a3b8' }}>
-                10-Hour Incident Window (-5h to +5h relative to blackout event)
+          {/* Header Bar inside card */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span className="material-symbols-outlined" style={{ color: '#0b3b60', fontSize: 18 }}>history</span>
+              <span style={{ fontSize: 12.5, fontWeight: 800, color: '#0b3b60', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                10-Hour Forensic Incident Window [-5h to +5h Relative to Blackout Event]
               </span>
             </div>
 
-            {/* Playhead Time Badge */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'monospace', fontSize: 12 }}>
-              <span style={{ color: '#64748b' }}>Replay Playhead:</span>
+            {/* Playhead Badge */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, fontFamily: 'monospace' }}>
+              <span style={{ color: '#64748b', fontWeight: 600 }}>Forensic Playhead:</span>
               <span
                 style={{
-                  background: isTrip ? '#ef4444' : '#0284c7',
-                  color: '#ffffff',
+                  background: isTrip ? '#fee2e2' : '#e0f2fe',
+                  color: isTrip ? '#991b1b' : '#0369a1',
+                  border: isTrip ? '1px solid #fecaca' : '1px solid #bae6fd',
                   padding: '2px 8px',
                   borderRadius: 3,
                   fontWeight: 900,
@@ -344,35 +377,31 @@ export default function BlackBoxPage() {
               >
                 {activePoint.label}
               </span>
-              <span style={{ color: isTrip ? '#f87171' : '#38bdf8', fontWeight: 700 }}>
-                {playheadOffset === 0 ? 'BLACKOUT EVENT' : playheadOffset < 0 ? `${Math.abs(playheadOffset)}h Before Blackout` : `${playheadOffset}h After Event`}
+              <span style={{ color: isTrip ? '#b91c1c' : '#0b3b60', fontWeight: 700 }}>
+                {playheadOffset === 0 ? '● BLACKOUT ONSET' : playheadOffset < 0 ? `${Math.abs(playheadOffset)}h Before Blackout` : `${playheadOffset}h After Recovery`}
               </span>
             </div>
           </div>
 
-          {/* Area Chart */}
-          <div style={{ height: 240, width: '100%' }}>
+          {/* Area Chart in Government Theme */}
+          <div style={{ height: 260, width: '100%', background: '#fafbfc', borderRadius: 4, padding: '10px 10px 0 0' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={telemetryData} margin={{ top: 8, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={telemetryData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="powerGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#38bdf8" stopOpacity={0.0} />
-                  </linearGradient>
-                  <linearGradient id="tripGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0.0} />
+                  <linearGradient id="powerGovGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#0b3b60" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#0b3b60" stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
                 <XAxis
                   dataKey="label"
-                  stroke="#334155"
-                  tick={{ fill: '#64748b', fontSize: 10, fontFamily: 'monospace' }}
+                  stroke="#94a3b8"
+                  tick={{ fill: '#475569', fontSize: 10, fontFamily: 'monospace' }}
                   interval={10}
                 />
                 <YAxis
-                  stroke="#334155"
-                  tick={{ fill: '#64748b', fontSize: 10, fontFamily: 'monospace' }}
+                  stroke="#94a3b8"
+                  tick={{ fill: '#475569', fontSize: 10, fontFamily: 'monospace' }}
                   domain={[0, 105]}
                 />
                 <Tooltip
@@ -382,18 +411,18 @@ export default function BlackBoxPage() {
                       return (
                         <div
                           style={{
-                            background: '#0f172a',
-                            border: '1px solid #334155',
-                            borderRadius: 4,
-                            padding: '6px 10px',
+                            background: '#0b3b60',
+                            color: '#ffffff',
+                            borderRadius: 3,
+                            padding: '8px 12px',
                             fontSize: 11,
                             fontFamily: 'monospace',
-                            color: '#ffffff',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
                           }}
                         >
-                          <div style={{ fontWeight: 800, color: '#38bdf8' }}>{data.label}</div>
+                          <div style={{ fontWeight: 800, color: '#ff9933' }}>{data.label}</div>
                           <div>Generator Output: <strong>{data.powerKw} kW</strong></div>
-                          <div>Fuel Pressure: <strong>{data.fuelPressureBar} Bar</strong></div>
+                          <div>Fuel Line Pressure: <strong>{data.fuelPressureBar} Bar</strong></div>
                           <div>Habitat Temp: <strong>{data.habitatTempC} °C</strong></div>
                         </div>
                       )
@@ -401,22 +430,22 @@ export default function BlackBoxPage() {
                     return null
                   }}
                 />
-                {/* Blackout event onset marker */}
+                {/* Blackout Marker Line */}
                 <ReferenceLine
                   x="T=00:00"
-                  stroke="#ef4444"
+                  stroke="#dc2626"
                   strokeWidth={2}
-                  strokeDasharray="3 3"
-                  label={{ value: '🚨 BLACKOUT (T=0)', fill: '#ef4444', fontSize: 10.5, position: 'top', fontWeight: 800 }}
+                  strokeDasharray="4 4"
+                  label={{ value: '🚨 BLACKOUT ONSET (T=0)', fill: '#b91c1c', fontSize: 10.5, position: 'top', fontWeight: 800 }}
                 />
-                {/* Active Replay Playhead */}
+                {/* Active Playhead Marker */}
                 <ReferenceLine
                   x={activePoint.label}
-                  stroke="#38bdf8"
+                  stroke="#0b3b60"
                   strokeWidth={2}
-                  label={{ value: '▼ PLAYHEAD', fill: '#38bdf8', fontSize: 9.5, position: 'insideTopRight', fontWeight: 800 }}
+                  label={{ value: '▼ PLAYHEAD', fill: '#0b3b60', fontSize: 9.5, position: 'insideTopRight', fontWeight: 800 }}
                 />
-                <Area type="monotone" dataKey="powerKw" stroke="#38bdf8" strokeWidth={2} fillOpacity={1} fill="url(#powerGrad)" name="Generator Load (kW)" />
+                <Area type="monotone" dataKey="powerKw" stroke="#0b3b60" strokeWidth={2.5} fillOpacity={1} fill="url(#powerGovGrad)" name="Generator Load (kW)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -424,9 +453,9 @@ export default function BlackBoxPage() {
           {/* Interactive Playback Toolbar */}
           <div
             style={{
-              background: '#080d18',
-              border: '1px solid #1e293b',
-              borderRadius: 4,
+              background: '#f8fafc',
+              border: '1px solid #cbd5e1',
+              borderRadius: 3,
               padding: '8px 14px',
               marginTop: 10,
               display: 'flex',
@@ -435,7 +464,7 @@ export default function BlackBoxPage() {
               flexWrap: 'wrap',
             }}
           >
-            {/* Play/Pause */}
+            {/* Play/Pause Button */}
             <button
               onClick={() => setIsPlaying(!isPlaying)}
               style={{
@@ -443,35 +472,35 @@ export default function BlackBoxPage() {
                 alignItems: 'center',
                 gap: 6,
                 padding: '5px 14px',
-                background: isPlaying ? '#ea580c' : '#0284c7',
+                background: isPlaying ? '#ea580c' : '#0b3b60',
                 color: '#ffffff',
                 border: 'none',
-                borderRadius: 4,
+                borderRadius: 3,
                 fontWeight: 700,
                 fontSize: 11.5,
                 cursor: 'pointer',
               }}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: 15 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
                 {isPlaying ? 'pause' : 'play_arrow'}
               </span>
               <span>{isPlaying ? 'Pause' : 'Play Replay'}</span>
             </button>
 
-            {/* Speed Multiplier */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            {/* Playback Speeds */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
               {[1, 2, 5].map((speed) => (
                 <button
                   key={speed}
                   onClick={() => setPlaybackSpeed(speed)}
                   style={{
                     padding: '3px 8px',
-                    borderRadius: 3,
+                    borderRadius: 2,
                     fontSize: 10,
                     fontWeight: 700,
-                    background: playbackSpeed === speed ? '#38bdf8' : '#1e293b',
-                    color: playbackSpeed === speed ? '#0a0f1d' : '#94a3b8',
-                    border: 'none',
+                    background: playbackSpeed === speed ? '#0b3b60' : '#ffffff',
+                    color: playbackSpeed === speed ? '#ffffff' : '#334155',
+                    border: '1px solid #cbd5e1',
                     cursor: 'pointer',
                   }}
                 >
@@ -485,11 +514,11 @@ export default function BlackBoxPage() {
               onClick={() => setPlayheadOffset(0.0)}
               style={{
                 padding: '4px 10px',
-                background: '#450a0a',
-                color: '#fca5a5',
-                border: '1px solid #dc2626',
-                borderRadius: 3,
-                fontSize: 10.5,
+                background: '#fee2e2',
+                color: '#991b1b',
+                border: '1px solid #fecaca',
+                borderRadius: 2,
+                fontSize: 11,
                 fontWeight: 800,
                 cursor: 'pointer',
               }}
@@ -497,7 +526,7 @@ export default function BlackBoxPage() {
               🚨 Jump to Blackout (T=0)
             </button>
 
-            {/* Scrub Slider */}
+            {/* Scrubber Range Slider */}
             <div style={{ flex: 1, minWidth: 200, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 10, color: '#64748b', fontFamily: 'monospace' }}>-5h</span>
               <input
@@ -509,7 +538,7 @@ export default function BlackBoxPage() {
                 onChange={(e) => setPlayheadOffset(parseFloat(e.target.value))}
                 style={{
                   flex: 1,
-                  accentColor: isTrip ? '#ef4444' : '#38bdf8',
+                  accentColor: isTrip ? '#dc2626' : '#0b3b60',
                   cursor: 'pointer',
                   height: 5,
                 }}
@@ -519,40 +548,42 @@ export default function BlackBoxPage() {
           </div>
         </div>
 
-        {/* ── Section 2: Sensor Telemetry Readouts (No Fluff) ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        {/* ── Section 2: Sensor Telemetry Cards (Government Theme) ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 12 }}>
           {/* Tile 1: Primary Generator */}
           <div
             style={{
-              background: '#0d1424',
-              border: activePoint.powerKw < 30 ? '1px solid #ef4444' : '1px solid #1e293b',
-              borderRadius: 6,
+              background: '#ffffff',
+              border: activePoint.powerKw < 30 ? '1.5px solid #ef4444' : '1px solid #cbd5e1',
+              borderRadius: 3,
               padding: '12px 14px',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
             }}
           >
-            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Primary Generator Output</div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: activePoint.powerKw < 30 ? '#ef4444' : '#38bdf8', fontFamily: 'monospace', margin: '4px 0' }}>
+            <div style={{ fontSize: 10.5, color: '#64748b', fontWeight: 600 }}>Primary Generator Output</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: activePoint.powerKw < 30 ? '#dc2626' : '#0b3b60', fontFamily: 'monospace', margin: '4px 0' }}>
               {activePoint.powerKw} kW
             </div>
-            <div style={{ fontSize: 10.5, color: activePoint.powerKw < 30 ? '#f87171' : '#22c55e', fontWeight: 700 }}>
-              {activePoint.powerKw < 30 ? 'GENERATOR STALL / BLACKOUT' : 'NOMINAL GENERATION (84 kW)'}
+            <div style={{ fontSize: 10, color: activePoint.powerKw < 30 ? '#b91c1c' : '#15803d', fontWeight: 700 }}>
+              {activePoint.powerKw < 30 ? 'CRITICAL GENERATOR TRIP' : 'NOMINAL GENERATION (84 kW)'}
             </div>
           </div>
 
           {/* Tile 2: Fuel Line Pressure */}
           <div
             style={{
-              background: '#0d1424',
-              border: activePoint.fuelPressureBar < 1.0 ? '1px solid #ef4444' : '1px solid #1e293b',
-              borderRadius: 6,
+              background: '#ffffff',
+              border: activePoint.fuelPressureBar < 1.0 ? '1.5px solid #ef4444' : '1px solid #cbd5e1',
+              borderRadius: 3,
               padding: '12px 14px',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
             }}
           >
-            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Diesel Fuel Line Pressure</div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: activePoint.fuelPressureBar < 1.0 ? '#ef4444' : '#38bdf8', fontFamily: 'monospace', margin: '4px 0' }}>
+            <div style={{ fontSize: 10.5, color: '#64748b', fontWeight: 600 }}>Diesel Fuel Line Pressure</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: activePoint.fuelPressureBar < 1.0 ? '#dc2626' : '#0b3b60', fontFamily: 'monospace', margin: '4px 0' }}>
               {activePoint.fuelPressureBar} Bar
             </div>
-            <div style={{ fontSize: 10.5, color: activePoint.fuelPressureBar < 1.0 ? '#f87171' : '#22c55e', fontWeight: 700 }}>
+            <div style={{ fontSize: 10, color: activePoint.fuelPressureBar < 1.0 ? '#b91c1c' : '#15803d', fontWeight: 700 }}>
               {activePoint.fuelPressureBar < 1.0 ? 'LINE FREEZE (0.3 Bar)' : 'NORMAL FLOW (4.2 Bar)'}
             </div>
           </div>
@@ -560,97 +591,101 @@ export default function BlackBoxPage() {
           {/* Tile 3: Engine Vibration Harmonics */}
           <div
             style={{
-              background: '#0d1424',
-              border: activePoint.vibrationRms > 4.0 ? '1px solid #ef4444' : '1px solid #1e293b',
-              borderRadius: 6,
+              background: '#ffffff',
+              border: activePoint.vibrationRms > 4.0 ? '1.5px solid #ef4444' : '1px solid #cbd5e1',
+              borderRadius: 3,
               padding: '12px 14px',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
             }}
           >
-            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Engine Knock Vibration</div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: activePoint.vibrationRms > 4.0 ? '#ef4444' : '#38bdf8', fontFamily: 'monospace', margin: '4px 0' }}>
+            <div style={{ fontSize: 10.5, color: '#64748b', fontWeight: 600 }}>Engine Knock Vibration</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: activePoint.vibrationRms > 4.0 ? '#dc2626' : '#0b3b60', fontFamily: 'monospace', margin: '4px 0' }}>
               {activePoint.vibrationRms} mm/s
             </div>
-            <div style={{ fontSize: 10.5, color: activePoint.vibrationRms > 4.0 ? '#f87171' : '#22c55e', fontWeight: 700 }}>
-              {activePoint.vibrationRms > 4.0 ? 'MISFIRE KNOCK (8.4 mm/s)' : 'NOMINAL SMOOTH (1.2 mm/s)'}
+            <div style={{ fontSize: 10, color: activePoint.vibrationRms > 4.0 ? '#b91c1c' : '#15803d', fontWeight: 700 }}>
+              {activePoint.vibrationRms > 4.0 ? 'CYLINDER MISFIRE (8.4 mm/s)' : 'NOMINAL SMOOTH (1.2 mm/s)'}
             </div>
           </div>
 
           {/* Tile 4: Habitat Temp */}
           <div
             style={{
-              background: '#0d1424',
-              border: activePoint.habitatTempC < 18.0 ? '1px solid #f59e0b' : '1px solid #1e293b',
-              borderRadius: 6,
+              background: '#ffffff',
+              border: activePoint.habitatTempC < 18.0 ? '1.5px solid #f59e0b' : '1px solid #cbd5e1',
+              borderRadius: 3,
               padding: '12px 14px',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
             }}
           >
-            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Living Quarters Habitat Temp</div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: activePoint.habitatTempC < 18.0 ? '#f59e0b' : '#38bdf8', fontFamily: 'monospace', margin: '4px 0' }}>
+            <div style={{ fontSize: 10.5, color: '#64748b', fontWeight: 600 }}>Living Habitat Temperature</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: activePoint.habitatTempC < 18.0 ? '#d97706' : '#0b3b60', fontFamily: 'monospace', margin: '4px 0' }}>
               {activePoint.habitatTempC} °C
             </div>
-            <div style={{ fontSize: 10.5, color: activePoint.habitatTempC < 18.0 ? '#f59e0b' : '#22c55e', fontWeight: 700 }}>
+            <div style={{ fontSize: 10, color: activePoint.habitatTempC < 18.0 ? '#b45309' : '#15803d', fontWeight: 700 }}>
               {activePoint.habitatTempC < 18.0 ? 'HEAT LOSS (+16.8°C)' : 'COMFORT RANGE (+21.4°C)'}
             </div>
           </div>
         </div>
 
-        {/* ── Section 3: Subsystem State Strip (Clean & Compact) ── */}
+        {/* ── Section 3: Subsystem Status Strip (Official Government Strip) ── */}
         <div
           style={{
-            background: '#0d1424',
-            border: '1px solid #1e293b',
-            borderRadius: 6,
-            padding: '12px 18px',
+            background: '#ffffff',
+            border: '1px solid #cbd5e1',
+            borderRadius: 3,
+            padding: '12px 16px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
           }}
         >
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 10 }}>
-            Subsystem Status at {activePoint.label}
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', marginBottom: 8 }}>
+            Subsystem SCADA Status at {activePoint.label}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
             {/* Node 1 */}
-            <div style={{ background: '#070b14', border: '1px solid #1e293b', borderRadius: 4, padding: '8px 12px' }}>
-              <div style={{ fontSize: 10, color: '#64748b' }}>Primary Power</div>
-              <div style={{ fontSize: 12, fontWeight: 800, color: activePoint.powerKw < 30 ? '#ef4444' : '#38bdf8', marginTop: 2 }}>
+            <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 3, padding: '8px 10px' }}>
+              <div style={{ fontSize: 9.5, color: '#64748b', fontWeight: 600 }}>PRIMARY POWER</div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: activePoint.powerKw < 30 ? '#dc2626' : '#0b3b60', marginTop: 2 }}>
                 {activePoint.powerKw < 30 ? 'DG-1 TRIP' : 'DG-1 ONLINE'}
               </div>
             </div>
 
             {/* Node 2 */}
-            <div style={{ background: '#070b14', border: '1px solid #1e293b', borderRadius: 4, padding: '8px 12px' }}>
-              <div style={{ fontSize: 10, color: '#64748b' }}>Fuel Feeder</div>
-              <div style={{ fontSize: 12, fontWeight: 800, color: activePoint.fuelPressureBar < 1.0 ? '#ef4444' : '#22c55e', marginTop: 2 }}>
+            <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 3, padding: '8px 10px' }}>
+              <div style={{ fontSize: 9.5, color: '#64748b', fontWeight: 600 }}>FUEL FEEDER</div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: activePoint.fuelPressureBar < 1.0 ? '#dc2626' : '#15803d', marginTop: 2 }}>
                 {activePoint.fuelPressureBar < 1.0 ? 'LINE FREEZE' : 'PRESSURIZED'}
               </div>
             </div>
 
             {/* Node 3 */}
-            <div style={{ background: '#070b14', border: '1px solid #1e293b', borderRadius: 4, padding: '8px 12px' }}>
-              <div style={{ fontSize: 10, color: '#64748b' }}>Coolant Loop</div>
-              <div style={{ fontSize: 12, fontWeight: 800, color: activePoint.coolantTempC > 95 ? '#ef4444' : '#38bdf8', marginTop: 2 }}>
+            <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 3, padding: '8px 10px' }}>
+              <div style={{ fontSize: 9.5, color: '#64748b', fontWeight: 600 }}>COOLANT LOOP</div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: activePoint.coolantTempC > 95 ? '#dc2626' : '#0b3b60', marginTop: 2 }}>
                 {activePoint.coolantTempC > 95 ? `${activePoint.coolantTempC}°C OVERHEAT` : `${activePoint.coolantTempC}°C NORMAL`}
               </div>
             </div>
 
             {/* Node 4 */}
-            <div style={{ background: '#070b14', border: '1px solid #1e293b', borderRadius: 4, padding: '8px 12px' }}>
-              <div style={{ fontSize: 10, color: '#64748b' }}>Living Quarters</div>
-              <div style={{ fontSize: 12, fontWeight: 800, color: activePoint.habitatTempC < 18 ? '#f59e0b' : '#22c55e', marginTop: 2 }}>
+            <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 3, padding: '8px 10px' }}>
+              <div style={{ fontSize: 9.5, color: '#64748b', fontWeight: 600 }}>LIVING QUARTERS</div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: activePoint.habitatTempC < 18 ? '#d97706' : '#15803d', marginTop: 2 }}>
                 {activePoint.habitatTempC < 18 ? 'HEAT LOSS' : 'COMFORTABLE'}
               </div>
             </div>
 
             {/* Node 5 */}
-            <div style={{ background: '#070b14', border: '1px solid #1e293b', borderRadius: 4, padding: '8px 12px' }}>
-              <div style={{ fontSize: 10, color: '#64748b' }}>ISRO GSAT-30</div>
-              <div style={{ fontSize: 12, fontWeight: 800, color: isTrip ? '#f59e0b' : '#38bdf8', marginTop: 2 }}>
-                {isTrip ? 'OFFLINE (BUFFERING)' : 'SYNCHRONIZED'}
+            <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 3, padding: '8px 10px' }}>
+              <div style={{ fontSize: 9.5, color: '#64748b', fontWeight: 600 }}>ISRO GSAT-30 LINK</div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: isTrip ? '#d97706' : '#0b3b60', marginTop: 2 }}>
+                {isTrip ? 'EDGE BUFFERING' : 'SYNCHRONIZED'}
               </div>
             </div>
           </div>
         </div>
-
       </main>
+
+      <Footer />
     </div>
   )
 }
