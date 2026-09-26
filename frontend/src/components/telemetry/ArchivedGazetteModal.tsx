@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import GovtOfIndiaLogo from '../ui/GovtOfIndiaLogo'
 import { useLanguage } from '../../context/LanguageContext'
+import { generateSitrepGazettePDF } from '../../utils/pdfGenerator'
 
 interface Props {
   stationId?: 'maitri' | 'bharati' | string
@@ -113,10 +114,30 @@ export default function ArchivedGazetteModal({
   const weeks = WEEKS_DATA[stationId] || WEEKS_DATA.maitri
   const [selectedWeekId, setSelectedWeekId] = useState<string>('w37')
   const [downloadMsg, setDownloadMsg] = useState<string | null>(null)
+  const [isPdfGenerating, setIsPdfGenerating] = useState(false)
 
   const selectedWeek = weeks.find((w) => w.id === selectedWeekId) || weeks[0]
   const stationName = stationId === 'maitri' ? 'MAITRI BASE (70°45′S, 11°44′E)' : 'BHARATI BASE (69°24′S, 76°11′E)'
   const stationRegion = stationId === 'maitri' ? 'Schirmacher Oasis, Queen Maud Land' : 'Larsemann Hills, Prydz Bay'
+
+  async function handleDownloadGazettePdf() {
+    setIsPdfGenerating(true)
+    try {
+      await generateSitrepGazettePDF({
+        selectedWeek: selectedWeek.dateRange,
+        stationId,
+        sitrepNumber: selectedWeek.sitrepNumber,
+      })
+      setDownloadMsg(`✓ Downloaded ${selectedWeek.sitrepNumber.replace(/\//g, '_')}.pdf`)
+      setTimeout(() => setDownloadMsg(null), 4000)
+    } catch (err) {
+      console.error('PDF error:', err)
+      setDownloadMsg('❌ Failed to generate PDF')
+      setTimeout(() => setDownloadMsg(null), 4000)
+    } finally {
+      setIsPdfGenerating(false)
+    }
+  }
 
   function handlePrint() {
     window.print()
@@ -250,6 +271,34 @@ Generated Timestamp  : ${new Date().toUTCString()}
               BHARATI
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={handleDownloadGazettePdf}
+            disabled={isPdfGenerating}
+            style={{
+              background: isPdfGenerating ? '#94a3b8' : 'linear-gradient(135deg, #138808 0%, #15803d 100%)',
+              color: '#ffffff',
+              border: 'none',
+              padding: '5px 12px',
+              fontSize: 10.5,
+              fontWeight: 800,
+              borderRadius: 2,
+              cursor: isPdfGenerating ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+            }}
+            title="Download official Government of India SITREP PDF matching National Gazette format"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 15, color: '#fef08a' }}>verified</span>
+            <span>
+              {isPdfGenerating
+                ? (lang === 'hi' ? 'तैयार हो रहा है…' : 'Generating…')
+                : (lang === 'hi' ? 'आधिकारिक राजपत्र पीडीएफ' : 'Govt Gazette PDF')}
+            </span>
+          </button>
 
           <button
             type="button"

@@ -7,6 +7,7 @@ import Footer from '../components/layout/Footer'
 import { useReport } from '../hooks/useReport'
 import { downloadReportFile } from '../api/hq'
 import ArchivedGazetteModal from '../components/telemetry/ArchivedGazetteModal'
+import { generateOfficialReportPDF } from '../utils/pdfGenerator'
 
 type ReportType = 'daily' | 'monthly' | 'incident' | 'scientific' | 'audit' | 'sitrep'
 
@@ -411,6 +412,29 @@ export default function ReportsPage() {
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <button
                       type="button"
+                      onClick={() => generateOfficialReportPDF({ reportType: activeTab, stationId, reportData })}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        background: 'linear-gradient(135deg, #0b3b60 0%, #1e40af 100%)',
+                        color: '#fff',
+                        border: '1px solid #1e3a8a',
+                        padding: '7px 14px',
+                        cursor: 'pointer',
+                        fontWeight: 800,
+                        fontSize: 10.5,
+                        borderRadius: 2,
+                        boxShadow: '0 2px 4px rgba(11, 59, 96, 0.25)',
+                      }}
+                      title="Download official Government of India / MoES formatted Gazette PDF"
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#ff9933' }}>verified</span>
+                      <span>Download Official PDF (Govt. Format)</span>
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={() => window.print()}
                       style={{
                         display: 'flex',
@@ -429,7 +453,7 @@ export default function ReportsPage() {
                       title="Print or export current operational report as official PDF"
                     >
                       <span className="material-symbols-outlined" style={{ fontSize: 15 }}>print</span>
-                      <span>Print / Save Official PDF</span>
+                      <span>Print Document</span>
                     </button>
 
                     <button
