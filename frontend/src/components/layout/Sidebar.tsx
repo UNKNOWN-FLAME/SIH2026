@@ -146,75 +146,61 @@ export default function Sidebar({
             </a>
           )
         })}
-      </nav>
 
-      {/* Standalone Black Box Module */}
-      <div
-        style={{
-          padding: '10px 8px 14px 8px',
-          borderTop: '1px solid #e2e8f0',
-          background: '#f8fafc',
-        }}
-      >
-        <button
-          onClick={() => navigate('/blackbox')}
-          title="Open Polar Station Black Box (CSMU Flight Recorder)"
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            padding: '10px 10px',
-            background: location.pathname === '/blackbox' ? '#0f172a' : '#080e1a',
-            color: '#ffffff',
-            border: location.pathname === '/blackbox' ? '1.5px solid #ef4444' : '1.5px solid #1e293b',
-            borderRadius: 6,
-            cursor: 'pointer',
-            boxShadow: location.pathname === '/blackbox'
-              ? '0 0 14px rgba(239, 68, 68, 0.4)'
-              : '0 2px 6px rgba(0, 0, 0, 0.25)',
-            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = '#ef4444'
-            e.currentTarget.style.boxShadow = '0 0 16px rgba(239, 68, 68, 0.45)'
-            e.currentTarget.style.transform = 'translateY(-1px)'
-          }}
-          onMouseLeave={(e) => {
-            if (location.pathname !== '/blackbox') {
-              e.currentTarget.style.borderColor = '#1e293b'
-              e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.25)'
-            }
-            e.currentTarget.style.transform = 'translateY(0)'
-          }}
-        >
-          <span
+        {/* Black Box button just below Official Reports with a small gap */}
+        <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #e2e8f0' }}>
+          <button
+            onClick={() => navigate('/blackbox')}
             style={{
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              background: '#ef4444',
-              boxShadow: '0 0 8px #ef4444',
-              display: 'inline-block',
-              animation: 'pulse 1.6s infinite',
-              flexShrink: 0,
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              padding: '8px 10px',
+              background: location.pathname === '/blackbox' ? '#0f172a' : '#1e293b',
+              color: '#ffffff',
+              border: location.pathname === '/blackbox' ? '1.5px solid #ef4444' : '1px solid #334155',
+              borderRadius: 4,
+              cursor: 'pointer',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+              transition: 'all 0.15s ease',
             }}
-          />
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 900,
-              letterSpacing: '0.08em',
-              fontFamily: 'monospace',
-              color: '#f8fafc',
-              textTransform: 'uppercase',
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#0f172a'
+              e.currentTarget.style.borderColor = '#ef4444'
+            }}
+            onMouseLeave={(e) => {
+              if (location.pathname !== '/blackbox') {
+                e.currentTarget.style.background = '#1e293b'
+                e.currentTarget.style.borderColor = '#334155'
+              }
             }}
           >
-            BLACK BOX
-          </span>
-        </button>
-      </div>
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                background: '#ef4444',
+                display: 'inline-block',
+                flexShrink: 0,
+              }}
+            />
+            <span
+              style={{
+                fontSize: 11.5,
+                fontWeight: 800,
+                letterSpacing: '0.06em',
+                fontFamily: 'monospace',
+                color: '#ffffff',
+              }}
+            >
+              BLACK BOX
+            </span>
+          </button>
+        </div>
+      </nav>
     </aside>
   )
 }
