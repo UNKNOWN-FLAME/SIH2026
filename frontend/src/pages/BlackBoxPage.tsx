@@ -26,20 +26,20 @@ interface IncidentConfig {
 
 const INCIDENTS: Record<StationId, IncidentConfig> = {
   maitri: {
-    id: 'BB-MAI-2026-0924',
+    id: 'BB-MAITRI-2026-0924-01',
     stationId: 'maitri',
     stationName: 'Maitri Research Station',
     incidentName: 'DG-1 Fuel Line Freeze & Full Station Power Blackout',
     incidentDate: '24 Sep 2026 • 02:40 UTC (08:10 IST)',
-    sitrepNumber: 'NCPOR/SITREP/45-ISEA/MAI/BLACKOUT-01',
+    sitrepNumber: 'NCPOR/SITREP/45-ISEA/MAI/2026-W37',
   },
   bharati: {
-    id: 'BB-BHA-2026-0922',
+    id: 'BB-BHARATI-2026-0922-02',
     stationId: 'bharati',
     stationName: 'Bharati Research Station',
     incidentName: 'Larsemann Habitat HVAC Damper Jam & Thermal Coil Overload',
     incidentDate: '22 Sep 2026 • 18:15 UTC (23:45 IST)',
-    sitrepNumber: 'NCPOR/SITREP/45-ISEA/BHA/THERMAL-02',
+    sitrepNumber: 'NCPOR/SITREP/45-ISEA/BHA/2026-W37',
   },
 }
 
