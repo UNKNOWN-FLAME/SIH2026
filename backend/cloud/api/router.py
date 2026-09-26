@@ -325,6 +325,29 @@ async def get_latest_sensors(
     )
     latest_rows = {r.sensor_id: r for r in latest_result.scalars().all()}
 
+    # Resilient fallback: If no readings exist in the last 7 days, fetch the latest recorded readings
+    if not latest_rows:
+        fallback_q = (
+            select(
+                SensorReading.sensor_id,
+                func.max(SensorReading.timestamp_utc).label("max_ts"),
+            )
+            .where(SensorReading.station_id == station_id)
+        )
+        if domain:
+            fallback_q = fallback_q.where(SensorReading.domain == domain.lower())
+        fallback_subq = fallback_q.group_by(SensorReading.sensor_id).subquery()
+
+        fallback_result = await session.execute(
+            select(SensorReading)
+            .join(
+                fallback_subq,
+                (SensorReading.sensor_id == fallback_subq.c.sensor_id)
+                & (SensorReading.timestamp_utc == fallback_subq.c.max_ts),
+            )
+        )
+        latest_rows = {r.sensor_id: r for r in fallback_result.scalars().all()}
+
     # 24h count per sensor
     count_q = (
         select(SensorReading.sensor_id, func.count(SensorReading.id).label("cnt"))

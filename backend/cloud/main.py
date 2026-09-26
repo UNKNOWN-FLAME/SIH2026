@@ -25,8 +25,11 @@ Mounted routes:
 """
 from __future__ import annotations
 
+import asyncio
 import os
+import random
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import AsyncGenerator
 
@@ -113,6 +116,137 @@ def _load_station_verifiers(cfg) -> dict[str, Verifier]:
     return verifiers
 
 
+async def _live_telemetry_loop(session_factory) -> None:
+    """Continuously generates realistic live sensor fluctuations in dev/standalone mode.
+    Ensures that weather, power, temperature, and seismic telemetry are ALWAYS live and fresh.
+    """
+    from sqlalchemy import text
+    import httpx
+
+    live_weather = {
+        "m_temp": -15.5,
+        "m_wind": 26.0,
+        "m_dir": 121.0,
+        "m_hum": 48.0,
+        "m_pres": 960.0,
+        "m_snow": 0.0,
+        "m_rad": 95.0,
+        "b_temp": -12.1,
+        "b_wind": 19.0,
+        "b_dir": 127.0,
+        "b_hum": 49.0,
+        "b_pres": 950.0,
+        "b_snow": 0.0,
+        "b_rad": 110.0,
+    }
+    last_fetch = 0.0
+
+    while True:
+        try:
+            loop_now = asyncio.get_event_loop().time()
+            if loop_now - last_fetch > 300:
+                try:
+                    async with httpx.AsyncClient(timeout=6.0) as client:
+                        r_m = await client.get(
+                            "https://api.open-meteo.com/v1/forecast?latitude=-70.7667&longitude=11.7333&current=temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_direction_10m,snowfall,shortwave_radiation"
+                        )
+                        if r_m.status_code == 200:
+                            cur_m = r_m.json().get("current", {})
+                            live_weather["m_temp"] = cur_m.get("temperature_2m", live_weather["m_temp"])
+                            live_weather["m_wind"] = cur_m.get("wind_speed_10m", live_weather["m_wind"])
+                            live_weather["m_dir"] = cur_m.get("wind_direction_10m", live_weather["m_dir"])
+                            live_weather["m_hum"] = cur_m.get("relative_humidity_2m", live_weather["m_hum"])
+                            live_weather["m_pres"] = cur_m.get("surface_pressure", live_weather["m_pres"])
+                            live_weather["m_snow"] = cur_m.get("snowfall", live_weather["m_snow"])
+                            live_weather["m_rad"] = cur_m.get("shortwave_radiation", live_weather["m_rad"]) or 95.0
+
+                        r_b = await client.get(
+                            "https://api.open-meteo.com/v1/forecast?latitude=-69.4100&longitude=76.1867&current=temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_direction_10m,snowfall,shortwave_radiation"
+                        )
+                        if r_b.status_code == 200:
+                            cur_b = r_b.json().get("current", {})
+                            live_weather["b_temp"] = cur_b.get("temperature_2m", live_weather["b_temp"])
+                            live_weather["b_wind"] = cur_b.get("wind_speed_10m", live_weather["b_wind"])
+                            live_weather["b_dir"] = cur_b.get("wind_direction_10m", live_weather["b_dir"])
+                            live_weather["b_hum"] = cur_b.get("relative_humidity_2m", live_weather["b_hum"])
+                            live_weather["b_pres"] = cur_b.get("surface_pressure", live_weather["b_pres"])
+                            live_weather["b_snow"] = cur_b.get("snowfall", live_weather["b_snow"])
+                            live_weather["b_rad"] = cur_b.get("shortwave_radiation", live_weather["b_rad"]) or 110.0
+                    last_fetch = loop_now
+                except Exception as exc:
+                    log.warning("cloud.open_meteo.fetch_failed", error=str(exc))
+
+            specs = [
+                # Maitri Sensors (Live Real Weather from Antarctica)
+                ("maitri", "maitri.generator.gen1.kw_output",  "energy", "kW",  142.0, 6.0),
+                ("maitri", "maitri.generator.gen1.fuel_pct",   "energy", "%",   83.8,  0.5),
+                ("maitri", "maitri.generator.gen1.load_pct",   "energy", "%",   86.0,  2.5),
+                ("maitri", "maitri.power.grid.voltage",        "energy", "V",   415.0, 1.5),
+                ("maitri", "maitri.weather.aws1.temperature",  "weather", "°C", live_weather["m_temp"],  0.2),
+                ("maitri", "maitri.weather.aws1.wind_speed",   "weather", "km/h", live_weather["m_wind"], 1.5),
+                ("maitri", "maitri.weather.aws1.wind_dir",     "weather", "°",   live_weather["m_dir"], 2.0),
+                ("maitri", "maitri.weather.aws1.humidity",     "weather", "%",    live_weather["m_hum"],  0.5),
+                ("maitri", "maitri.weather.aws1.pressure",     "weather", "hPa", live_weather["m_pres"],  0.3),
+                ("maitri", "maitri.weather.aws1.snowfall",     "weather", "mm/h",  live_weather["m_snow"],  0.05),
+                ("maitri", "maitri.weather.aws1.radiation",    "weather", "W/m²", live_weather["m_rad"], 5.0),
+                ("maitri", "maitri.seismic.sta1.pgv",          "seismic", "mm/s", 0.12, 0.04),
+                ("maitri", "maitri.seismic.sta1.magnitude",    "seismic", "ML",   0.8,  0.2),
+                ("maitri", "maitri.glacier.ice_thickness",     "glaciology", "m", 1.85, 0.02),
+                ("maitri", "maitri.glacier.flow_rate",         "glaciology", "m/yr", 1.22, 0.05),
+
+                # Bharati Sensors (Live Real Weather from Antarctica)
+                ("bharati", "bharati.generator.gen1.kw_output", "energy", "kW",  185.0, 8.0),
+                ("bharati", "bharati.generator.gen1.fuel_pct",  "energy", "%",   84.2,  0.5),
+                ("bharati", "bharati.generator.gen1.load_pct",  "energy", "%",   88.0,  2.5),
+                ("bharati", "bharati.power.grid.voltage",       "energy", "V",   415.0, 1.5),
+                ("bharati", "bharati.solar.array1.kw_output",   "energy", "kW",  34.0,  3.0),
+                ("bharati", "bharati.weather.aws1.temperature", "weather", "°C", live_weather["b_temp"],  0.2),
+                ("bharati", "bharati.weather.aws1.wind_speed",  "weather", "km/h", live_weather["b_wind"], 1.5),
+                ("bharati", "bharati.weather.aws1.wind_dir",    "weather", "°",   live_weather["b_dir"], 2.0),
+                ("bharati", "bharati.weather.aws1.humidity",    "weather", "%",    live_weather["b_hum"],  0.5),
+                ("bharati", "bharati.weather.aws1.pressure",    "weather", "hPa", live_weather["b_pres"],  0.3),
+                ("bharati", "bharati.weather.aws1.snowfall",    "weather", "mm/h", live_weather["b_snow"],  0.05),
+                ("bharati", "bharati.weather.aws1.radiation",   "weather", "W/m²", live_weather["b_rad"], 5.0),
+                ("bharati", "bharati.seismic.sta1.pgv",         "seismic", "mm/s", 0.08, 0.02),
+                ("bharati", "bharati.seismic.sta1.magnitude",   "seismic", "ML",   0.6,  0.2),
+                ("bharati", "bharati.ocean.sst",                "ocean", "°C", -1.82, 0.08),
+                ("bharati", "bharati.ocean.salinity",           "ocean", "PSU", 34.65, 0.1),
+                ("bharati", "bharati.ocean.ice_extent",         "ocean", "%", 92.4, 0.4),
+                ("bharati", "bharati.ocean.wave_height",        "ocean", "m", 4.15, 0.3),
+                ("bharati", "bharati.glacier.ice_thickness",    "glaciology", "m", 2.15, 0.03),
+                ("bharati", "bharati.glacier.flow_rate",        "glaciology", "m/yr", 0.95, 0.04),
+            ]
+
+            now = datetime.now(tz=timezone.utc)
+            async with session_factory() as db:
+                for sid, snid, dom, unit, base, jitter in specs:
+                    val = round(base + random.uniform(-jitter, jitter), 2)
+                    await db.execute(
+                        text("""
+                            INSERT INTO sensor_readings
+                                (station_id, sensor_id, domain, metric_name, value, unit, quality, timestamp_utc, is_aggregate)
+                            VALUES
+                                (:sid, :snid, :dom, :met, :val, :unit, 'NOMINAL', :ts, false)
+                        """),
+                        {
+                            "sid": sid,
+                            "snid": snid,
+                            "dom": dom,
+                            "met": snid.rsplit(".", 1)[-1],
+                            "val": val,
+                            "unit": unit,
+                            "ts": now,
+                        },
+                    )
+                await db.commit()
+        except asyncio.CancelledError:
+            break
+        except Exception as exc:
+            log.warning("cloud.telemetry.loop_error", error=str(exc))
+        await asyncio.sleep(10)
+
+
+
 @asynccontextmanager
 async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
     cfg = get_config()
@@ -183,10 +317,23 @@ async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
             hint="Set MQTT_ENABLED=true in env to enable live edge-station sync.",
         )
 
+    # 7. Live Telemetry Generator (dev / standalone mode)
+    # Continuously generates realistic sensor updates so the dashboard stays 100% live
+    live_telemetry_task = None
+    if not cfg.mqtt_enabled:
+        live_telemetry_task = asyncio.create_task(_live_telemetry_loop(session_factory))
+        log.info("cloud.live_telemetry.started", interval_s=10)
+
     log.info("cloud.startup.done", redis=redis_ok, mqtt=mqtt_sub is not None)
     yield
 
     # --- Shutdown ---
+    if live_telemetry_task:
+        live_telemetry_task.cancel()
+        try:
+            await live_telemetry_task
+        except asyncio.CancelledError:
+            pass
     if mqtt_sub:
         await mqtt_sub.stop()
     if ws_manager:

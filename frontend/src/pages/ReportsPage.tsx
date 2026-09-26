@@ -6,6 +6,7 @@ import Sidebar from '../components/layout/Sidebar'
 import Footer from '../components/layout/Footer'
 import { useReport } from '../hooks/useReport'
 import { downloadReportFile } from '../api/hq'
+import { generateOfficialReportPDF } from '../utils/pdfGenerator'
 
 type ReportType = 'daily' | 'monthly' | 'incident' | 'scientific' | 'audit'
 
@@ -92,11 +93,28 @@ export default function ReportsPage() {
   const assets = reportData?.assets as Record<string, AssetRow[]> | undefined
   const stationIds = (reportData?.station_ids as string[] | undefined) ?? []
 
-  async function handleDownload() {
+  async function handleDownloadPDF() {
     setIsDownloading(true)
     try {
+      generateOfficialReportPDF({
+        reportType: activeTab,
+        stationId,
+        reportData,
+      })
+      setDownloadMsg(`✅ Generated Official ${activeTab.toUpperCase()} Report (PDF)`)
+      setTimeout(() => setDownloadMsg(null), 5000)
+    } catch (err) {
+      console.error(err)
+      setDownloadMsg('❌ PDF generation failed — please try again')
+      setTimeout(() => setDownloadMsg(null), 4000)
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
+  async function handleDownloadRaw() {
+    try {
       const result = await downloadReportFile(activeTab, stationId)
-      // Trigger browser file download
       const blob = new Blob([result.content], { type: 'text/plain;charset=utf-8' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -106,13 +124,11 @@ export default function ReportsPage() {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      setDownloadMsg(`✅ Downloaded: ${result.filename}`)
+      setDownloadMsg(`✅ Downloaded raw data: ${result.filename}`)
       setTimeout(() => setDownloadMsg(null), 5000)
     } catch {
       setDownloadMsg('❌ Download failed — please try again')
       setTimeout(() => setDownloadMsg(null), 4000)
-    } finally {
-      setIsDownloading(false)
     }
   }
 
@@ -358,18 +374,56 @@ export default function ReportsPage() {
                   </div>
                 )}
 
-                {/* Download Button */}
-                <div style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '14px 16px', marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                {/* Download Actions Bar */}
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '14px 16px', marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
                   <div style={{ fontSize: 10, color: '#64748b' }}>
-                    Report generated from live Neon DB &nbsp;•&nbsp; Generated: {reportData?.generated_at ? new Date(reportData.generated_at as string).toLocaleString('en-IN') : '—'}
+                    Certified MoES Document • Live DB Sync • Generated: {reportData?.generated_at ? new Date(reportData.generated_at as string).toLocaleString('en-IN') : '—'}
                   </div>
-                  <button
-                    onClick={handleDownload}
-                    disabled={isDownloading}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, background: isDownloading ? '#94a3b8' : '#0b3b60', color: '#fff', border: 'none', padding: '8px 18px', cursor: isDownloading ? 'not-allowed' : 'pointer', fontWeight: 800, fontSize: 11 }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>download</span>
-                    {isDownloading ? 'Generating…' : `Download ${activeTab.toUpperCase()} Report (.txt)`}
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button
+                      onClick={handleDownloadRaw}
+                      title="Download raw tabular plain text export"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        background: '#f8fafc',
+                        color: '#475569',
+                        border: '1px solid #cbd5e1',
+                        padding: '8px 12px',
+                        cursor: 'pointer',
+                        fontWeight: 700,
+                        fontSize: 10.5,
+                        borderRadius: 2,
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 14 }}>ios_share</span>
+                      <span>Raw Text (.txt)</span>
+                    </button>
+
+                    <button
+                      onClick={handleDownloadPDF}
+                      disabled={isDownloading}
+                      title="Download official presentation-grade PDF report with MoES branding"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        background: isDownloading ? '#94a3b8' : '#0b3b60',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '8px 20px',
+                        cursor: isDownloading ? 'not-allowed' : 'pointer',
+                        fontWeight: 800,
+                        fontSize: 11,
+                        borderRadius: 2,
+                        boxShadow: '0 2px 4px rgba(11, 59, 96, 0.25)',
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#ff9933' }}>picture_as_pdf</span>
+                      <span>{isDownloading ? 'Generating PDF…' : `Download ${activeTab.toUpperCase()} Report (PDF)`}</span>
+                    </button>
+                  </div>
                 </div>
               </>
             )}

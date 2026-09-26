@@ -22,7 +22,6 @@ export default function Sidebar({
     { icon: 'foundation', label: t('nav.infrastructure'), sub: t('nav.infrastructure_sub'), path: '/infrastructure' },
     { icon: 'analytics', label: t('nav.analytics'), sub: t('nav.analytics_sub'), path: '/analytics' },
     { icon: 'description', label: t('nav.reports'), sub: t('nav.reports_sub'), path: '/reports' },
-    { icon: 'settings', label: t('nav.settings'), sub: t('nav.settings_sub'), path: '/settings' },
   ]
 
   return (

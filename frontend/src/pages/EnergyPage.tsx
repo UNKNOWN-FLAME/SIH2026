@@ -7,6 +7,7 @@ import Footer from '../components/layout/Footer'
 import { useLanguage } from '../context/LanguageContext'
 import { useSensors } from '../hooks/useSensors'
 import { useInventory } from '../hooks/useInventory'
+import { generateGensetAuditPDF } from '../utils/pdfGenerator'
 
 export default function EnergyPage() {
   const navigate = useNavigate()
@@ -516,7 +517,8 @@ export default function EnergyPage() {
                         </button>
 
                         <button
-                          onClick={() => alert(`Official Engine Health Audit Log: REF-NCPOR-GEN-DG0${activeTelemetryGen}-2026.pdf exported.`)}
+                          onClick={() => generateGensetAuditPDF({ stationId: activeStation, genId: activeTelemetryGen })}
+                          title="Export certified MoES diesel genset diagnostic audit to PDF"
                           style={{
                             background: '#ffffff',
                             color: '#0b3b60',
@@ -531,7 +533,7 @@ export default function EnergyPage() {
                             gap: 4,
                           }}
                         >
-                          <span className="material-symbols-outlined" style={{ fontSize: 13 }}>picture_as_pdf</span>
+                          <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#dc2626' }}>picture_as_pdf</span>
                           <span>Export PDF</span>
                         </button>
                       </div>

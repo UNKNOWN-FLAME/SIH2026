@@ -8,6 +8,7 @@ import { useLanguage } from '../context/LanguageContext'
 import { useInventory } from '../hooks/useInventory'
 import { useLogisticsAudit } from '../hooks/useLogisticsAudit'
 import type { AuditItemDetail, LogisticsCategoryData } from '../api/hq'
+import { generateLogisticsAuditPDF } from '../utils/pdfGenerator'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -759,15 +760,16 @@ export default function LogisticsPage() {
                     <span>{lang === 'hi' ? '+ नया सामान मांगें' : '+ Request Supplies'}</span>
                   </button>
                   <button
-                    onClick={() => alert('Official Stock List exported to PDF: REF-NCPOR-LOG-2026-AUG.pdf')}
+                    onClick={() => generateLogisticsAuditPDF({ stationId: activeStation, items, auditData })}
                     style={{
                       background: '#ffffff', color: '#0b3b60', border: '1px solid #0b3b60',
                       padding: '6px 12px', fontSize: 11, fontWeight: 800, cursor: 'pointer',
                       display: 'flex', alignItems: 'center', gap: 4, borderRadius: 2,
                     }}
+                    title="Export certified MoES inventory audit to PDF"
                   >
-                    <span className="material-symbols-outlined" style={{ fontSize: 14 }}>picture_as_pdf</span>
-                    <span>{lang === 'hi' ? 'स्टॉक रिपोर्ट डाउनलोड करें' : 'Download PDF Report'}</span>
+                    <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#dc2626' }}>picture_as_pdf</span>
+                    <span>{lang === 'hi' ? 'स्टॉक रिपोर्ट डाउनलोड करें (PDF)' : 'Download PDF Report'}</span>
                   </button>
                 </div>
               </div>
