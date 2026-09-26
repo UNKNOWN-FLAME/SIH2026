@@ -10,7 +10,6 @@ import EnvironmentPage from './pages/EnvironmentPage'
 import InfrastructurePage from './pages/InfrastructurePage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import ReportsPage from './pages/ReportsPage'
-import SettingsPage from './pages/SettingsPage'
 import LiveTelemetryPage from './pages/LiveTelemetryPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
