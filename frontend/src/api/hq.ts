@@ -269,6 +269,99 @@ export async function downloadReportFile(
   return data
 }
 
+// ── 3-Hour RCA Station PDF Reports ───────────────────────────────────────────
+
+export interface StationReportMeta {
+  has_report: boolean
+  prediction_id: string | null
+  station_id: string
+  risk_level?: string
+  target_metric?: string
+  model_name?: string
+  generated_at?: string | null
+  predicted_for_date?: string | null
+  filename?: string | null
+  file_exists?: boolean
+  event_count?: number
+  download_url?: string | null
+  message?: string
+}
+
+export interface StationReportListItem {
+  prediction_id: string
+  station_id: string
+  risk_level: string
+  generated_at: string | null
+  predicted_for_date: string | null
+  filename: string | null
+  event_count: number
+  download_url: string
+}
+
+export async function getLatestReportMeta(stationId: string = 'bharati'): Promise<StationReportMeta> {
+  const { data } = await api.get<StationReportMeta>('/hq/reports/latest/metadata', {
+    params: { station_id: stationId },
+  })
+  return data
+}
+
+export async function downloadLatestPdfReport(stationId: string = 'bharati'): Promise<string> {
+  const response = await api.get('/hq/reports/latest/download', {
+    params: { station_id: stationId },
+    responseType: 'blob',
+  })
+
+  // Extract filename from Content-Disposition header if available
+  const cd = response.headers['content-disposition'] || ''
+  let filename = `NCPOR_Report_${stationId}.pdf`
+  const match = cd.match(/filename=["']?([^"';]+)["']?/)
+  if (match && match[1]) {
+    filename = match[1]
+  }
+
+  const blob = new Blob([response.data], { type: 'application/pdf' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  return filename
+}
+
+export async function downloadPdfReportById(predictionId: string, fallbackName?: string): Promise<string> {
+  const response = await api.get(`/hq/reports/${predictionId}/download`, {
+    responseType: 'blob',
+  })
+
+  const cd = response.headers['content-disposition'] || ''
+  let filename = fallbackName || `NCPOR_Report_${predictionId}.pdf`
+  const match = cd.match(/filename=["']?([^"';]+)["']?/)
+  if (match && match[1]) {
+    filename = match[1]
+  }
+
+  const blob = new Blob([response.data], { type: 'application/pdf' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  return filename
+}
+
+export async function listStationPdfReports(stationId: string = 'bharati', limit: number = 10): Promise<StationReportListItem[]> {
+  const { data } = await api.get<StationReportListItem[]>('/hq/reports/list', {
+    params: { station_id: stationId, limit },
+  })
+  return data
+}
+
 // ── Logistics Audit Summary ───────────────────────────────────────────────────
 
 export interface AuditItemDetail {
@@ -368,5 +461,16 @@ export async function getIoTSensors(
       ...(state ? { state } : {}),
     },
   })
+  return data
+}
+
+// ── AI Chat ───────────────────────────────────────────────────────────────────
+
+export interface ChatQueryOut {
+  response: string
+}
+
+export async function sendChatQuery(query: string): Promise<ChatQueryOut> {
+  const { data } = await api.post<ChatQueryOut>('/hq/chat', { query })
   return data
 }

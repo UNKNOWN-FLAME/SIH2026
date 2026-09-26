@@ -11,6 +11,7 @@ import InfrastructurePage from './pages/InfrastructurePage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import ReportsPage from './pages/ReportsPage'
 import SettingsPage from './pages/SettingsPage'
+import { ChatBot } from './components/ui/ChatBot'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token } = useAuth()
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
           <Route path="/*" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         </Routes>
+        <ChatBot />
       </AuthProvider>
     </LanguageProvider>
   )
