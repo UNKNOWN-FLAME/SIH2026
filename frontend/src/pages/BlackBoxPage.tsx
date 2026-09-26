@@ -195,26 +195,27 @@ export default function BlackBoxPage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#0b3b60' }}>home</span>
+            <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#991b1b' }}>e911_emergency</span>
             <span style={{ color: '#0b3b60', fontWeight: 700 }}>HOME</span>
             <span>&gt;</span>
             <span style={{ color: '#0b3b60', fontWeight: 600 }}>POLAR OPERATIONS DIVISION</span>
             <span>&gt;</span>
-            <span style={{ color: '#0b3b60', fontWeight: 800 }}>POLAR STATION BLACK BOX (CSMU RECORDER)</span>
+            <span style={{ color: '#991b1b', fontWeight: 800 }}>BLACK BOX EMERGENCY FLIGHT RECORDER</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 10, color: '#991b1b', background: '#fee2e2', padding: '2px 8px', fontWeight: 800, border: '1px solid #fecaca', borderRadius: 2 }}>
-              FORENSIC AUDIT RECORD • {incident.sitrepNumber}
+              INCIDENT ENQUIRY BUFFER • {incident.sitrepNumber}
             </span>
           </div>
         </div>
 
-        {/* ── Official Black Box Mission Control Header ── */}
+        {/* ── Official Black Box Incident Banner (Reddish Emergency Government Theme) ── */}
         <div
           style={{
-            background: '#ffffff',
-            border: '1px solid #cbd5e1',
-            borderTop: '3px solid #0b3b60',
+            background: 'linear-gradient(90deg, #fff5f5 0%, #ffffff 100%)',
+            border: '1px solid #fecdd3',
+            borderLeft: '4px solid #dc2626',
+            borderTop: '2px solid #dc2626',
             padding: '12px 16px',
             marginBottom: 12,
             display: 'flex',
@@ -222,7 +223,7 @@ export default function BlackBoxPage() {
             justifyContent: 'space-between',
             flexWrap: 'wrap',
             gap: 12,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+            boxShadow: '0 1px 3px rgba(220, 38, 38, 0.06)',
           }}
         >
           {/* Left: Station & Incident Identification */}
@@ -232,7 +233,7 @@ export default function BlackBoxPage() {
                 width: 36,
                 height: 42,
                 background: '#ffffff',
-                border: '1px solid #cbd5e1',
+                border: '1px solid #fecaca',
                 borderRadius: 3,
                 padding: 3,
                 display: 'flex',
@@ -248,7 +249,7 @@ export default function BlackBoxPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span
                   style={{
-                    background: '#b91c1c',
+                    background: '#dc2626',
                     color: '#ffffff',
                     fontSize: 9.5,
                     fontWeight: 900,
@@ -258,9 +259,9 @@ export default function BlackBoxPage() {
                     fontFamily: 'monospace',
                   }}
                 >
-                  BLACK BOX FLIGHT RECORDER
+                  BLACK BOX RECORDER
                 </span>
-                <span style={{ fontSize: 14, fontWeight: 800, color: '#0b3b60' }}>
+                <span style={{ fontSize: 14, fontWeight: 800, color: '#991b1b' }}>
                   {incident.stationName}
                 </span>
                 <span style={{ fontSize: 12, color: '#64748b' }}>•</span>
@@ -268,14 +269,14 @@ export default function BlackBoxPage() {
                   {incident.incidentName}
                 </span>
               </div>
-              <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>
-                Recorded Incident Timestamp: <strong>{incident.incidentDate}</strong>
+              <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                Recorded Incident Timestamp: <strong style={{ color: '#1e293b' }}>{incident.incidentDate}</strong>
               </div>
             </div>
           </div>
 
           {/* Center: Incident Station Switcher */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f1f5f9', padding: 4, borderRadius: 4, border: '1px solid #cbd5e1' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fee2e2', padding: 4, borderRadius: 4, border: '1px solid #fecaca' }}>
             <button
               onClick={() => {
                 setStationId('maitri')
@@ -286,8 +287,8 @@ export default function BlackBoxPage() {
                 fontSize: 11,
                 fontWeight: 800,
                 cursor: 'pointer',
-                background: stationId === 'maitri' ? '#0b3b60' : 'transparent',
-                color: stationId === 'maitri' ? '#ffffff' : '#334155',
+                background: stationId === 'maitri' ? '#b91c1c' : 'transparent',
+                color: stationId === 'maitri' ? '#ffffff' : '#991b1b',
                 border: 'none',
                 borderRadius: 3,
                 transition: 'all 0.15s ease',
@@ -305,8 +306,8 @@ export default function BlackBoxPage() {
                 fontSize: 11,
                 fontWeight: 800,
                 cursor: 'pointer',
-                background: stationId === 'bharati' ? '#0b3b60' : 'transparent',
-                color: stationId === 'bharati' ? '#ffffff' : '#334155',
+                background: stationId === 'bharati' ? '#b91c1c' : 'transparent',
+                color: stationId === 'bharati' ? '#ffffff' : '#991b1b',
                 border: 'none',
                 borderRadius: 3,
                 transition: 'all 0.15s ease',
@@ -324,29 +325,30 @@ export default function BlackBoxPage() {
               alignItems: 'center',
               gap: 6,
               padding: '6px 14px',
-              background: '#0b3b60',
+              background: '#991b1b',
               color: '#ffffff',
-              border: '1px solid #0b3b60',
+              border: '1px solid #b91c1c',
               borderRadius: 3,
               fontSize: 11.5,
               fontWeight: 700,
               cursor: 'pointer',
-              boxShadow: '0 1px 2px rgba(11, 59, 96, 0.2)',
+              boxShadow: '0 1px 3px rgba(153, 27, 27, 0.25)',
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = '#082a45')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = '#0b3b60')}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#7f1d1d')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#991b1b')}
           >
             <span className="material-symbols-outlined" style={{ fontSize: 16 }}>arrow_back</span>
             <span>Return to Dashboard</span>
-            <span style={{ fontSize: 9.5, opacity: 0.8 }}>(ESC)</span>
+            <span style={{ fontSize: 9.5, opacity: 0.85 }}>(ESC)</span>
           </button>
         </div>
 
-        {/* ── Main Forensic Chart Card ── */}
+        {/* ── Main Forensic Chart Card (Reddish Government Theme) ── */}
         <div
           style={{
             background: '#ffffff',
             border: '1px solid #cbd5e1',
+            borderTop: '3px solid #b91c1c',
             borderRadius: 3,
             padding: '14px 18px',
             marginBottom: 12,
@@ -354,10 +356,10 @@ export default function BlackBoxPage() {
           }}
         >
           {/* Header Bar inside card */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid #e2e8f0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid #fecdd3' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span className="material-symbols-outlined" style={{ color: '#0b3b60', fontSize: 18 }}>history</span>
-              <span style={{ fontSize: 12.5, fontWeight: 800, color: '#0b3b60', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+              <span className="material-symbols-outlined" style={{ color: '#b91c1c', fontSize: 18 }}>emergency</span>
+              <span style={{ fontSize: 12.5, fontWeight: 800, color: '#881337', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
                 10-Hour Forensic Incident Window [-5h to +5h Relative to Blackout Event]
               </span>
             </div>
@@ -367,9 +369,9 @@ export default function BlackBoxPage() {
               <span style={{ color: '#64748b', fontWeight: 600 }}>Forensic Playhead:</span>
               <span
                 style={{
-                  background: isTrip ? '#fee2e2' : '#e0f2fe',
-                  color: isTrip ? '#991b1b' : '#0369a1',
-                  border: isTrip ? '1px solid #fecaca' : '1px solid #bae6fd',
+                  background: isTrip ? '#fee2e2' : '#f1f5f9',
+                  color: isTrip ? '#991b1b' : '#0f172a',
+                  border: isTrip ? '1px solid #fecaca' : '1px solid #cbd5e1',
                   padding: '2px 8px',
                   borderRadius: 3,
                   fontWeight: 900,
@@ -383,14 +385,15 @@ export default function BlackBoxPage() {
             </div>
           </div>
 
-          {/* Area Chart in Government Theme */}
-          <div style={{ height: 260, width: '100%', background: '#fafbfc', borderRadius: 4, padding: '10px 10px 0 0' }}>
+          {/* Area Chart with abundant top padding so labels are never cut off */}
+          <div style={{ height: 260, width: '100%', background: '#fffafa', borderRadius: 4, padding: '6px 10px 0 0', border: '1px solid #f1f5f9' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={telemetryData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+              {/* Note: top margin is increased to 32px to ensure label text is completely visible with zero cutoff */}
+              <AreaChart data={telemetryData} margin={{ top: 32, right: 15, left: -15, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="powerGovGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0b3b60" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#0b3b60" stopOpacity={0.0} />
+                  <linearGradient id="powerRedGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#dc2626" stopOpacity={0.28} />
+                    <stop offset="95%" stopColor="#dc2626" stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
                 <XAxis
@@ -411,16 +414,17 @@ export default function BlackBoxPage() {
                       return (
                         <div
                           style={{
-                            background: '#0b3b60',
+                            background: '#1c1917',
+                            border: '1px solid #b91c1c',
                             color: '#ffffff',
                             borderRadius: 3,
                             padding: '8px 12px',
                             fontSize: 11,
                             fontFamily: 'monospace',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
                           }}
                         >
-                          <div style={{ fontWeight: 800, color: '#ff9933' }}>{data.label}</div>
+                          <div style={{ fontWeight: 800, color: '#f87171' }}>{data.label}</div>
                           <div>Generator Output: <strong>{data.powerKw} kW</strong></div>
                           <div>Fuel Line Pressure: <strong>{data.fuelPressureBar} Bar</strong></div>
                           <div>Habitat Temp: <strong>{data.habitatTempC} °C</strong></div>
@@ -430,22 +434,22 @@ export default function BlackBoxPage() {
                     return null
                   }}
                 />
-                {/* Blackout Marker Line */}
+                {/* Blackout Marker Line - with 32px top margin, this label will NEVER be cut off */}
                 <ReferenceLine
                   x="T=00:00"
                   stroke="#dc2626"
                   strokeWidth={2}
                   strokeDasharray="4 4"
-                  label={{ value: '🚨 BLACKOUT ONSET (T=0)', fill: '#b91c1c', fontSize: 10.5, position: 'top', fontWeight: 800 }}
+                  label={{ value: '🚨 BLACKOUT ONSET (T=0)', fill: '#b91c1c', fontSize: 11, position: 'top', fontWeight: 900 }}
                 />
                 {/* Active Playhead Marker */}
                 <ReferenceLine
                   x={activePoint.label}
                   stroke="#0b3b60"
                   strokeWidth={2}
-                  label={{ value: '▼ PLAYHEAD', fill: '#0b3b60', fontSize: 9.5, position: 'insideTopRight', fontWeight: 800 }}
+                  label={{ value: '▼ PLAYHEAD', fill: '#0b3b60', fontSize: 10, position: 'top', fontWeight: 800 }}
                 />
-                <Area type="monotone" dataKey="powerKw" stroke="#0b3b60" strokeWidth={2.5} fillOpacity={1} fill="url(#powerGovGrad)" name="Generator Load (kW)" />
+                <Area type="monotone" dataKey="powerKw" stroke="#dc2626" strokeWidth={2.5} fillOpacity={1} fill="url(#powerRedGrad)" name="Generator Load (kW)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -453,8 +457,8 @@ export default function BlackBoxPage() {
           {/* Interactive Playback Toolbar */}
           <div
             style={{
-              background: '#f8fafc',
-              border: '1px solid #cbd5e1',
+              background: '#fff1f2',
+              border: '1px solid #fecdd3',
               borderRadius: 3,
               padding: '8px 14px',
               marginTop: 10,
@@ -472,7 +476,7 @@ export default function BlackBoxPage() {
                 alignItems: 'center',
                 gap: 6,
                 padding: '5px 14px',
-                background: isPlaying ? '#ea580c' : '#0b3b60',
+                background: isPlaying ? '#ea580c' : '#b91c1c',
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: 3,
@@ -498,9 +502,9 @@ export default function BlackBoxPage() {
                     borderRadius: 2,
                     fontSize: 10,
                     fontWeight: 700,
-                    background: playbackSpeed === speed ? '#0b3b60' : '#ffffff',
+                    background: playbackSpeed === speed ? '#991b1b' : '#ffffff',
                     color: playbackSpeed === speed ? '#ffffff' : '#334155',
-                    border: '1px solid #cbd5e1',
+                    border: '1px solid #fecaca',
                     cursor: 'pointer',
                   }}
                 >
@@ -514,9 +518,9 @@ export default function BlackBoxPage() {
               onClick={() => setPlayheadOffset(0.0)}
               style={{
                 padding: '4px 10px',
-                background: '#fee2e2',
+                background: '#ffffff',
                 color: '#991b1b',
-                border: '1px solid #fecaca',
+                border: '1.5px solid #dc2626',
                 borderRadius: 2,
                 fontSize: 11,
                 fontWeight: 800,
@@ -528,7 +532,7 @@ export default function BlackBoxPage() {
 
             {/* Scrubber Range Slider */}
             <div style={{ flex: 1, minWidth: 200, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 10, color: '#64748b', fontFamily: 'monospace' }}>-5h</span>
+              <span style={{ fontSize: 10, color: '#991b1b', fontFamily: 'monospace', fontWeight: 700 }}>-5h</span>
               <input
                 type="range"
                 min="-5.0"
@@ -538,23 +542,24 @@ export default function BlackBoxPage() {
                 onChange={(e) => setPlayheadOffset(parseFloat(e.target.value))}
                 style={{
                   flex: 1,
-                  accentColor: isTrip ? '#dc2626' : '#0b3b60',
+                  accentColor: '#dc2626',
                   cursor: 'pointer',
                   height: 5,
                 }}
               />
-              <span style={{ fontSize: 10, color: '#64748b', fontFamily: 'monospace' }}>+5h</span>
+              <span style={{ fontSize: 10, color: '#991b1b', fontFamily: 'monospace', fontWeight: 700 }}>+5h</span>
             </div>
           </div>
         </div>
 
-        {/* ── Section 2: Sensor Telemetry Cards (Government Theme) ── */}
+        {/* ── Section 2: Sensor Telemetry Cards (Reddish Government Theme) ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 12 }}>
           {/* Tile 1: Primary Generator */}
           <div
             style={{
               background: '#ffffff',
-              border: activePoint.powerKw < 30 ? '1.5px solid #ef4444' : '1px solid #cbd5e1',
+              border: activePoint.powerKw < 30 ? '1.5px solid #dc2626' : '1px solid #cbd5e1',
+              borderTop: activePoint.powerKw < 30 ? '3px solid #dc2626' : '3px solid #0b3b60',
               borderRadius: 3,
               padding: '12px 14px',
               boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
@@ -573,7 +578,8 @@ export default function BlackBoxPage() {
           <div
             style={{
               background: '#ffffff',
-              border: activePoint.fuelPressureBar < 1.0 ? '1.5px solid #ef4444' : '1px solid #cbd5e1',
+              border: activePoint.fuelPressureBar < 1.0 ? '1.5px solid #dc2626' : '1px solid #cbd5e1',
+              borderTop: activePoint.fuelPressureBar < 1.0 ? '3px solid #dc2626' : '3px solid #0b3b60',
               borderRadius: 3,
               padding: '12px 14px',
               boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
@@ -592,7 +598,8 @@ export default function BlackBoxPage() {
           <div
             style={{
               background: '#ffffff',
-              border: activePoint.vibrationRms > 4.0 ? '1.5px solid #ef4444' : '1px solid #cbd5e1',
+              border: activePoint.vibrationRms > 4.0 ? '1.5px solid #dc2626' : '1px solid #cbd5e1',
+              borderTop: activePoint.vibrationRms > 4.0 ? '3px solid #dc2626' : '3px solid #0b3b60',
               borderRadius: 3,
               padding: '12px 14px',
               boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
@@ -612,6 +619,7 @@ export default function BlackBoxPage() {
             style={{
               background: '#ffffff',
               border: activePoint.habitatTempC < 18.0 ? '1.5px solid #f59e0b' : '1px solid #cbd5e1',
+              borderTop: activePoint.habitatTempC < 18.0 ? '3px solid #ea580c' : '3px solid #0b3b60',
               borderRadius: 3,
               padding: '12px 14px',
               boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
@@ -627,7 +635,7 @@ export default function BlackBoxPage() {
           </div>
         </div>
 
-        {/* ── Section 3: Subsystem Status Strip (Official Government Strip) ── */}
+        {/* ── Section 3: Subsystem Status Strip (Reddish Government Theme) ── */}
         <div
           style={{
             background: '#ffffff',
@@ -637,13 +645,13 @@ export default function BlackBoxPage() {
             boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
           }}
         >
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', marginBottom: 8 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#881337', textTransform: 'uppercase', marginBottom: 8 }}>
             Subsystem SCADA Status at {activePoint.label}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
             {/* Node 1 */}
-            <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 3, padding: '8px 10px' }}>
+            <div style={{ background: '#f8fafc', border: activePoint.powerKw < 30 ? '1px solid #fca5a5' : '1px solid #cbd5e1', borderRadius: 3, padding: '8px 10px' }}>
               <div style={{ fontSize: 9.5, color: '#64748b', fontWeight: 600 }}>PRIMARY POWER</div>
               <div style={{ fontSize: 12, fontWeight: 800, color: activePoint.powerKw < 30 ? '#dc2626' : '#0b3b60', marginTop: 2 }}>
                 {activePoint.powerKw < 30 ? 'DG-1 TRIP' : 'DG-1 ONLINE'}
@@ -651,7 +659,7 @@ export default function BlackBoxPage() {
             </div>
 
             {/* Node 2 */}
-            <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 3, padding: '8px 10px' }}>
+            <div style={{ background: '#f8fafc', border: activePoint.fuelPressureBar < 1.0 ? '1px solid #fca5a5' : '1px solid #cbd5e1', borderRadius: 3, padding: '8px 10px' }}>
               <div style={{ fontSize: 9.5, color: '#64748b', fontWeight: 600 }}>FUEL FEEDER</div>
               <div style={{ fontSize: 12, fontWeight: 800, color: activePoint.fuelPressureBar < 1.0 ? '#dc2626' : '#15803d', marginTop: 2 }}>
                 {activePoint.fuelPressureBar < 1.0 ? 'LINE FREEZE' : 'PRESSURIZED'}
@@ -659,7 +667,7 @@ export default function BlackBoxPage() {
             </div>
 
             {/* Node 3 */}
-            <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 3, padding: '8px 10px' }}>
+            <div style={{ background: '#f8fafc', border: activePoint.coolantTempC > 95 ? '1px solid #fca5a5' : '1px solid #cbd5e1', borderRadius: 3, padding: '8px 10px' }}>
               <div style={{ fontSize: 9.5, color: '#64748b', fontWeight: 600 }}>COOLANT LOOP</div>
               <div style={{ fontSize: 12, fontWeight: 800, color: activePoint.coolantTempC > 95 ? '#dc2626' : '#0b3b60', marginTop: 2 }}>
                 {activePoint.coolantTempC > 95 ? `${activePoint.coolantTempC}°C OVERHEAT` : `${activePoint.coolantTempC}°C NORMAL`}
@@ -667,7 +675,7 @@ export default function BlackBoxPage() {
             </div>
 
             {/* Node 4 */}
-            <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 3, padding: '8px 10px' }}>
+            <div style={{ background: '#f8fafc', border: activePoint.habitatTempC < 18 ? '1px solid #fed7aa' : '1px solid #cbd5e1', borderRadius: 3, padding: '8px 10px' }}>
               <div style={{ fontSize: 9.5, color: '#64748b', fontWeight: 600 }}>LIVING QUARTERS</div>
               <div style={{ fontSize: 12, fontWeight: 800, color: activePoint.habitatTempC < 18 ? '#d97706' : '#15803d', marginTop: 2 }}>
                 {activePoint.habitatTempC < 18 ? 'HEAT LOSS' : 'COMFORTABLE'}
@@ -675,7 +683,7 @@ export default function BlackBoxPage() {
             </div>
 
             {/* Node 5 */}
-            <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 3, padding: '8px 10px' }}>
+            <div style={{ background: '#f8fafc', border: isTrip ? '1px solid #fed7aa' : '1px solid #cbd5e1', borderRadius: 3, padding: '8px 10px' }}>
               <div style={{ fontSize: 9.5, color: '#64748b', fontWeight: 600 }}>ISRO GSAT-30 LINK</div>
               <div style={{ fontSize: 12, fontWeight: 800, color: isTrip ? '#d97706' : '#0b3b60', marginTop: 2 }}>
                 {isTrip ? 'EDGE BUFFERING' : 'SYNCHRONIZED'}
