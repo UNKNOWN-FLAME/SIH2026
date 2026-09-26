@@ -11,6 +11,7 @@ import InfrastructurePage from './pages/InfrastructurePage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import ReportsPage from './pages/ReportsPage'
 import SettingsPage from './pages/SettingsPage'
+import TwinPage from './pages/TwinPage'
 import { ChatBot } from './components/ui/ChatBot'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -25,6 +26,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/stations" element={<ProtectedRoute><StationsPage /></ProtectedRoute>} />
+          <Route path="/twin" element={<ProtectedRoute><TwinPage /></ProtectedRoute>} />
           <Route path="/energy" element={<ProtectedRoute><EnergyPage /></ProtectedRoute>} />
           <Route path="/logistics" element={<ProtectedRoute><LogisticsPage /></ProtectedRoute>} />
           <Route path="/environment" element={<ProtectedRoute><EnvironmentPage /></ProtectedRoute>} />

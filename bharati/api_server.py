@@ -35,18 +35,17 @@ async def startup_event():
     logging.info("Starting Background Physics Simulation Loop...")
     asyncio.create_task(simulation_loop())
 
+import json
+
 async def simulation_loop():
     """The main heartbeat of the Digital Twin."""
     while True:
-        # Dynamic Time Acceleration: Fast-forward ONLY when there's an active fault or repair
-        if engine.fault_manager.active_faults or engine.inventory_model.active_repairs:
-            engine.time_acceleration = 300  # Fast-forward mode (1 real min = 5 sim hours)
-        else:
-            engine.time_acceleration = 1    # Normal mode (1 real min = 1 sim min, 1x)
-
-        # Tick the engine (Calculates Thermodynamics, Biology, Weibull maths, etc.)
-        state = engine.step()
-        
+        try:
+            with open("current_state.json", "r") as f:
+                state = json.load(f)
+        except Exception:
+            state = {"status": "Waiting for run_simulation.py to start..."}
+            
         # Broadcast the massive state dictionary to all connected frontend dashboards
         if connected_clients:
             dead_clients = []
@@ -66,7 +65,11 @@ async def simulation_loop():
 @app.get("/state")
 async def get_state():
     """Returns a single JSON snapshot of the entire station."""
-    return engine.state
+    try:
+        with open("current_state.json", "r") as f:
+            return json.load(f)
+    except Exception:
+        return {"status": "Waiting for run_simulation.py to start..."}
 
 @app.get("/faults/list")
 async def get_faults_list():
@@ -76,12 +79,23 @@ async def get_faults_list():
 @app.post("/fault/trigger")
 async def trigger_fault(req: FaultRequest):
     """Allows a dashboard to inject a physical fault instantly."""
+    try:
+        with open("pending_faults.json", "a") as f:
+            f.write(json.dumps({"fault_id": req.fault_id, "severity": req.severity}) + "\n")
+    except Exception: pass
+    
+    # Also trigger locally just in case
     engine.fault_manager.trigger(req.fault_id, req.severity)
     return {"status": "success", "message": f"Injected fault: {req.fault_id}"}
 
 @app.post("/work_order/dispatch")
 async def dispatch_work_order(req: WorkOrderRequest):
     """Allows a dashboard to dispatch a mechanic to fix a fault."""
+    try:
+        with open("pending_faults.json", "a") as f:
+            f.write(json.dumps({"fault_id": req.fault_id, "is_work_order": True}) + "\n")
+    except Exception: pass
+    
     success = engine.inventory_model.dispatch_work_order(req.fault_id, engine.state)
     return {
         "status": "success" if success else "failed",

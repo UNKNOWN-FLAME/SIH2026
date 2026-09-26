@@ -16,6 +16,7 @@ export default function Sidebar({
   const navItems = [
     { icon: 'dashboard', label: t('nav.dashboard'), sub: t('nav.dashboard_sub'), path: '/' },
     { icon: 'hub', label: t('nav.stations'), sub: t('nav.stations_sub'), path: '/stations' },
+    { icon: 'view_in_ar', label: '3D Digital Twin', sub: 'Interactive Simulator', path: '/twin' },
     { icon: 'bolt', label: t('nav.energy'), sub: t('nav.energy_sub'), path: '/energy' },
     { icon: 'local_shipping', label: t('nav.logistics'), sub: t('nav.logistics_sub'), path: '/logistics' },
     { icon: 'eco', label: t('nav.environment'), sub: t('nav.environment_sub'), path: '/environment' },

@@ -59,7 +59,27 @@ def main():
     
     try:
         while True:
+            # Check for incoming faults from the UI
+            try:
+                if os.path.exists("pending_faults.json"):
+                    with open("pending_faults.json", "r") as f:
+                        lines = f.readlines()
+                    os.remove("pending_faults.json")
+                    for line in lines:
+                        if line.strip():
+                            req = json.loads(line)
+                            if req.get("is_work_order"):
+                                engine.inventory_model.dispatch_work_order(req["fault_id"], engine.state)
+                            else:
+                                engine.fault_manager.trigger(req["fault_id"], req["severity"])
+            except Exception: pass
+            
             state = engine.step()
+            try:
+                with open("current_state.json", "w") as f:
+                    json.dump(state, f)
+            except Exception: pass
+            
             clear_console()
             
             print(f"{C.BOLD}{C.MAGENTA}" + "="*80)
