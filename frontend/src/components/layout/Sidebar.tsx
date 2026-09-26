@@ -15,6 +15,7 @@ export default function Sidebar({
 
   const navItems = [
     { icon: 'dashboard', label: t('nav.dashboard'), sub: t('nav.dashboard_sub'), path: '/' },
+    { icon: 'sensors', label: t('nav.telemetry'), sub: t('nav.telemetry_sub'), path: '/telemetry' },
     { icon: 'hub', label: t('nav.stations'), sub: t('nav.stations_sub'), path: '/stations' },
     { icon: 'bolt', label: t('nav.energy'), sub: t('nav.energy_sub'), path: '/energy' },
     { icon: 'local_shipping', label: t('nav.logistics'), sub: t('nav.logistics_sub'), path: '/logistics' },

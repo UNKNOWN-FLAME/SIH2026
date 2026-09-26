@@ -370,3 +370,34 @@ export async function getIoTSensors(
   })
   return data
 }
+
+// ── Telemetry & Black Box Rollup API ─────────────────────────────────────────
+
+export interface CompressionRollupResult {
+  station_id: string
+  executed_at: string
+  status: string
+  safe_ring_buffer_hours: number
+  raw_readings_evaluated: number
+  decimated_aggregates_created: number
+  raw_readings_pruned: number
+  archived_records_over_7d: number
+  blackbox_windows_protected: number
+  estimated_kb_saved: number
+  compression_ratio_pct: number
+}
+
+export async function triggerCompressionRollup(stationId: string): Promise<CompressionRollupResult> {
+  const { data } = await api.post<CompressionRollupResult>(`/hq/stations/${stationId}/telemetry/compress-rollup`)
+  return data
+}
+
+export async function getBlackBoxIncidents(stationId: string): Promise<any[]> {
+  const { data } = await api.get<any[]>(`/hq/stations/${stationId}/blackbox/incidents`)
+  return data
+}
+
+export async function getTelemetryTimeline(stationId: string, hours = 168): Promise<any> {
+  const { data } = await api.get<any>(`/hq/stations/${stationId}/telemetry/timeline`, { params: { hours } })
+  return data
+}
