@@ -1686,3 +1686,48 @@ async def chat_with_ai(
         reply = f"Sorry, I encountered an error: {str(e)}"
         
     return ChatQueryOut(response=reply)
+
+
+# ---------------------------------------------------------------------------
+# Predictive AI & ML Endpoints
+# ---------------------------------------------------------------------------
+
+@router.get("/stations/{station_id}/analytics/energy-forecast", tags=["predictive-ai"])
+async def get_energy_forecast(station_id: str) -> dict:
+    """Return 48-hour microgrid load and renewable generation forecast using ML."""
+    from cloud.ai_engine.service import PredictiveAIService
+    service = PredictiveAIService.get_instance()
+    return await service.predict_48h_energy_balance(station_id)
+
+
+@router.get("/stations/{station_id}/analytics/fuel-forecast", tags=["predictive-ai"])
+async def get_fuel_forecast(station_id: str) -> dict:
+    """Return fuel consumption and autonomy depletion prediction using ML."""
+    from cloud.ai_engine.service import PredictiveAIService
+    service = PredictiveAIService.get_instance()
+    return await service.predict_fuel_autonomy(station_id)
+
+
+@router.get("/stations/{station_id}/analytics/anomalies", tags=["predictive-ai"])
+async def get_equipment_anomalies(station_id: str) -> dict:
+    """Return real-time multi-channel equipment anomaly detection (Isolation Forest)."""
+    from cloud.ai_engine.service import PredictiveAIService
+    service = PredictiveAIService.get_instance()
+    return await service.detect_equipment_anomalies(station_id)
+
+
+@router.get("/stations/{station_id}/analytics/maintenance-schedule", tags=["predictive-ai"])
+async def get_predictive_maintenance(station_id: str) -> dict:
+    """Return predictive maintenance schedule and RUL from Weibull hazard model."""
+    from cloud.ai_engine.service import PredictiveAIService
+    service = PredictiveAIService.get_instance()
+    return await service.predict_maintenance_schedule(station_id)
+
+
+@router.get("/stations/{station_id}/analytics/weather-ensemble", tags=["predictive-ai"])
+async def get_weather_ensemble(station_id: str) -> dict:
+    """Return 7-day polar weather forecast and blizzard risk ensemble."""
+    from cloud.ai_engine.service import PredictiveAIService
+    service = PredictiveAIService.get_instance()
+    return await service.predict_weather_ensemble(station_id)
+
