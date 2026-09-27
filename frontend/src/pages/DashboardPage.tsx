@@ -11,6 +11,7 @@ import ActiveAlerts from '../components/dashboard/ActiveAlerts'
 import MetMastCard from '../components/dashboard/MetMastCard'
 import GlacialCard from '../components/dashboard/GlacialCard'
 import SeismicCard from '../components/dashboard/SeismicCard'
+import GroundLinkCard from '../components/dashboard/GroundLinkCard'
 import { useLanguage } from '../context/LanguageContext'
 
 export default function DashboardPage() {
@@ -78,6 +79,7 @@ export default function DashboardPage() {
 
               {/* ── Right: Stacked cards (responsive cols) ── */}
               <div className="bento-side-stack">
+                <GroundLinkCard stationId={activeStation} />
                 <WeatherCard stationId={activeStation} />
                 <EnergyCard stationId={activeStation} />
                 <ActiveAlerts stationId={activeStation} />

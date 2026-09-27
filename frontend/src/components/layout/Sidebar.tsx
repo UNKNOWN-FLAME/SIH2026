@@ -15,6 +15,7 @@ export default function Sidebar({
 
   const navItems = [
     { icon: 'dashboard', label: t('nav.dashboard'), sub: t('nav.dashboard_sub'), path: '/' },
+    { icon: 'sensors', label: t('nav.telemetry'), sub: t('nav.telemetry_sub'), path: '/telemetry' },
     { icon: 'hub', label: t('nav.stations'), sub: t('nav.stations_sub'), path: '/stations' },
     { icon: 'bolt', label: t('nav.energy'), sub: t('nav.energy_sub'), path: '/energy' },
     { icon: 'local_shipping', label: t('nav.logistics'), sub: t('nav.logistics_sub'), path: '/logistics' },
@@ -22,7 +23,6 @@ export default function Sidebar({
     { icon: 'foundation', label: t('nav.infrastructure'), sub: t('nav.infrastructure_sub'), path: '/infrastructure' },
     { icon: 'analytics', label: t('nav.analytics'), sub: t('nav.analytics_sub'), path: '/analytics' },
     { icon: 'description', label: t('nav.reports'), sub: t('nav.reports_sub'), path: '/reports' },
-    { icon: 'settings', label: t('nav.settings'), sub: t('nav.settings_sub'), path: '/settings' },
   ]
 
   return (

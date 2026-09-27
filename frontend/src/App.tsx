@@ -10,7 +10,7 @@ import EnvironmentPage from './pages/EnvironmentPage'
 import InfrastructurePage from './pages/InfrastructurePage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import ReportsPage from './pages/ReportsPage'
-import SettingsPage from './pages/SettingsPage'
+import LiveTelemetryPage from './pages/LiveTelemetryPage'
 import { ChatBot } from './components/ui/ChatBot'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -24,6 +24,7 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/telemetry" element={<ProtectedRoute><LiveTelemetryPage /></ProtectedRoute>} />
           <Route path="/stations" element={<ProtectedRoute><StationsPage /></ProtectedRoute>} />
           <Route path="/energy" element={<ProtectedRoute><EnergyPage /></ProtectedRoute>} />
           <Route path="/logistics" element={<ProtectedRoute><LogisticsPage /></ProtectedRoute>} />
@@ -31,7 +32,6 @@ export default function App() {
           <Route path="/infrastructure" element={<ProtectedRoute><InfrastructurePage /></ProtectedRoute>} />
           <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
           <Route path="/*" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         </Routes>
         <ChatBot />

@@ -71,6 +71,8 @@ export const DICTIONARY: Translations = {
   'nav.wing_sub': { en: 'Polar Operations Wing', hi: 'अंटार्कटिक प्रचालन प्रभाग' },
   'nav.dashboard': { en: 'Dashboard', hi: 'मुख्य डैशबोर्ड' },
   'nav.dashboard_sub': { en: 'Live Twin Overview', hi: 'लाइव डिजिटल ट्विन' },
+  'nav.telemetry': { en: 'Live Telemetry', hi: 'लाइव टेलीमेट्री' },
+  'nav.telemetry_sub': { en: 'DVR & Black Box', hi: 'डीवीआर व ब्लैक बॉक्स' },
   'nav.stations': { en: 'Station Network', hi: 'स्टेशन नेटवर्क' },
   'nav.stations_sub': { en: 'Maitri & Bharati Nodes', hi: 'मैत्री व भारती नोड्स' },
   'nav.energy': { en: 'Energy Systems', hi: 'ऊर्जा एवं विद्युत' },
