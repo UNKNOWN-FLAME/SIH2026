@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useStation } from '../context/StationContext'
 import {
   AreaChart,
   Area,
@@ -54,7 +55,7 @@ interface TelemetryPoint {
   status: 'PRE_INCIDENT' | 'BLACKOUT_TRIP' | 'RECOVERY'
 }
 
-function generate10HourReplay(stationId: StationId): TelemetryPoint[] {
+function generate10HourReplay(stationId: StationId, anomalyId?: string): TelemetryPoint[] {
   const points: TelemetryPoint[] = []
   for (let step = -50; step <= 50; step++) {
     const offset = Math.round(step) / 10
@@ -81,15 +82,27 @@ function generate10HourReplay(stationId: StationId): TelemetryPoint[] {
       powerKw -= severity * 12
       fuelPressureBar -= severity * 1.6
       coolantTempC += severity * 8
-      vibrationRms += severity * 3.2
-      habitatTempC -= severity * 1.5
+      vibrationRms += severity * (anomalyId === 'earthquake' ? 8.5 : 3.2)
+      habitatTempC -= severity * (anomalyId === 'blizzard' ? 5.2 : 1.5)
       status = 'PRE_INCIDENT'
     } else if (offset >= 0 && offset <= 1.2) {
-      powerKw = 0.0 // Blackout stall
-      fuelPressureBar = 0.3 // Line frozen
-      coolantTempC = 99.4
-      vibrationRms = 8.4
-      habitatTempC = 16.8 // Heat plunge
+      if (anomalyId === 'earthquake') {
+        vibrationRms = 14.8
+        powerKw = 42.0
+        coolantTempC = 89.0
+        habitatTempC = 19.5
+      } else if (anomalyId === 'blizzard') {
+        powerKw = 68.0
+        habitatTempC = 4.2
+        fuelPressureBar = 2.1
+        vibrationRms = 7.4
+      } else {
+        powerKw = 0.0 // Blackout stall
+        fuelPressureBar = 0.3 // Line frozen
+        coolantTempC = 99.4
+        vibrationRms = 8.4
+        habitatTempC = 16.8 // Heat plunge
+      }
       status = 'BLACKOUT_TRIP'
     } else {
       const rec = Math.min(1, (offset - 1.2) / 1.8)
@@ -117,14 +130,33 @@ function generate10HourReplay(stationId: StationId): TelemetryPoint[] {
 
 export default function BlackBoxPage() {
   const navigate = useNavigate()
-  const [stationId, setStationId] = useState<StationId>('maitri')
+  const { stationId, setStationId, isOnline, edgeBufferCount, flushEdgeBuffer, lastAnomalyResult } = useStation()
+  const [selectedMode, setSelectedMode] = useState<'historical' | 'injected'>(() => {
+    return lastAnomalyResult ? 'injected' : 'historical'
+  })
   const [playheadOffset, setPlayheadOffset] = useState<number>(0.0) // default to Blackout Event (T=0)
   const [isPlaying, setIsPlaying] = useState<boolean>(false)
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1)
   const playTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const incident = INCIDENTS[stationId]
-  const telemetryData = useMemo(() => generate10HourReplay(stationId), [stationId])
+  const incident: IncidentConfig = useMemo(() => {
+    if (selectedMode === 'injected' && lastAnomalyResult) {
+      return {
+        id: lastAnomalyResult.incident_id || 'BB-INJECTED-ANM',
+        stationId: (lastAnomalyResult.station_id || stationId) as StationId,
+        stationName: (lastAnomalyResult.station_id || stationId) === 'maitri' ? 'Maitri Research Station' : 'Bharati Research Station',
+        incidentName: `${lastAnomalyResult.anomaly_name} (${lastAnomalyResult.severity})`,
+        incidentDate: `${new Date(lastAnomalyResult.injected_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}, ${new Date(lastAnomalyResult.injected_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })} IST • Live Injected Incident`,
+        sitrepNumber: lastAnomalyResult.report_reference,
+      }
+    }
+    return INCIDENTS[stationId]
+  }, [selectedMode, lastAnomalyResult, stationId])
+
+  const telemetryData = useMemo(() => {
+    const anomId = selectedMode === 'injected' ? lastAnomalyResult?.anomaly_id : undefined
+    return generate10HourReplay(stationId, anomId)
+  }, [stationId, selectedMode, lastAnomalyResult])
 
   const activePoint = useMemo(() => {
     let closest = telemetryData[0]
@@ -209,6 +241,112 @@ export default function BlackBoxPage() {
           </div>
         </div>
 
+        {/* ── Link Awareness Banner: Live Telemetry vs Edge Black Box Buffering ── */}
+        {isOnline ? (
+          <div
+            style={{
+              background: '#f0fdf4',
+              border: '1px solid #bbf7d0',
+              borderLeft: '5px solid #16a34a',
+              padding: '8px 14px',
+              marginBottom: 12,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              fontSize: 11,
+              flexWrap: 'wrap',
+              gap: 8,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 16 }}>🟢</span>
+              <div>
+                <strong style={{ color: '#15803d' }}>
+                  VSAT SATELLITE LINK LIVE — DIRECT HQ TELEMETRY STREAMING ACTIVE
+                </strong>
+                <span style={{ color: '#166534', marginLeft: 8 }}>
+                  Telemetry is transmitting live to HQ Neon DB. Autonomous Edge Black Box buffer is on STANDBY. You are reviewing the Flight Analysis &amp; Post-Mortem Incident Replay Console.
+                </span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                onClick={() => navigate('/infrastructure')}
+                style={{
+                  background: '#0b3b60',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '4px 10px',
+                  fontSize: 10,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  borderRadius: 2,
+                }}
+              >
+                🏢 INFRASTRUCTURE TWIN
+              </button>
+              <button
+                onClick={() => navigate('/')}
+                style={{
+                  background: '#0284c7',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '4px 10px',
+                  fontSize: 10,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  borderRadius: 2,
+                }}
+              >
+                📡 LIVE DASHBOARD
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div
+            style={{
+              background: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderLeft: '5px solid #dc2626',
+              padding: '10px 14px',
+              marginBottom: 12,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              fontSize: 11,
+              flexWrap: 'wrap',
+              gap: 8,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 16 }}>🔴</span>
+              <div>
+                <strong style={{ color: '#b91c1c' }}>
+                  VSAT LINK SEVERED — AUTONOMOUS EDGE BLACK BOX IS ACTIVELY RECORDING
+                </strong>
+                <span style={{ color: '#7f1d1d', marginLeft: 8 }}>
+                  Satellite connection severed. Telemetry is being recorded in local non-volatile SHA-256 buffer ({edgeBufferCount} frames queued).
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => flushEdgeBuffer()}
+              style={{
+                background: '#dc2626',
+                color: '#ffffff',
+                border: 'none',
+                padding: '5px 12px',
+                fontSize: 10.5,
+                fontWeight: 800,
+                cursor: 'pointer',
+                borderRadius: 2,
+              }}
+            >
+              ⚡ RESTORE LINK &amp; FLUSH ({edgeBufferCount} FRAMES)
+            </button>
+          </div>
+        )}
+
         {/* ── Official Black Box Incident Banner (Reddish Emergency Government Theme) ── */}
         <div
           style={{
@@ -275,10 +413,11 @@ export default function BlackBoxPage() {
             </div>
           </div>
 
-          {/* Center: Incident Station Switcher */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fee2e2', padding: 4, borderRadius: 4, border: '1px solid #fecaca' }}>
+          {/* Center: Incident Station & Injected Anomaly Switcher */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fee2e2', padding: 4, borderRadius: 4, border: '1px solid #fecaca', flexWrap: 'wrap' }}>
             <button
               onClick={() => {
+                setSelectedMode('historical')
                 setStationId('maitri')
                 setPlayheadOffset(0.0)
               }}
@@ -287,8 +426,8 @@ export default function BlackBoxPage() {
                 fontSize: 11,
                 fontWeight: 800,
                 cursor: 'pointer',
-                background: stationId === 'maitri' ? '#b91c1c' : 'transparent',
-                color: stationId === 'maitri' ? '#ffffff' : '#991b1b',
+                background: selectedMode === 'historical' && stationId === 'maitri' ? '#b91c1c' : 'transparent',
+                color: selectedMode === 'historical' && stationId === 'maitri' ? '#ffffff' : '#991b1b',
                 border: 'none',
                 borderRadius: 3,
                 transition: 'all 0.15s ease',
@@ -298,6 +437,7 @@ export default function BlackBoxPage() {
             </button>
             <button
               onClick={() => {
+                setSelectedMode('historical')
                 setStationId('bharati')
                 setPlayheadOffset(0.0)
               }}
@@ -306,8 +446,8 @@ export default function BlackBoxPage() {
                 fontSize: 11,
                 fontWeight: 800,
                 cursor: 'pointer',
-                background: stationId === 'bharati' ? '#b91c1c' : 'transparent',
-                color: stationId === 'bharati' ? '#ffffff' : '#991b1b',
+                background: selectedMode === 'historical' && stationId === 'bharati' ? '#b91c1c' : 'transparent',
+                color: selectedMode === 'historical' && stationId === 'bharati' ? '#ffffff' : '#991b1b',
                 border: 'none',
                 borderRadius: 3,
                 transition: 'all 0.15s ease',
@@ -315,6 +455,32 @@ export default function BlackBoxPage() {
             >
               📍 Bharati: HVAC Trip
             </button>
+
+            {lastAnomalyResult && (
+              <button
+                onClick={() => {
+                  setSelectedMode('injected')
+                  setPlayheadOffset(0.0)
+                }}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: 11,
+                  fontWeight: 900,
+                  cursor: 'pointer',
+                  background: selectedMode === 'injected' ? '#4338ca' : '#e0e7ff',
+                  color: selectedMode === 'injected' ? '#ffffff' : '#3730a3',
+                  border: '1px solid #c7d2fe',
+                  borderRadius: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  animation: selectedMode !== 'injected' ? 'pulse 2s infinite' : 'none',
+                }}
+              >
+                <span>🧪 Injected: {lastAnomalyResult.anomaly_name}</span>
+                <span style={{ fontSize: 9, background: '#ef4444', color: '#fff', padding: '1px 5px', borderRadius: 2 }}>LIVE</span>
+              </button>
+            )}
           </div>
 
           {/* Right: Return to Operations Button */}

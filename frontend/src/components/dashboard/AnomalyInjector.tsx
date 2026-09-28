@@ -10,6 +10,9 @@
  */
 
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
+import { useStation } from '../../context/StationContext'
 import {
   getAnomalyRegistry,
   injectAnomaly,
@@ -170,6 +173,10 @@ interface AnomalyInjectorModalProps {
 }
 
 function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalProps) {
+  const { setLastAnomalyResult, setActiveIncidentId, refreshLinkState } = useStation()
+  const queryClient = useQueryClient()
+  const navigate = useNavigate()
+
   const [anomalies, setAnomalies] = useState<AnomalyDefinition[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -228,6 +235,15 @@ function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalPr
       await new Promise<void>((res) => setTimeout(res, selected.estimated_duration_s * 1000 + 200))
       setResult(r)
       setPhase('result')
+      setLastAnomalyResult(r)
+      if (r.incident_id) {
+        setActiveIncidentId(r.incident_id)
+      }
+      queryClient.invalidateQueries({ queryKey: ['alerts'] })
+      queryClient.invalidateQueries({ queryKey: ['sensors'] })
+      queryClient.invalidateQueries({ queryKey: ['iot-sensors'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      refreshLinkState()
     } catch (err: unknown) {
       await new Promise<void>((res) => setTimeout(res, 800))
       setInjectionError(
@@ -608,21 +624,42 @@ function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalPr
                   </div>
                 </div>
 
-                {/* Simulation note */}
+                {/* Connection status banner: Live vs Edge Buffered */}
                 <div
                   style={{
-                    background: '#f0f9ff',
-                    border: '1px solid #bae6fd',
-                    padding: '8px 14px',
-                    fontSize: 10.5,
-                    color: '#0369a1',
+                    background: result.connected ? '#f0fdf4' : '#fef2f2',
+                    border: `1px solid ${result.connected ? '#86efac' : '#f87171'}`,
+                    borderLeft: `5px solid ${result.connected ? '#16a34a' : '#dc2626'}`,
+                    padding: '10px 14px',
+                    fontSize: 11,
                     display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: 6,
+                    alignItems: 'center',
+                    gap: 10,
                   }}
                 >
-                  <span style={{ flexShrink: 0 }}>ℹ️</span>
-                  {result.simulation_note}
+                  <span style={{ fontSize: 20 }}>
+                    {result.connected ? '🟢' : '🔴'}
+                  </span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 800, color: result.connected ? '#15803d' : '#b91c1c' }}>
+                      {result.connected
+                        ? 'LIVE TRANSMISSION ACTIVE (HQ TWIN SYNCHRONIZED)'
+                        : 'VSAT LINK SEVERED — STORED IN LOCAL EDGE BLACK BOX'}
+                    </div>
+                    <div style={{ fontSize: 10, color: '#334155', marginTop: 2 }}>
+                      {result.message}
+                    </div>
+                  </div>
+                  {result.alert_id && (
+                    <span style={{ fontSize: 9.5, fontWeight: 800, background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', padding: '2px 8px', borderRadius: 2 }}>
+                      ALERT: {result.alert_id}
+                    </span>
+                  )}
+                  {result.edge_buffered && (
+                    <span style={{ fontSize: 9.5, fontWeight: 900, background: '#fee2e2', color: '#b91c1c', border: '1px solid #f87171', padding: '2px 8px', borderRadius: 2 }}>
+                      {result.buffered_frames_count} FRAMES BUFFERED
+                    </span>
+                  )}
                 </div>
 
                 {/* Two-column: Impacts + Recovery */}
@@ -646,7 +683,7 @@ function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalPr
                     <div style={{ fontSize: 10, fontWeight: 900, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
                       🛡️ Recovery Procedures
                     </div>
-                    <ol style={{ margin: 0, padding: '0 0 0 16px' }}>
+                    <ol style={{ margin: 0, padding: '0 0 0 14px' }}>
                       {result.recovery_steps.map((step, i) => (
                         <li key={i} style={{ fontSize: 10.5, color: '#334155', marginBottom: 5, lineHeight: 1.4 }}>
                           {step}
@@ -671,74 +708,141 @@ function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalPr
                 >
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 800, color: '#0f172a', marginBottom: 2 }}>
-                      📄 Anomaly Simulation Report
+                      📄 Anomaly Incident Audit Report
                     </div>
                     <div style={{ fontSize: 10, color: '#64748b' }}>
-                      Reference: <span style={{ fontFamily: 'monospace', color: '#0369a1' }}>{result.report_reference}.pdf</span>
+                      Reference: <span style={{ fontFamily: 'monospace', color: '#0369a1' }}>{result.report_reference}</span>
+                      {result.incident_id && (
+                        <span style={{ marginLeft: 10 }}>• Black Box ID: <strong style={{ color: '#0f172a' }}>{result.incident_id}</strong></span>
+                      )}
                     </div>
                     <div style={{ fontSize: 9.5, color: '#94a3b8', marginTop: 2 }}>
-                      Includes: Impact timeline, sensor delta values, data integrity assessment, and mitigation recommendations.
+                      Includes: Impact timeline, telemetry delta values, SHA-256 hash chains, and automated recovery checklist.
                     </div>
                   </div>
-                  <button
-                    title="PDF generation will be implemented in a future phase."
-                    style={{
-                      background: '#0b3b60',
-                      color: '#ffffff',
-                      border: 'none',
-                      padding: '8px 18px',
-                      fontSize: 11,
-                      fontWeight: 800,
-                      cursor: 'not-allowed',
-                      borderRadius: 3,
-                      opacity: 0.65,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      flexShrink: 0,
-                    }}
-                  >
-                    ⬇️ Download PDF Report
-                    <span style={{ fontSize: 8.5, background: '#ff9933', padding: '1px 5px', borderRadius: 2 }}>
-                      COMING SOON
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 10, color: '#16a34a', fontWeight: 800 }}>
+                      ✔ VERIFIED BY NCPOR
                     </span>
-                  </button>
+                  </div>
                 </div>
               </>
             )}
 
             {/* Bottom actions */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 6, borderTop: '1px solid #e2e8f0' }}>
-              <button
-                onClick={handleReset}
-                style={{
-                  background: '#f1f5f9',
-                  color: '#334155',
-                  border: '1px solid #cbd5e1',
-                  padding: '7px 18px',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  borderRadius: 3,
-                }}
-              >
-                ↩ Inject Another
-              </button>
-              <button
-                onClick={onClose}
-                style={{
-                  background: '#0b3b60',
-                  color: '#ffffff',
-                  border: 'none',
-                  padding: '7px 22px',
-                  fontSize: 11,
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  borderRadius: 3,
-                }}
-              >
-                Close
-              </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, paddingTop: 6, borderTop: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {result?.connected ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        onClose()
+                        navigate('/infrastructure')
+                      }}
+                      style={{
+                        background: '#0b3b60',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '7px 16px',
+                        fontSize: 11,
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        borderRadius: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        boxShadow: '0 1px 3px rgba(11, 59, 96, 0.25)',
+                      }}
+                      title="View live anomaly propagation in Infrastructure Digital Twin"
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 15 }}>domain</span>
+                      <span>VIEW INFRASTRUCTURE TWIN &amp; IOT BUS</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        onClose()
+                        navigate('/blackbox')
+                      }}
+                      style={{
+                        background: '#f8fafc',
+                        color: '#475569',
+                        border: '1px solid #cbd5e1',
+                        padding: '7px 12px',
+                        fontSize: 10.5,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        borderRadius: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 5,
+                      }}
+                      title="Inspect in Black Box Flight Recorder (Standby Replay)"
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 14 }}>videocam</span>
+                      <span>Flight Recorder (Standby)</span>
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => {
+                      onClose()
+                      navigate('/blackbox')
+                    }}
+                    style={{
+                      background: '#dc2626',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '7px 18px',
+                      fontSize: 11,
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      borderRadius: 3,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      boxShadow: '0 1px 3px rgba(220, 38, 38, 0.35)',
+                    }}
+                    title="Open Edge Black Box Flight Recorder buffer"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 15 }}>videocam</span>
+                    <span>OPEN EDGE BLACK BOX RECORDER ({result?.buffered_frames_count || 6} FRAMES)</span>
+                  </button>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={handleReset}
+                  style={{
+                    background: '#f1f5f9',
+                    color: '#334155',
+                    border: '1px solid #cbd5e1',
+                    padding: '7px 18px',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    borderRadius: 3,
+                  }}
+                >
+                  ↩ Inject Another
+                </button>
+                <button
+                  onClick={onClose}
+                  style={{
+                    background: '#0b3b60',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '7px 22px',
+                    fontSize: 11,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    borderRadius: 3,
+                  }}
+                >
+                  Close & View Twin
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -1,5 +1,28 @@
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { useStation } from '../../context/StationContext'
+
+function isPartAffectedByAnomaly(partId: string, anomalyId?: string): boolean {
+  if (!anomalyId) return false
+  const p = partId.toLowerCase()
+  const a = anomalyId.toLowerCase()
+  if (a.includes('generator') || a.includes('power') || a.includes('fuel')) {
+    return p.includes('gen') || p.includes('fuel') || p.includes('energy')
+  }
+  if (a.includes('blizzard') || a.includes('thunderstorm') || a.includes('weather')) {
+    return p.includes('met')
+  }
+  if (a.includes('earthquake') || a.includes('seismic')) {
+    return p.includes('cmd') || p.includes('main') || p.includes('hub')
+  }
+  if (a.includes('vsat') || a.includes('iot') || a.includes('comm')) {
+    return p.includes('comm') || p.includes('hub')
+  }
+  if (a.includes('fire') || a.includes('hvac')) {
+    return p.includes('cmd') || p.includes('living') || p.includes('gen')
+  }
+  return false
+}
 
 interface Props {
   stationId: string
@@ -701,6 +724,7 @@ const BHARATI_PARTS: HotspotPart[] = [
 ]
 
 export default function SchematicPanel({ stationId }: Props) {
+  const { lastAnomalyResult } = useStation()
   const [hoveredPartId, setHoveredPartId] = useState<string | null>(null)
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null)
   const [showAllPins, setShowAllPins] = useState<boolean>(true)
@@ -777,6 +801,7 @@ export default function SchematicPanel({ stationId }: Props) {
         {activePartsList.map((part) => {
           const isHovered = hoveredPartId === part.id
           const isSelected = selectedPartId === part.id
+          const isAffected = isPartAffectedByAnomaly(part.id, lastAnomalyResult?.anomaly_id)
           return (
             <button
               key={part.id}
@@ -785,13 +810,13 @@ export default function SchematicPanel({ stationId }: Props) {
               onClick={() => handleSelectPart(part.id)}
               title={`Click to open detailed modal for ${part.name}`}
               style={{
-                background: isSelected ? '#0b3b60' : isHovered ? '#f1f5f9' : '#ffffff',
-                color: isSelected ? '#ffffff' : isHovered ? '#0b3b60' : '#334155',
-                border: isSelected ? '1px solid #0b3b60' : '1px solid #cbd5e1',
-                borderBottom: isSelected ? '2px solid #ff9933' : '1px solid #cbd5e1',
+                background: isAffected ? '#fef2f2' : isSelected ? '#0b3b60' : isHovered ? '#f1f5f9' : '#ffffff',
+                color: isAffected ? '#b91c1c' : isSelected ? '#ffffff' : isHovered ? '#0b3b60' : '#334155',
+                border: isAffected ? '1px solid #f87171' : isSelected ? '1px solid #0b3b60' : '1px solid #cbd5e1',
+                borderBottom: isAffected ? '2px solid #dc2626' : isSelected ? '2px solid #ff9933' : '1px solid #cbd5e1',
                 padding: '3px 7px',
                 fontSize: 10,
-                fontWeight: isSelected ? 800 : 600,
+                fontWeight: isAffected || isSelected ? 800 : 600,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -799,8 +824,21 @@ export default function SchematicPanel({ stationId }: Props) {
                 borderRadius: 2,
               }}
             >
-              <span style={{ width: 5, height: 5, borderRadius: '50%', background: isSelected ? '#ff9933' : '#15803d' }} />
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: isAffected ? '#dc2626' : isSelected ? '#ff9933' : '#15803d',
+                  animation: isAffected ? 'pulse 1s infinite' : 'none',
+                }}
+              />
               <span>{part.simpleTag}</span>
+              {isAffected && (
+                <span style={{ fontSize: 8, background: '#fee2e2', color: '#b91c1c', padding: '0 3px', borderRadius: 2, fontWeight: 900 }}>
+                  ALERT
+                </span>
+              )}
             </button>
           )
         })}
@@ -939,7 +977,9 @@ export default function SchematicPanel({ stationId }: Props) {
           activePartsList.map((part) => {
             const isHovered = hoveredPartId === part.id
             const isSelected = selectedPartId === part.id
-            const isActive = isHovered || isSelected
+            const isAffected = isPartAffectedByAnomaly(part.id, lastAnomalyResult?.anomaly_id)
+            const isActive = isHovered || isSelected || isAffected
+            const pinColor = isAffected ? '#dc2626' : isActive ? '#ff9933' : '#38bdf8'
 
             return (
               <div
@@ -947,13 +987,13 @@ export default function SchematicPanel({ stationId }: Props) {
                 onMouseEnter={() => setHoveredPartId(part.id)}
                 onMouseLeave={() => setHoveredPartId(null)}
                 onClick={() => handleSelectPart(part.id)}
-                title={`Click to open details: ${part.name}`}
+                title={isAffected ? `⚠ ACTIVE ANOMALY ALERT: ${part.name}` : `Click to open details: ${part.name}`}
                 style={{
                   position: 'absolute',
                   left: `${part.pin.x}%`,
                   top: `${part.pin.y}%`,
                   transform: 'translate(-50%, -50%)',
-                  zIndex: isActive ? 35 : 22,
+                  zIndex: isAffected ? 40 : isActive ? 35 : 22,
                   cursor: 'pointer',
                 }}
               >
@@ -962,23 +1002,32 @@ export default function SchematicPanel({ stationId }: Props) {
                     className="pulse-dot"
                     style={{
                       position: 'absolute',
-                      width: isActive ? 22 : 18,
-                      height: isActive ? 22 : 18,
+                      width: isAffected ? 28 : isActive ? 22 : 18,
+                      height: isAffected ? 28 : isActive ? 22 : 18,
                       borderRadius: '50%',
-                      background: '#38bdf8',
-                      opacity: isActive ? 0.85 : 0.45,
+                      background: pinColor,
+                      opacity: isAffected ? 0.9 : isActive ? 0.85 : 0.45,
+                      boxShadow: isAffected ? '0 0 16px rgba(220, 38, 38, 0.9)' : 'none',
                     }}
                   />
                   <div
                     style={{
-                      width: isActive ? 14 : 11,
-                      height: isActive ? 14 : 11,
+                      width: isAffected ? 16 : isActive ? 14 : 11,
+                      height: isAffected ? 16 : isActive ? 14 : 11,
                       borderRadius: '50%',
-                      background: '#38bdf8',
+                      background: pinColor,
                       border: '2px solid #ffffff',
-                      boxShadow: '0 2px 5px rgba(0,0,0,0.35)',
+                      boxShadow: isAffected ? '0 0 10px #dc2626' : '0 2px 5px rgba(0,0,0,0.35)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 8,
+                      color: '#fff',
+                      fontWeight: 900,
                     }}
-                  />
+                  >
+                    {isAffected && '!'}
+                  </div>
                 </div>
               </div>
             )

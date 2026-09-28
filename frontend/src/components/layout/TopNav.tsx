@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useLanguage } from '../../context/LanguageContext'
+import { useStation } from '../../context/StationContext'
 
 export default function TopNav() {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
   const { lang, toggleLang, t } = useLanguage()
+  const { stationId, setStationId, isOnline, linkState, edgeBufferCount, toggleLinkState, flushEdgeBuffer } = useStation()
   const [timeStr, setTimeStr] = useState<string>('')
 
   useEffect(() => {
@@ -85,6 +87,86 @@ export default function TopNav() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#0b3b60', fontFamily: 'Inter', fontWeight: 700, fontSize: 10.5 }}>
             <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#ea580c' }}>schedule</span>
             <span>{timeStr || 'LIVE IST'}</span>
+          </div>
+
+          {/* VSAT Link Status & Edge Buffer Pill */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {isOnline ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  background: '#f0fdf4',
+                  border: '1px solid #86efac',
+                  color: '#15803d',
+                  padding: '2px 8px',
+                  borderRadius: 3,
+                  fontSize: 10,
+                  fontWeight: 800,
+                  letterSpacing: '0.02em',
+                }}
+                title="VSAT Telemetry stream is CONNECTED. Live alerts & sensors flow directly to HQ Digital Twin."
+              >
+                <span className="pulse-dot" style={{ width: 7, height: 7, borderRadius: '50%', background: '#16a34a' }} />
+                <span>VSAT LINK LIVE (HQ DIRECT)</span>
+                <button
+                  onClick={toggleLinkState}
+                  style={{
+                    background: '#e2e8f0',
+                    border: '1px solid #cbd5e1',
+                    color: '#475569',
+                    fontSize: 9,
+                    fontWeight: 700,
+                    padding: '1px 5px',
+                    borderRadius: 2,
+                    cursor: 'pointer',
+                    marginLeft: 4,
+                  }}
+                  title="Simulate VSAT severed / blackout outage"
+                >
+                  SEVER LINK
+                </button>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  background: '#fef2f2',
+                  border: '1px solid #f87171',
+                  color: '#b91c1c',
+                  padding: '2px 8px',
+                  borderRadius: 3,
+                  fontSize: 10,
+                  fontWeight: 900,
+                  letterSpacing: '0.02em',
+                  boxShadow: '0 0 8px rgba(220, 38, 38, 0.3)',
+                }}
+                title="VSAT link is severed! Station running in Autonomous Edge Mode. Telemetry buffering in Black Box."
+              >
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#dc2626', animation: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite' }} />
+                <span>VSAT SEVERED • EDGE BUFFER ({edgeBufferCount} FRAMES)</span>
+                <button
+                  onClick={flushEdgeBuffer}
+                  style={{
+                    background: '#dc2626',
+                    border: '1px solid #991b1b',
+                    color: '#ffffff',
+                    fontSize: 9,
+                    fontWeight: 800,
+                    padding: '1px 6px',
+                    borderRadius: 2,
+                    cursor: 'pointer',
+                    marginLeft: 4,
+                  }}
+                  title="Restore link and flush Edge Black Box buffer to Cloud HQ"
+                >
+                  RESTORE & SYNC
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Language Switch Button */}

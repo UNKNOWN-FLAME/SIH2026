@@ -5,6 +5,7 @@ import AlertStrip from '../components/layout/AlertStrip'
 import Sidebar from '../components/layout/Sidebar'
 import Footer from '../components/layout/Footer'
 import { useLanguage } from '../context/LanguageContext'
+import { useStation } from '../context/StationContext'
 import { useSensors } from '../hooks/useSensors'
 import { useInventory } from '../hooks/useInventory'
 import { generateGensetAuditPDF } from '../utils/pdfGenerator'
@@ -12,8 +13,7 @@ import { generateGensetAuditPDF } from '../utils/pdfGenerator'
 export default function EnergyPage() {
   const navigate = useNavigate()
   const { t, lang } = useLanguage()
-
-  const [activeStation, setActiveStation] = useState<'maitri' | 'bharati'>('maitri')
+  const { stationId: activeStation, setStationId: setActiveStation } = useStation()
   const [activeTab, setActiveTab] = useState<'overview' | 'generators' | 'fuel' | 'microgrid' | 'prediction'>('overview')
 
   // Interactive Simulation Controls

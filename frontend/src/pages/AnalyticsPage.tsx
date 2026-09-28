@@ -14,6 +14,7 @@ import {
   useWeatherEnsemble,
 } from '../hooks/usePredictiveAI'
 import { generateWeatherMissionReportPDF } from '../utils/pdfGenerator'
+import { useStation } from '../context/StationContext'
 
 type StationId = 'maitri' | 'bharati'
 type TabType = 'fuel' | 'energy' | 'weather' | 'anomaly' | 'maintenance' | 'expedition'
@@ -61,7 +62,7 @@ function MiniBarChart({ data, labels, color }: { data: number[]; labels: string[
 
 export default function AnalyticsPage() {
   const navigate = useNavigate()
-  const [activeStation, setActiveStation] = useState<StationId>('maitri')
+  const { stationId: activeStation, setStationId: setActiveStation } = useStation()
   const [activeTab, setActiveTab] = useState<TabType>('weather')
   useAnalytics(activeStation)
 

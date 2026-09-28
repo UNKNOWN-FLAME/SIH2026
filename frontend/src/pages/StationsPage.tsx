@@ -6,13 +6,13 @@ import Sidebar from '../components/layout/Sidebar'
 import Footer from '../components/layout/Footer'
 import { useStations } from '../hooks/useStations'
 import { useLanguage } from '../context/LanguageContext'
+import { useStation } from '../context/StationContext'
 
 export default function StationsPage() {
   const navigate = useNavigate()
   const { data: stations } = useStations()
   const { t, lang } = useLanguage()
-
-  const [selectedStation, setSelectedStation] = useState<'maitri' | 'bharati'>('maitri')
+  const { stationId: selectedStation, setStationId: setSelectedStation } = useStation()
   const [activeTab, setActiveTab] = useState<'topology' | 'nodes' | 'diagnostics' | 'security'>('topology')
   const [pingRunning, setPingRunning] = useState(false)
   const [pingLogs, setPingLogs] = useState<string[]>([

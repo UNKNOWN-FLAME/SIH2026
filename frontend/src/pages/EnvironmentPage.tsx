@@ -5,6 +5,7 @@ import AlertStrip from '../components/layout/AlertStrip'
 import Sidebar from '../components/layout/Sidebar'
 import Footer from '../components/layout/Footer'
 import { useSensors } from '../hooks/useSensors'
+import { useStation } from '../context/StationContext'
 
 type StationId = 'maitri' | 'bharati'
 type TabType = 'overview' | 'atmosphere' | 'glaciology' | 'seismic' | 'ocean'
@@ -101,7 +102,7 @@ function MetCard({
 
 export default function EnvironmentPage() {
   const navigate = useNavigate()
-  const [activeStation, setActiveStation] = useState<StationId>('maitri')
+  const { stationId: activeStation, setStationId: setActiveStation } = useStation()
   const [activeTab, setActiveTab] = useState<TabType>('overview')
   const [metricView, setMetricView] = useState<MetricView>('temp_wind')
   const [hoveredHour, setHoveredHour] = useState<number | null>(12)

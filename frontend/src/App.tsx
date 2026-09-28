@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { LanguageProvider } from './context/LanguageContext'
+import { StationProvider } from './context/StationContext'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import StationsPage from './pages/StationsPage'
@@ -22,22 +23,24 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <LanguageProvider>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/blackbox" element={<ProtectedRoute><BlackBoxPage /></ProtectedRoute>} />
-          <Route path="/telemetry" element={<ProtectedRoute><LiveTelemetryPage /></ProtectedRoute>} />
-          <Route path="/stations" element={<ProtectedRoute><StationsPage /></ProtectedRoute>} />
-          <Route path="/energy" element={<ProtectedRoute><EnergyPage /></ProtectedRoute>} />
-          <Route path="/logistics" element={<ProtectedRoute><LogisticsPage /></ProtectedRoute>} />
-          <Route path="/environment" element={<ProtectedRoute><EnvironmentPage /></ProtectedRoute>} />
-          <Route path="/infrastructure" element={<ProtectedRoute><InfrastructurePage /></ProtectedRoute>} />
-          <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
-          <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
-          <Route path="/*" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-        </Routes>
-        <ChatBot />
-      </AuthProvider>
+      <StationProvider>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/blackbox" element={<ProtectedRoute><BlackBoxPage /></ProtectedRoute>} />
+            <Route path="/telemetry" element={<ProtectedRoute><LiveTelemetryPage /></ProtectedRoute>} />
+            <Route path="/stations" element={<ProtectedRoute><StationsPage /></ProtectedRoute>} />
+            <Route path="/energy" element={<ProtectedRoute><EnergyPage /></ProtectedRoute>} />
+            <Route path="/logistics" element={<ProtectedRoute><LogisticsPage /></ProtectedRoute>} />
+            <Route path="/environment" element={<ProtectedRoute><EnvironmentPage /></ProtectedRoute>} />
+            <Route path="/infrastructure" element={<ProtectedRoute><InfrastructurePage /></ProtectedRoute>} />
+            <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
+            <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
+            <Route path="/*" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+          </Routes>
+          <ChatBot />
+        </AuthProvider>
+      </StationProvider>
     </LanguageProvider>
   )
 }

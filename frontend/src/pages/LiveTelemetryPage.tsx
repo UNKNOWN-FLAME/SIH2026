@@ -157,11 +157,12 @@ function generate7DayTelemetry(stationId: StationId, incident: BlackBoxIncident)
   return points
 }
 
+import { useStation } from '../context/StationContext'
+
 export default function LiveTelemetryPage() {
   const navigate = useNavigate()
   const { lang, t } = useLanguage()
-
-  const [activeStation, setActiveStation] = useState<StationId>('maitri')
+  const { stationId: activeStation, setStationId: setActiveStation } = useStation()
   const incident = INCIDENTS[activeStation]
 
   // Telemetry data stream

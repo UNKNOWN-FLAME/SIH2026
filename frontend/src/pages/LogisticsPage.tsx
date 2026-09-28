@@ -5,6 +5,7 @@ import AlertStrip from '../components/layout/AlertStrip'
 import Sidebar from '../components/layout/Sidebar'
 import Footer from '../components/layout/Footer'
 import { useLanguage } from '../context/LanguageContext'
+import { useStation } from '../context/StationContext'
 import { useInventory } from '../hooks/useInventory'
 import { useLogisticsAudit } from '../hooks/useLogisticsAudit'
 import type { AuditItemDetail, LogisticsCategoryData } from '../api/hq'
@@ -503,8 +504,7 @@ function CategorySection({
 export default function LogisticsPage() {
   const navigate = useNavigate()
   const { t, lang } = useLanguage()
-
-  const [activeStation, setActiveStation] = useState<'maitri' | 'bharati'>('maitri')
+  const { stationId: activeStation, setStationId: setActiveStation } = useStation()
   const [searchQuery, setSearchQuery] = useState('')
   const [showRequisitionModal, setShowRequisitionModal] = useState(false)
   const [reqItemName, setReqItemName] = useState('')

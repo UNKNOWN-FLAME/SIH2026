@@ -670,9 +670,51 @@ export interface AnomalyInjectionResult {
   recovery_steps: string[]
   injected_at: string
   report_reference: string
+  incident_id?: string
+  alert_id?: string | null
+  connected?: boolean
+  edge_buffered?: boolean
+  buffered_frames_count?: number
+  message?: string
   pdf_download_ready: boolean
   pdf_download_url: string
   simulation_note: string
+}
+
+export interface LinkStateResponse {
+  station_id: string
+  link_state: 'UP' | 'DOWN' | 'DEGRADED'
+  edge_buffer_count: number
+  is_online: boolean
+}
+
+export interface SyncBufferResponse {
+  synced: boolean
+  flushed_frames_count: number
+  chain_verified: boolean
+  sha256_verification?: string
+  station_id: string
+  message: string
+}
+
+export interface BlackBoxIncidentItem {
+  id: string
+  station_id: 'maitri' | 'bharati'
+  title: string
+  severity: 'CRITICAL' | 'HIGH'
+  incident_timestamp: string
+  pre_window_hours: number
+  post_window_hours: number
+  hash_chain_signature: string
+  root_cause: string
+  affected_subsystems: string[]
+  sitrep_number: string
+  sensor_deltas: Array<{ sensor: string; before: string; atIncident: string; after: string }>
+}
+
+export interface BlackBoxIncidentsResponse {
+  total: number
+  incidents: BlackBoxIncidentItem[]
 }
 
 export async function getAnomalyRegistry(): Promise<AnomalyRegistryOut> {
@@ -689,3 +731,31 @@ export async function injectAnomaly(
   })
   return data
 }
+
+export async function getStationLinkState(stationId: string): Promise<LinkStateResponse> {
+  const { data } = await api.get<LinkStateResponse>(`/hq/stations/${stationId}/link-state`)
+  return data
+}
+
+export async function setStationLinkState(
+  stationId: string,
+  linkState: 'UP' | 'DOWN',
+): Promise<LinkStateResponse> {
+  const { data } = await api.post<LinkStateResponse>(`/hq/stations/${stationId}/link-state`, null, {
+    params: { link_state: linkState },
+  })
+  return data
+}
+
+export async function syncEdgeBuffer(stationId: string): Promise<SyncBufferResponse> {
+  const { data } = await api.post<SyncBufferResponse>(`/hq/stations/${stationId}/sync-edge-buffer`)
+  return data
+}
+
+export async function getBlackBoxIncidents(stationId?: string): Promise<BlackBoxIncidentsResponse> {
+  const { data } = await api.get<BlackBoxIncidentsResponse>('/hq/blackbox/incidents', {
+    params: stationId ? { station_id: stationId } : undefined,
+  })
+  return data
+}
+
