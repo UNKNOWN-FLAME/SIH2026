@@ -10,6 +10,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useStation } from '../../context/StationContext'
@@ -51,10 +52,12 @@ const INJECTION_PHASES = [
 function AnomalyCard({
   anomaly,
   selected,
+  isActive = false,
   onClick,
 }: {
   anomaly: AnomalyDefinition
   selected: boolean
+  isActive?: boolean
   onClick: () => void
 }) {
   const sev = getSevStyle(anomaly.severity)
@@ -65,13 +68,15 @@ function AnomalyCard({
       tabIndex={0}
       onKeyDown={(e) => e.key === 'Enter' && onClick()}
       style={{
-        border: selected ? `2px solid ${sev.badge}` : '1.5px solid #e2e8f0',
-        background: selected ? sev.bg : '#ffffff',
+        border: isActive ? '2.5px solid #e11d48' : selected ? `2px solid ${sev.badge}` : '1.5px solid #e2e8f0',
+        background: isActive ? '#fff1f2' : selected ? sev.bg : '#ffffff',
         borderRadius: 10,
         padding: '13px 15px',
         cursor: 'pointer',
         transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-        boxShadow: selected
+        boxShadow: isActive
+          ? '0 0 16px rgba(225, 29, 72, 0.35)'
+          : selected
           ? `0 0 0 2px ${sev.badge}33, 0 6px 18px ${sev.badge}22`
           : '0 1px 3px rgba(15, 23, 42, 0.04)',
         outline: 'none',
@@ -180,7 +185,21 @@ function AnomalyCard({
           <span>⏱️</span>
           <span>~{anomaly.estimated_duration_s}s</span>
         </div>
-        {selected ? (
+        {isActive ? (
+          <span
+            style={{
+              fontWeight: 900,
+              color: '#e11d48',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: 10,
+              letterSpacing: '0.04em',
+            }}
+          >
+            🔴 ACTIVE SIMULATION
+          </span>
+        ) : selected ? (
           <span
             style={{
               fontWeight: 900,
@@ -229,7 +248,7 @@ interface AnomalyInjectorModalProps {
 }
 
 function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalProps) {
-  const { setLastAnomalyResult, triggerEmergencyAlert, setActiveIncidentId, refreshLinkState } = useStation()
+  const { lastAnomalyResult, setLastAnomalyResult, triggerEmergencyAlert, setActiveIncidentId, refreshLinkState } = useStation()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 
@@ -241,6 +260,7 @@ function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalPr
   const [phaseLabel, setPhaseLabel] = useState('')
   const [result, setResult] = useState<AnomalyInjectionResult | null>(null)
   const [injectionError, setInjectionError] = useState<string | null>(null)
+  const [endSuccessMsg, setEndSuccessMsg] = useState<string | null>(null)
   const [filterSev, setFilterSev] = useState<string>('ALL')
   const animRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -322,6 +342,20 @@ function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalPr
     setInjectionError(null)
   }
 
+  function handleEndAnomaly() {
+    setLastAnomalyResult(null)
+    setResult(null)
+    setSelectedId(null)
+    setPhase('select')
+    queryClient.invalidateQueries({ queryKey: ['alerts'] })
+    queryClient.invalidateQueries({ queryKey: ['sensors'] })
+    queryClient.invalidateQueries({ queryKey: ['iot-sensors'] })
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    refreshLinkState()
+    setEndSuccessMsg('Anomaly terminated. Station systems and telemetry restored to nominal baseline.')
+    setTimeout(() => setEndSuccessMsg(null), 4000)
+  }
+
   const sevColor =
     result
       ? getSevStyle(result.severity).badge
@@ -329,17 +363,21 @@ function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalPr
         ? getSevStyle(selected.severity).badge
         : '#0b3b60'
 
-  return (
+  if (typeof document === 'undefined') return null
+
+  return createPortal(
     <div
       style={{
         position: 'fixed',
-        top: 0, left: 0, right: 0, bottom: 0,
-        background: 'rgba(2, 8, 23, 0.80)',
+        inset: 0,
+        background: 'rgba(2, 8, 23, 0.78)',
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 99999,
-        padding: '16px',
+        zIndex: 9999999,
+        padding: '24px 16px',
       }}
       onClick={onClose}
     >
@@ -347,14 +385,15 @@ function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalPr
         style={{
           background: '#ffffff',
           width: '100%',
-          maxWidth: phase === 'result' ? 700 : 880,
-          maxHeight: '92vh',
+          maxWidth: phase === 'result' ? 720 : 940,
+          maxHeight: '88vh',
           borderRadius: 12,
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
           borderTop: `5px solid ${sevColor}`,
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+          boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+          position: 'relative',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -475,9 +514,112 @@ function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalPr
           </span>
         </div>
 
+        {/* Active Simulation Status & Stop Control */}
+        {lastAnomalyResult && (
+          <div
+            style={{
+              background: '#fff1f2',
+              borderBottom: '2px solid #f43f5e',
+              padding: '10px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              flexWrap: 'wrap',
+              flexShrink: 0,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 22, color: '#e11d48' }}>
+                warning
+              </span>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 900, color: '#9f1239', letterSpacing: '0.02em' }}>
+                    SIMULATION RUNNING: {lastAnomalyResult.anomaly_name}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 8.5,
+                      fontWeight: 900,
+                      background: '#e11d48',
+                      color: '#ffffff',
+                      padding: '1.5px 6px',
+                      borderRadius: 10,
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    ACTIVE
+                  </span>
+                </div>
+                <div style={{ fontSize: 10.5, color: '#be123c', marginTop: 1 }}>
+                  Station: <strong>{activeStation.toUpperCase()}</strong> • Severity:{' '}
+                  <strong>{lastAnomalyResult.severity.toUpperCase()}</strong> • Telemetry is reflecting simulated faults.
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={handleEndAnomaly}
+              style={{
+                background: '#e11d48',
+                color: '#ffffff',
+                border: 'none',
+                padding: '8px 18px',
+                borderRadius: 4,
+                fontSize: 11,
+                fontWeight: 900,
+                cursor: 'pointer',
+                letterSpacing: '0.04em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                boxShadow: '0 2px 6px rgba(225, 29, 72, 0.35)',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#be123c')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = '#e11d48')}
+            >
+              <span>🛑</span>
+              <span>STOP ANOMALY & RESTORE NOMINAL</span>
+            </button>
+          </div>
+        )}
+
+        {/* Success feedback when ended */}
+        {endSuccessMsg && (
+          <div
+            style={{
+              background: '#f0fdf4',
+              borderBottom: '1px solid #86efac',
+              padding: '8px 20px',
+              fontSize: 11,
+              fontWeight: 800,
+              color: '#166534',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              flexShrink: 0,
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>check_circle</span>
+            <span>{endSuccessMsg}</span>
+          </div>
+        )}
+
         {/* ── PHASE: SELECT ── */}
         {phase === 'select' && (
-          <div style={{ flex: 1, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              padding: '16px 20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 14,
+              overflowY: 'auto',
+            }}
+          >
 
             {/* Filter bar */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -526,6 +668,7 @@ function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalPr
                     key={a.id}
                     anomaly={a}
                     selected={selectedId === a.id}
+                    isActive={lastAnomalyResult?.anomaly_id === a.id}
                     onClick={() => setSelectedId(selectedId === a.id ? null : a.id)}
                   />
                 ))}
@@ -539,16 +682,50 @@ function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalPr
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                paddingTop: 10,
+                paddingTop: 12,
+                marginTop: 'auto',
                 borderTop: '1px solid #e2e8f0',
+                position: 'sticky',
+                bottom: 0,
+                background: '#ffffff',
+                flexWrap: 'wrap',
+                gap: 8,
               }}
             >
               <div style={{ fontSize: 10, color: '#64748b' }}>
-                {selected
-                  ? `Ready to inject: "${selected.name}" into ${activeStation.toUpperCase()} station`
-                  : 'Select an anomaly above to proceed'}
+                {lastAnomalyResult ? (
+                  <span style={{ color: '#be123c', fontWeight: 700 }}>
+                    Active: "{lastAnomalyResult.anomaly_name}" — Click "Stop Anomaly" to restore nominal baseline.
+                  </span>
+                ) : selected ? (
+                  `Ready to inject: "${selected.name}" into ${activeStation.toUpperCase()} station`
+                ) : (
+                  'Select an anomaly above to proceed'
+                )}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
+                {lastAnomalyResult && (
+                  <button
+                    onClick={handleEndAnomaly}
+                    style={{
+                      background: '#e11d48',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '7px 18px',
+                      fontSize: 11,
+                      fontWeight: 900,
+                      cursor: 'pointer',
+                      borderRadius: 3,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      boxShadow: '0 2px 6px rgba(225, 29, 72, 0.25)',
+                    }}
+                  >
+                    <span>🛑</span>
+                    <span>STOP ANOMALY</span>
+                  </button>
+                )}
                 <button
                   onClick={onClose}
                   style={{
@@ -562,7 +739,7 @@ function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalPr
                     borderRadius: 3,
                   }}
                 >
-                  Cancel
+                  Close
                 </button>
                 <button
                   onClick={handleInject}
@@ -927,13 +1104,20 @@ function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalPr
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
 // ── Exported component — the trigger button ────────────────────────────────
 
-export default function AnomalyInjector({ activeStation }: { activeStation: string }) {
+export default function AnomalyInjector({
+  activeStation,
+  variant = 'header',
+}: {
+  activeStation: string
+  variant?: 'header' | 'sidebar'
+}) {
   const [open, setOpen] = useState(false)
   const [pulse, setPulse] = useState(true)
 
@@ -958,45 +1142,96 @@ export default function AnomalyInjector({ activeStation }: { activeStation: stri
         .anomaly-btn:active {
           transform: translateY(0);
         }
+        .anomaly-btn-sidebar:hover {
+          background: #b91c1c !important;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3) !important;
+        }
+        .anomaly-btn-sidebar:active {
+          transform: translateY(0);
+        }
       `}</style>
 
-      <button
-        className="anomaly-btn"
-        onClick={() => setOpen(true)}
-        style={{
-          background: '#dc2626',
-          color: '#ffffff',
-          border: '2px solid #b91c1c',
-          padding: '10px 22px',
-          fontWeight: 900,
-          fontSize: 13,
-          cursor: 'pointer',
-          borderRadius: 4,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          letterSpacing: '0.04em',
-          transition: 'background 0.15s, transform 0.1s, box-shadow 0.2s',
-          animation: pulse ? 'anomaly-pulse 1.5s ease-in-out 3' : 'none',
-          userSelect: 'none',
-        }}
-        title="Open the Anomaly Injection Simulator to stress-test station resilience"
-      >
-        <span style={{ fontSize: 18 }}>⚠️</span>
-        INJECT ANOMALY
-        <span
+      {variant === 'sidebar' ? (
+        <button
+          className="anomaly-btn-sidebar"
+          onClick={() => setOpen(true)}
           style={{
-            fontSize: 8.5,
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            padding: '7px 8px',
+            background: '#dc2626',
+            color: '#ffffff',
+            border: '1px solid #b91c1c',
+            borderRadius: 4,
+            cursor: 'pointer',
+            boxShadow: '0 1px 3px rgba(220, 38, 38, 0.25)',
             fontWeight: 800,
-            background: 'rgba(255,255,255,0.2)',
-            padding: '2px 6px',
-            borderRadius: 3,
-            letterSpacing: '0.06em',
+            fontSize: 11,
+            letterSpacing: '0.04em',
+            transition: 'all 0.15s ease',
+            userSelect: 'none',
+            animation: pulse ? 'anomaly-pulse 1.5s ease-in-out 3' : 'none',
           }}
+          title="Open Anomaly Injection Simulator to test station resilience"
         >
-          SIM
-        </span>
-      </button>
+          <span style={{ fontSize: 13 }}>⚠️</span>
+          <span>INJECT ANOMALY</span>
+          <span
+            style={{
+              fontSize: 7.5,
+              fontWeight: 900,
+              background: 'rgba(255,255,255,0.25)',
+              padding: '1px 4px',
+              borderRadius: 2,
+              letterSpacing: '0.06em',
+            }}
+          >
+            SIM
+          </span>
+        </button>
+      ) : (
+        <button
+          className="anomaly-btn"
+          onClick={() => setOpen(true)}
+          style={{
+            background: '#dc2626',
+            color: '#ffffff',
+            border: '2px solid #b91c1c',
+            padding: '10px 22px',
+            fontWeight: 900,
+            fontSize: 13,
+            cursor: 'pointer',
+            borderRadius: 4,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            letterSpacing: '0.04em',
+            transition: 'background 0.15s, transform 0.1s, box-shadow 0.2s',
+            animation: pulse ? 'anomaly-pulse 1.5s ease-in-out 3' : 'none',
+            userSelect: 'none',
+          }}
+          title="Open the Anomaly Injection Simulator to stress-test station resilience"
+        >
+          <span style={{ fontSize: 18 }}>⚠️</span>
+          INJECT ANOMALY
+          <span
+            style={{
+              fontSize: 8.5,
+              fontWeight: 800,
+              background: 'rgba(255,255,255,0.2)',
+              padding: '2px 6px',
+              borderRadius: 3,
+              letterSpacing: '0.06em',
+            }}
+          >
+            SIM
+          </span>
+        </button>
+      )}
 
       {open && (
         <AnomalyInjectorModal

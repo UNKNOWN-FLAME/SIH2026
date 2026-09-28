@@ -12,7 +12,6 @@ import MetMastCard from '../components/dashboard/MetMastCard'
 import GlacialCard from '../components/dashboard/GlacialCard'
 import SeismicCard from '../components/dashboard/SeismicCard'
 import GroundLinkCard from '../components/dashboard/GroundLinkCard'
-import AnomalyInjector from '../components/dashboard/AnomalyInjector'
 import EmergencyWarningModal from '../components/dashboard/EmergencyWarningModal'
 import { useLanguage } from '../context/LanguageContext'
 import { useStation } from '../context/StationContext'
@@ -132,64 +131,7 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* ── ANOMALY INJECTION BANNER ─────────────────────────────── */}
-            <div
-              style={{
-                background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%)',
-                border: '1px solid #4338ca',
-                borderLeft: '5px solid #dc2626',
-                padding: '12px 18px',
-                marginBottom: 10,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 14,
-                flexWrap: 'wrap',
-                boxShadow: '0 4px 16px rgba(220, 38, 38, 0.18)',
-                position: 'relative',
-                overflow: 'hidden',
-              }}
-            >
-              {/* Subtle pattern overlay */}
-              <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '18px 18px', pointerEvents: 'none' }} />
 
-              <div style={{ position: 'relative' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2 }}>
-                  <span style={{ fontSize: 22 }}>🧪</span>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 900, color: '#ffffff', letterSpacing: '0.02em' }}>
-                      ANOMALY SIMULATION MODULE
-                    </div>
-                    <div style={{ fontSize: 10, color: '#a5b4fc', marginTop: 1 }}>
-                      Stress-test station resilience by injecting simulated environmental and system anomalies
-                      to validate sensor response, data integrity, and failover protocols.
-                    </div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
-                  {['Blizzard', 'Earthquake', 'Generator Failure', 'Sensor Outage', 'VSAT Loss', '+7 more'].map((tag) => (
-                    <span
-                      key={tag}
-                      style={{
-                        fontSize: 9,
-                        fontWeight: 700,
-                        background: 'rgba(255,255,255,0.1)',
-                        color: '#c7d2fe',
-                        padding: '2px 7px',
-                        border: '1px solid rgba(255,255,255,0.15)',
-                        borderRadius: 3,
-                      }}
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ position: 'relative', flexShrink: 0 }}>
-                <AnomalyInjector activeStation={activeStation} />
-              </div>
-            </div>
 
             <StationTabs
               active={activeStation}

@@ -228,7 +228,6 @@ export default function LiveTelemetryPage() {
     stationId: activeStation,
     setStationId: setActiveStation,
     lastAnomalyResult,
-    setLastAnomalyResult,
     emergencyAlert,
     dismissEmergencyAlert,
     isOnline,
@@ -774,23 +773,6 @@ export default function LiveTelemetryPage() {
                     }}
                   >
                     📼 BLACK BOX RECORDER
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLastAnomalyResult(null)}
-                    title="Clear the anomaly simulation — telemetry will return to normal baseline"
-                    style={{
-                      background: isAnomalyAcknowledged ? '#166534' : '#374151',
-                      color: '#ffffff',
-                      border: 'none',
-                      padding: '4px 10px',
-                      fontSize: 10,
-                      fontWeight: 800,
-                      cursor: 'pointer',
-                      borderRadius: 2,
-                    }}
-                  >
-                    ✕ CLEAR SIMULATION
                   </button>
                 </div>
               </div>

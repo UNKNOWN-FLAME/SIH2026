@@ -16,21 +16,52 @@ export default function EnergyCard({ stationId }: Props) {
   const { data: sensors } = useSensors(stationId, 'energy')
   const { t } = useLanguage()
 
-  const isGenAnomaly = lastAnomalyResult?.anomaly_id === 'generator_failure'
-  const isFuelAnomaly = lastAnomalyResult?.anomaly_id === 'fuel_critical_low'
+  const aid = lastAnomalyResult?.anomaly_id
+  const isGenAnomaly = aid === 'generator_failure'
+  const isFuelAnomaly = aid === 'fuel_critical_low'
+  const isBlizzardAnomaly = aid === 'blizzard'
+  const isFireAnomaly = aid === 'fire_alarm'
+  const isHvacAnomaly = aid === 'hvac_failure'
+  const isSolarAnomaly = aid === 'solar_flare_radiation'
 
   const rawPower = findVal(sensors, 'load')
-  const power = isGenAnomaly ? 0 : Math.min(100, rawPower || 78)
-  const solar = Math.min(100, findVal(sensors, 'solar') || 14)
-  const storage = isGenAnomaly ? 38 : Math.min(100, findVal(sensors, 'storage') || 88)
+  let power = Math.min(100, rawPower || 78)
+  if (isGenAnomaly) power = 28 // DG-1 tripped, DG-2 running critical circuits only
+  else if (isBlizzardAnomaly) power = 96 // Extreme heating & trace line demand
+  else if (isFireAnomaly) power = 35 // Non-essential electrical isolation
+  else if (isHvacAnomaly) power = 92 // Backup electric resistance heaters active
+
+  let solar = Math.min(100, findVal(sensors, 'solar') || 14)
+  if (isBlizzardAnomaly) solar = 0 // Polar blizzard blackout
+  else if (isSolarAnomaly) solar = 95 // Solar irradiance surge
+
+  let storage = Math.min(100, findVal(sensors, 'storage') || 88)
+  if (isGenAnomaly) storage = 38 // Rapid battery bank discharge
+  else if (isFireAnomaly) storage = 64
+  else if (isBlizzardAnomaly) storage = 72
+
   const rawFuel = findVal(sensors, 'fuel')
   const fuel = isFuelAnomaly ? 18.2 : (rawFuel || 76)
 
-  const hasCritical = isGenAnomaly || isFuelAnomaly || (fuel > 0 && fuel < 15)
-  const hasWarning = fuel > 0 && fuel < 30
+  const hasCritical = isGenAnomaly || isFuelAnomaly || isFireAnomaly || (fuel > 0 && fuel < 15)
+  const hasWarning = isBlizzardAnomaly || isHvacAnomaly || (fuel > 0 && fuel < 30)
 
-  const status = isGenAnomaly ? 'DG-1 TRIP' : isFuelAnomaly ? 'FUEL LOW' : hasCritical ? 'CRITICAL' : hasWarning ? 'WARNING' : 'NOMINAL'
-  const statusColor = (hasCritical || isGenAnomaly || isFuelAnomaly) ? '#dc2626' : hasWarning ? '#d97706' : '#16a34a'
+  let status = 'NOMINAL'
+  if (isGenAnomaly) status = 'DG-1 TRIP'
+  else if (isFuelAnomaly) status = 'FUEL CRITICAL'
+  else if (isFireAnomaly) status = 'FIRE ISOLATE'
+  else if (isBlizzardAnomaly) status = 'BLIZZARD LOAD'
+  else if (isHvacAnomaly) status = 'HVAC LOAD'
+  else if (isSolarAnomaly) status = 'SOLAR SURGE'
+  else if (lastAnomalyResult) status = `${lastAnomalyResult.severity} ALERT`
+  else if (hasCritical) status = 'CRITICAL'
+  else if (hasWarning) status = 'WARNING'
+
+  const statusColor = (hasCritical || isGenAnomaly || isFuelAnomaly || isFireAnomaly)
+    ? '#dc2626'
+    : hasWarning
+      ? '#d97706'
+      : '#16a34a'
 
   return (
     <div
@@ -68,6 +99,7 @@ export default function EnergyCard({ stationId }: Props) {
             color: statusColor,
             background: '#ffffff',
             padding: '1px 6px',
+            borderRadius: 2,
           }}
         >
           {status}
@@ -77,9 +109,9 @@ export default function EnergyCard({ stationId }: Props) {
       <div style={{ padding: '8px 10px', flex: 1, display: 'flex', flexDirection: 'column' }}>
         {/* Gauges */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 8 }}>
-          <GaugeCircle value={power} color="#0284c7" label={t('energy.power')} />
+          <GaugeCircle value={power} color={isGenAnomaly || isBlizzardAnomaly ? '#dc2626' : '#0284c7'} label={t('energy.power')} />
           <GaugeCircle value={solar} color="#ea580c" label={t('energy.solar')} />
-          <GaugeCircle value={storage} color="#16a34a" label={t('energy.storage')} />
+          <GaugeCircle value={storage} color={isGenAnomaly ? '#dc2626' : '#16a34a'} label={t('energy.storage')} />
         </div>
 
         {/* Diesel Fuel Stock Section */}
@@ -106,8 +138,30 @@ export default function EnergyCard({ stationId }: Props) {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8.5, color: '#64748b' }}>
-            <span>Reserve: <strong style={{ color: '#0f172a' }}>~48 Days Winter Stock</strong></span>
-            <span style={{ color: '#16a34a', fontWeight: 700 }}>● Burn Rate: Optimal</span>
+            <span>
+              Reserve:{' '}
+              <strong style={{ color: isFuelAnomaly ? '#dc2626' : '#0f172a' }}>
+                {isFuelAnomaly
+                  ? '~38 Days Emergency Rationing'
+                  : isGenAnomaly
+                    ? 'DG-2 Active (DG-1 Tripped)'
+                    : isBlizzardAnomaly
+                      ? 'Heavy Winter Draw'
+                      : '~48 Days Winter Stock'}
+              </strong>
+            </span>
+            <span
+              style={{
+                color: isFuelAnomaly || isGenAnomaly
+                  ? '#dc2626'
+                  : isBlizzardAnomaly
+                    ? '#d97706'
+                    : '#16a34a',
+                fontWeight: 700,
+              }}
+            >
+              ● Burn Rate: {isFuelAnomaly ? 'Forced Rationing' : isGenAnomaly ? 'Single Genset' : isBlizzardAnomaly ? 'High (+45%)' : 'Optimal'}
+            </span>
           </div>
         </div>
       </div>

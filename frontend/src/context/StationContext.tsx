@@ -28,6 +28,9 @@ interface StationContextType {
   activeIncidentId: string | null
   setActiveIncidentId: (id: string | null) => void
   refreshLinkState: () => Promise<void>
+  isBlackBoxOpen: boolean
+  openBlackBox: () => void
+  closeBlackBox: () => void
 }
 
 const StationContext = createContext<StationContextType | undefined>(undefined)
@@ -71,6 +74,9 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const [activeIncidentId, setActiveIncidentId] = useState<string | null>(null)
+  const [isBlackBoxOpen, setIsBlackBoxOpen] = useState<boolean>(false)
+  const openBlackBox = useCallback(() => setIsBlackBoxOpen(true), [])
+  const closeBlackBox = useCallback(() => setIsBlackBoxOpen(false), [])
   const queryClient = useQueryClient()
 
   const setStationId = useCallback((action: StationId | ((prev: StationId) => StationId)) => {
@@ -152,6 +158,9 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
         activeIncidentId,
         setActiveIncidentId,
         refreshLinkState,
+        isBlackBoxOpen,
+        openBlackBox,
+        closeBlackBox,
       }}
     >
       {children}

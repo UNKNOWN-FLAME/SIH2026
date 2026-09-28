@@ -13,6 +13,7 @@ import AnalyticsPage from './pages/AnalyticsPage'
 import ReportsPage from './pages/ReportsPage'
 import LiveTelemetryPage from './pages/LiveTelemetryPage'
 import BlackBoxPage from './pages/BlackBoxPage'
+import BlackBoxModal from './components/blackbox/BlackBoxModal'
 import { ChatBot } from './components/ui/ChatBot'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -39,6 +40,7 @@ export default function App() {
             <Route path="/*" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           </Routes>
           <ChatBot />
+          <BlackBoxModal />
         </StationProvider>
       </AuthProvider>
     </LanguageProvider>

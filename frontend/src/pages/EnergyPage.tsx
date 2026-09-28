@@ -16,7 +16,11 @@ import { generateGensetAuditPDF } from '../utils/pdfGenerator'
 export default function EnergyPage() {
   const navigate = useNavigate()
   const { t, lang } = useLanguage()
-  const { stationId: activeStation, setStationId: setActiveStation } = useStation()
+  const {
+    stationId: activeStation,
+    setStationId: setActiveStation,
+    lastAnomalyResult,
+  } = useStation()
   const [activeTab, setActiveTab] = useState<'overview' | 'generators' | 'fuel' | 'microgrid' | 'prediction'>('overview')
 
   // Interactive Simulation Controls
@@ -34,7 +38,6 @@ export default function EnergyPage() {
   const { data: energySensors } = useSensors(activeStation, 'energy')
   const { data: inventoryItems } = useInventory(activeStation, 'FUEL')
   const { data: iotData } = useIoTSensors(activeStation, 'fuel')
-  const { data: iotEnergyData } = useIoTSensors(activeStation, 'temperature')
   const { data: resupplyData } = useQuery({
     queryKey: ['resupply', activeStation],
     queryFn: () => getResupply(activeStation),
@@ -47,23 +50,21 @@ export default function EnergyPage() {
     return energySensors?.find(s => s.sensor_id.toLowerCase().includes(keyword))?.latest_value ?? null
   }
 
-  /** Get a parameter value from IoT sensor by sensor name + param key */
-  function iotParam(sensors: typeof iotData, sensorNameHint: string, paramKey: string): number | null {
-    const sensor = sensors?.sensors?.find(s =>
-      s.name.toLowerCase().includes(sensorNameHint.toLowerCase()) ||
-      s.sensor_id.toLowerCase().includes(sensorNameHint.toLowerCase())
-    )
-    const param = sensor?.parameters?.find(p => p.key === paramKey || p.label.toLowerCase().includes(paramKey.toLowerCase()))
-    const val = param?.value
-    return typeof val === 'number' ? val : (typeof val === 'string' ? parseFloat(val) : null)
-  }
-
   // Live derived values (fall back to simulation defaults if DB returns null)
   const liveKwOutput = sv('kw_output') ?? sv('kw') ?? null
   const liveFuelPct  = sv('fuel_pct') ?? sv('fuel') ?? null
   const liveSolar    = sv('solar') ?? null
   const liveWind     = sv('wind') ?? sv('wind_gen') ?? null
   const liveBattery  = sv('battery') ?? sv('batt_soc') ?? null
+
+  // ── Active Anomaly Evaluation ──────────────────────────────────────────
+  const aid = lastAnomalyResult?.anomaly_id
+  const isGenAnomaly = aid === 'generator_failure'
+  const isFuelAnomaly = aid === 'fuel_critical_low'
+  const isBlizzardAnomaly = aid === 'blizzard'
+  const isFireAnomaly = aid === 'fire_alarm'
+  const isHvacAnomaly = aid === 'hvac_failure'
+  const isSolarAnomaly = aid === 'solar_flare_radiation'
 
   // Fuel from inventory_items — sum all FUEL category items or use individual tanks
   const fuelItems = useMemo(() =>
@@ -75,35 +76,58 @@ export default function EnergyPage() {
     [inventoryItems]
   )
 
-  // Total fuel across all tanks from DB
+  // Total fuel across all tanks from DB (override when fuel anomaly is active)
   const totalFuelFromDB = fuelItems.length > 0
     ? fuelItems.reduce((sum, i) => sum + i.quantity, 0)
     : null
-  const fuelRemainingLitres = totalFuelFromDB ?? (activeStation === 'maitri' ? 138400 : 210500)
+  let fuelRemainingLitres = totalFuelFromDB ?? (activeStation === 'maitri' ? 138400 : 210500)
+  if (isFuelAnomaly) fuelRemainingLitres = 28400 // Emergency depletion
+
   const totalCapacityLitres = activeStation === 'maitri' ? 165000 : 250000
-  const fuelPct = liveFuelPct !== null ? liveFuelPct : Math.round((fuelRemainingLitres / totalCapacityLitres) * 100)
+  const fuelPct = isFuelAnomaly
+    ? 18
+    : (liveFuelPct !== null ? liveFuelPct : Math.round((fuelRemainingLitres / totalCapacityLitres) * 100))
 
   // Simulation-derived values (used for sliders / prediction tab)
   const baseLoad = liveKwOutput ?? (activeStation === 'maitri' ? 142 : 185)
   const tempFactor = Math.max(0, (-ambientTemp - 15) * 1.8)
   const occupancyFactor = (crewOccupancy - 20) * 1.2
-  const currentTotalLoad = Math.round(baseLoad + tempFactor + occupancyFactor)
+  let currentTotalLoad = Math.round(baseLoad + tempFactor + occupancyFactor)
 
-  const solarGen = liveSolar ?? (ambientTemp > -35 ? (activeStation === 'maitri' ? 18.5 : 34.0) : 0)
-  const windGen = liveWind ?? (activeStation === 'maitri' ? 24.2 : 16.8)
-  const batterySoC = liveBattery ?? (activeStation === 'maitri' ? 91 : 96)
+  let solarGen = liveSolar ?? (ambientTemp > -35 ? (activeStation === 'maitri' ? 18.5 : 34.0) : 0)
+  let windGen = liveWind ?? (activeStation === 'maitri' ? 24.2 : 16.8)
+  let batterySoC = liveBattery ?? (activeStation === 'maitri' ? 91 : 96)
+
+  // Anomaly effects on microgrid
+  if (isGenAnomaly) {
+    currentTotalLoad = 84 // Essential circuits only; load shed active
+    batterySoC = 38 // Rapid discharge
+  } else if (isFuelAnomaly) {
+    currentTotalLoad = 96 // Forced rationing
+  } else if (isBlizzardAnomaly) {
+    solarGen = 0 // Heavy snow & darkness
+    windGen = 48.5 // Extreme winds
+    currentTotalLoad = 248 // Heavy heating demand
+    batterySoC = 72
+  } else if (isFireAnomaly) {
+    currentTotalLoad = 48 // Zone B isolated
+    batterySoC = 64
+  } else if (isHvacAnomaly) {
+    currentTotalLoad += 42 // Backup heaters on full blast
+    batterySoC = 78
+  } else if (isSolarAnomaly) {
+    solarGen = 54.0 // Solar radiation surge
+  }
+
   const genOutput = Math.max(0, currentTotalLoad - solarGen - windGen)
-
-  const hourlyBurnLitres = (genOutput * 0.28).toFixed(1)
+  const hourlyBurnLitres = isFuelAnomaly ? '17.5' : (genOutput * 0.28).toFixed(1)
   const dailyBurnLitres = Math.round(parseFloat(hourlyBurnLitres) * 24)
-  // Prefer days_remaining from DB item, else compute
   const dbDaysRemaining = fuelItems.find(i => i.days_remaining != null)?.days_remaining ?? null
-  const daysOfAutonomy = dbDaysRemaining ?? Math.round(fuelRemainingLitres / (dailyBurnLitres || 1))
+  const daysOfAutonomy = isFuelAnomaly ? 38 : (dbDaysRemaining ?? Math.round(fuelRemainingLitres / (dailyBurnLitres || 1)))
 
   // Resupply ship data from DB
   const nextResupply = useMemo(() => {
     if (!resupplyData?.length) return null
-    // Find nearest PLANNED or IN_TRANSIT resupply for this station
     const sorted = resupplyData
       .filter(r => r.status !== 'DELIVERED')
       .sort((a, b) => {
@@ -115,7 +139,7 @@ export default function EnergyPage() {
   }, [resupplyData])
 
   const resupplyDaysLeft = useMemo(() => {
-    if (!nextResupply?.arrival_window_start) return 68 // fallback
+    if (!nextResupply?.arrival_window_start) return 68
     const arrivalDate = new Date(nextResupply.arrival_window_start)
     const now = new Date()
     const diff = arrivalDate.getTime() - now.getTime()
@@ -125,7 +149,6 @@ export default function EnergyPage() {
   const resupplyShipName = nextResupply?.ship_name ?? 'MV Vasiliy Golovnin'
 
   // ── Per-generator live telemetry from IoT sensor registry ────────────────
-  // Helper: get IoT sensor for generator N (looks for 'gen-N' or 'DG-N' in name/id)
   const genSensors = useMemo(() => {
     const all = iotData?.sensors ?? []
     return [1, 2, 3, 4].map(n => {
@@ -140,34 +163,45 @@ export default function EnergyPage() {
     })
   }, [iotData])
 
-  function getGenParam(genIdx: number, paramKey: string): number | null {
-    const sensor = genSensors[genIdx]
+  function getGenParam(genIndex: number, paramKey: string): number | null {
+    const sensor = genSensors[genIndex]
     if (!sensor) return null
     const p = sensor.parameters.find(x => x.key === paramKey || x.label.toLowerCase().includes(paramKey.toLowerCase()))
     const val = p?.value
     return typeof val === 'number' ? val : (typeof val === 'string' ? parseFloat(val) || null : null)
   }
 
-  // For active telemetry gen (1-indexed), get live values with DB fallbacks
+  // Active generator telemetry values with anomaly overrides
   const genIdx = activeTelemetryGen - 1
-  const isRunningGen1 = genSensors[0] ? genSensors[0].state === 'online' : true
-  const isRunningGen2 = genSensors[1] ? genSensors[1].state === 'online' : genOutput > 70
-
-  const liveVibration = getGenParam(genIdx, 'vibration') ?? getGenParam(genIdx, 'vib') ??
+  let liveVibration = getGenParam(genIdx, 'vibration') ?? getGenParam(genIdx, 'vib') ??
     (activeTelemetryGen === 1 ? 1.82 : activeTelemetryGen === 2 ? 0.24 : 0.05)
-  const liveCoolant = getGenParam(genIdx, 'coolant') ?? getGenParam(genIdx, 'temperature') ??
+  let liveCoolant = getGenParam(genIdx, 'coolant') ?? getGenParam(genIdx, 'temperature') ??
     (activeTelemetryGen === 1 ? 82.4 : activeTelemetryGen === 2 ? 58.0 : 34.2)
-  const liveOilPressure = getGenParam(genIdx, 'oil') ?? getGenParam(genIdx, 'pressure') ??
+  let liveOilPressure = getGenParam(genIdx, 'oil') ?? getGenParam(genIdx, 'pressure') ??
     (activeTelemetryGen === 1 ? 4.65 : 0.00)
-  const liveExhaust = getGenParam(genIdx, 'exhaust') ?? getGenParam(genIdx, 'egt') ??
+  let liveExhaust = getGenParam(genIdx, 'exhaust') ?? getGenParam(genIdx, 'egt') ??
     (activeTelemetryGen === 1 ? 418 : activeTelemetryGen === 2 ? 42 : 18)
 
-  // Overall generator health score (0-100) derived from live values
-  const genHealthScore = useMemo(() => {
-    if (!genSensors[0]) return 98 // fallback
+  if (isGenAnomaly) {
+    if (activeTelemetryGen === 1) {
+      liveVibration = 5.48 // Severe vibration
+      liveCoolant = 108.5 // Overheat trip
+      liveOilPressure = 0.22 // Loss of oil pressure
+      liveExhaust = 580 // Extreme EGT
+    } else if (activeTelemetryGen === 2) {
+      liveVibration = 2.15
+      liveCoolant = 84.2
+      liveOilPressure = 4.55
+      liveExhaust = 425
+    }
+  }
+
+  // Overall generator health score (0-100)
+  const genHealthScore = (() => {
+    if (isGenAnomaly) return 42 // Critical failure
+    if (!genSensors[0]) return 98
     const onlineCount = genSensors.filter(s => s?.state === 'online').length
     const totalCount = genSensors.filter(s => s !== null).length || 4
-    // Coolant in range 75-92°C = healthy, vibration < 3.5 = healthy
     const coolantOk = liveCoolant >= 70 && liveCoolant <= 92
     const vibOk = liveVibration < 3.5
     const oilOk = liveOilPressure > 2.0
@@ -178,10 +212,17 @@ export default function EnergyPage() {
       (oilOk ? 10 : 0)
     )
     return Math.min(100, Math.max(0, score))
-  }, [genSensors, liveCoolant, liveVibration, liveOilPressure])
+  })()
 
-  // Fuel tanks from inventory — map to tank display cards
   const fuelTankCards = useMemo(() => {
+    if (isFuelAnomaly) {
+      return [
+        { id: 'T1', name: 'Tank 1 — Daily Generator Tank', capacity: 5000, current: 980, temp: 12, status: 'Critically Low' },
+        { id: 'T2', name: 'Tank 2 — Main Storage (Tank A)', capacity: 75000, current: 14200, temp: 6, status: 'Emergency Rationing' },
+        { id: 'T3', name: 'Tank 3 — Main Storage (Tank B)', capacity: 75000, current: 9400, temp: 5, status: 'Depleted' },
+        { id: 'T4', name: 'Tank 4 — Emergency Reserve Tank', capacity: 10000, current: 3820, temp: 8, status: 'Tapped' },
+      ]
+    }
     if (fuelItems.length > 0) {
       return fuelItems.slice(0, 4).map((item, i) => ({
         id: `T${i + 1}`,
@@ -195,14 +236,13 @@ export default function EnergyPage() {
                 item.status === 'WARNING' ? 'Low Stock' : 'CRITICAL',
       }))
     }
-    // Default fallback tanks when no DB data
     return [
       { id: 'T1', name: 'Tank 1 — Daily Generator Tank', capacity: 5000, current: 4350, temp: 12, status: 'Normal' },
       { id: 'T2', name: 'Tank 2 — Main Storage (Tank A)', capacity: 75000, current: Math.round(fuelRemainingLitres * 0.47), temp: 6, status: 'Normal' },
       { id: 'T3', name: 'Tank 3 — Main Storage (Tank B)', capacity: 75000, current: Math.round(fuelRemainingLitres * 0.44), temp: 5, status: 'Normal' },
       { id: 'T4', name: 'Tank 4 — Emergency Reserve Tank', capacity: 10000, current: 9800, temp: 8, status: 'Emergency Only' },
     ]
-  }, [fuelItems, fuelRemainingLitres])
+  }, [isFuelAnomaly, fuelItems, fuelRemainingLitres])
 
   function runEngineDiagnostic() {
     setIsDiagnosticScanning(true)
@@ -296,6 +336,53 @@ export default function EnergyPage() {
               </div>
             </div>
 
+            {/* Active Anomaly Override Banner */}
+            {lastAnomalyResult && (
+              <div
+                style={{
+                  background: '#fff1f2',
+                  border: '1px solid #fda4af',
+                  borderLeft: '4px solid #e11d48',
+                  color: '#9f1239',
+                  padding: '8px 12px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  marginBottom: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderRadius: 3,
+                  boxShadow: '0 2px 4px rgba(225, 29, 72, 0.08)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#e11d48' }}>warning</span>
+                  <div>
+                    <span style={{ fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      ACTIVE ANOMALY: {lastAnomalyResult.anomaly_name}
+                    </span>
+                    <span style={{ marginLeft: 8, fontSize: 10.5, fontWeight: 600, color: '#be123c' }}>
+                      (Severity: {lastAnomalyResult.severity.toUpperCase()} • System: {lastAnomalyResult.category.toUpperCase()}) — Microgrid & generator sensors adjusted to simulate active failure.
+                    </span>
+                  </div>
+                </div>
+                <span
+                  style={{
+                    background: 'rgba(225, 29, 72, 0.1)',
+                    color: '#be123c',
+                    border: '1px solid #fca5a5',
+                    borderRadius: 3,
+                    padding: '3px 9px',
+                    fontSize: 10,
+                    fontWeight: 800,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  CONTROLLED VIA ANOMALY SIMULATOR
+                </span>
+              </div>
+            )}
+
             {/* Action Feedback Banner */}
             {actionMessage && (
               <div
@@ -354,19 +441,25 @@ export default function EnergyPage() {
               </div>
 
               {/* KPI 3: Fuel Reserves & Autonomy */}
-              <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderTop: '3px solid #ea580c', padding: '10px 14px', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
+              <div style={{
+                background: isFuelAnomaly ? '#fff1f2' : '#ffffff',
+                border: isFuelAnomaly ? '1px solid #fda4af' : '1px solid #cbd5e1',
+                borderTop: `3px solid ${isFuelAnomaly ? '#dc2626' : '#ea580c'}`,
+                padding: '10px 14px',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+              }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <span style={{ fontSize: 10, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>
+                  <span style={{ fontSize: 10, fontWeight: 800, color: isFuelAnomaly ? '#9f1239' : '#64748b', textTransform: 'uppercase' }}>
                     {lang === 'hi' ? 'डीजल ईंधन व शेष दिन' : 'DIESEL FUEL & DAYS LEFT'}
                   </span>
-                  <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#ea580c' }}>local_gas_station</span>
+                  <span className="material-symbols-outlined" style={{ fontSize: 18, color: isFuelAnomaly ? '#dc2626' : '#ea580c' }}>local_gas_station</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                  <span style={{ fontSize: 22, fontWeight: 900, color: '#0f172a' }}>{daysOfAutonomy}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#ea580c' }}>Days of Fuel Left</span>
+                  <span style={{ fontSize: 22, fontWeight: 900, color: isFuelAnomaly ? '#dc2626' : '#0f172a' }}>{daysOfAutonomy}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: isFuelAnomaly ? '#dc2626' : '#ea580c' }}>Days of Fuel Left</span>
                 </div>
-                <div style={{ fontSize: 10, color: '#475569', fontWeight: 600, marginTop: 4 }}>
-                  In Tanks: <strong>{(fuelRemainingLitres / 1000).toFixed(1)}k Litres</strong> ({fuelPct}% Full) • Uses: <strong>{hourlyBurnLitres} L/hr</strong>
+                <div style={{ fontSize: 10, color: isFuelAnomaly ? '#be123c' : '#475569', fontWeight: 600, marginTop: 4 }}>
+                  In Tanks: <strong>{(fuelRemainingLitres / 1000).toFixed(1)}k Litres</strong> ({fuelPct}% Full) • Ship: <strong>{resupplyShipName} ({resupplyDaysLeft}d)</strong>
                 </div>
               </div>
 
@@ -466,8 +559,16 @@ export default function EnergyPage() {
                         ))}
                       </div>
 
-                      <span style={{ fontSize: 10, fontWeight: 800, color: '#166534', background: '#dcfce7', border: '1px solid #86efac', padding: '3px 8px', borderRadius: 2 }}>
-                        ● 98% Good
+                      <span style={{
+                        fontSize: 10,
+                        fontWeight: 800,
+                        color: genHealthScore > 80 ? '#166534' : genHealthScore > 50 ? '#b45309' : '#991b1b',
+                        background: genHealthScore > 80 ? '#dcfce7' : genHealthScore > 50 ? '#fef3c7' : '#fee2e2',
+                        border: `1px solid ${genHealthScore > 80 ? '#86efac' : genHealthScore > 50 ? '#fcd34d' : '#fca5a5'}`,
+                        padding: '3px 8px',
+                        borderRadius: 2
+                      }}>
+                        ● {genHealthScore}% {genHealthScore > 80 ? 'Good' : genHealthScore > 50 ? 'Warning' : 'Degraded'}
                       </span>
                     </div>
                   </div>
@@ -475,18 +576,25 @@ export default function EnergyPage() {
                   {/* 4 Clean Telemetry Cards */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginBottom: 12 }}>
                     {/* Gauge 1: Vibration */}
-                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: '4px solid #0284c7', padding: 10 }}>
+                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: `4px solid ${liveVibration > 4.5 ? '#dc2626' : '#0284c7'}`, padding: 10 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
                         <span style={{ fontSize: 11, fontWeight: 800, color: '#0b3b60' }}>
                           📳 Vibration
                         </span>
-                        <span style={{ fontSize: 9, fontWeight: 800, color: '#166534', background: '#dcfce7', padding: '1px 5px', borderRadius: 2 }}>
-                          Smooth
+                        <span style={{
+                          fontSize: 9,
+                          fontWeight: 800,
+                          color: liveVibration > 4.5 ? '#991b1b' : liveVibration > 3.0 ? '#b45309' : '#166534',
+                          background: liveVibration > 4.5 ? '#fee2e2' : liveVibration > 3.0 ? '#fef3c7' : '#dcfce7',
+                          padding: '1px 5px',
+                          borderRadius: 2
+                        }}>
+                          {liveVibration > 4.5 ? 'CRITICAL HIGH' : liveVibration > 3.0 ? 'ELEVATED' : 'Smooth'}
                         </span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, margin: '2px 0' }}>
-                        <span style={{ fontSize: 22, fontWeight: 900, color: '#0284c7' }}>
-                          {activeTelemetryGen === 1 ? '1.82' : activeTelemetryGen === 2 ? '0.24' : '0.05'}
+                        <span style={{ fontSize: 22, fontWeight: 900, color: liveVibration > 4.5 ? '#dc2626' : '#0284c7' }}>
+                          {liveVibration.toFixed(2)}
                         </span>
                         <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>mm/s</span>
                       </div>
@@ -512,18 +620,25 @@ export default function EnergyPage() {
                     </div>
 
                     {/* Gauge 2: Coolant Temp */}
-                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: '4px solid #16a34a', padding: 10 }}>
+                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: `4px solid ${liveCoolant > 95 ? '#dc2626' : '#16a34a'}`, padding: 10 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
                         <span style={{ fontSize: 11, fontWeight: 800, color: '#0b3b60' }}>
                           🌡️ Coolant Temp
                         </span>
-                        <span style={{ fontSize: 9, fontWeight: 800, color: '#166534', background: '#dcfce7', padding: '1px 5px', borderRadius: 2 }}>
-                          Normal
+                        <span style={{
+                          fontSize: 9,
+                          fontWeight: 800,
+                          color: liveCoolant > 95 ? '#991b1b' : liveCoolant < 50 ? '#0369a1' : '#166534',
+                          background: liveCoolant > 95 ? '#fee2e2' : liveCoolant < 50 ? '#e0f2fe' : '#dcfce7',
+                          padding: '1px 5px',
+                          borderRadius: 2
+                        }}>
+                          {liveCoolant > 95 ? 'OVERHEATING' : liveCoolant < 50 ? 'Cold' : 'Normal'}
                         </span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, margin: '2px 0' }}>
-                        <span style={{ fontSize: 22, fontWeight: 900, color: '#16a34a' }}>
-                          {activeTelemetryGen === 1 ? '82.4' : activeTelemetryGen === 2 ? '58.0' : '34.2'}
+                        <span style={{ fontSize: 22, fontWeight: 900, color: liveCoolant > 95 ? '#dc2626' : '#16a34a' }}>
+                          {liveCoolant.toFixed(1)}
                         </span>
                         <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>°C</span>
                       </div>
@@ -547,18 +662,25 @@ export default function EnergyPage() {
                     </div>
 
                     {/* Gauge 3: Oil Pressure */}
-                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: '4px solid #d97706', padding: 10 }}>
+                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: `4px solid ${liveOilPressure < 1.0 ? '#dc2626' : '#d97706'}`, padding: 10 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
                         <span style={{ fontSize: 11, fontWeight: 800, color: '#0b3b60' }}>
                           🛢️ Oil Pressure
                         </span>
-                        <span style={{ fontSize: 9, fontWeight: 800, color: '#166534', background: '#dcfce7', padding: '1px 5px', borderRadius: 2 }}>
-                          Good
+                        <span style={{
+                          fontSize: 9,
+                          fontWeight: 800,
+                          color: liveOilPressure < 1.0 ? '#991b1b' : liveOilPressure < 2.5 ? '#b45309' : '#166534',
+                          background: liveOilPressure < 1.0 ? '#fee2e2' : liveOilPressure < 2.5 ? '#fef3c7' : '#dcfce7',
+                          padding: '1px 5px',
+                          borderRadius: 2
+                        }}>
+                          {liveOilPressure < 1.0 ? 'PRESSURE DROP' : liveOilPressure < 2.5 ? 'LOW' : 'Good'}
                         </span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, margin: '2px 0' }}>
-                        <span style={{ fontSize: 22, fontWeight: 900, color: '#d97706' }}>
-                          {activeTelemetryGen === 1 ? '4.65' : '0.00'}
+                        <span style={{ fontSize: 22, fontWeight: 900, color: liveOilPressure < 1.0 ? '#dc2626' : '#d97706' }}>
+                          {liveOilPressure.toFixed(2)}
                         </span>
                         <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>bar</span>
                       </div>
@@ -582,18 +704,25 @@ export default function EnergyPage() {
                     </div>
 
                     {/* Gauge 4: Exhaust Temp */}
-                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: '4px solid #7c3aed', padding: 10 }}>
+                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: `4px solid ${liveExhaust > 520 ? '#dc2626' : '#7c3aed'}`, padding: 10 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
                         <span style={{ fontSize: 11, fontWeight: 800, color: '#0b3b60' }}>
                           🔥 Exhaust Temp
                         </span>
-                        <span style={{ fontSize: 9, fontWeight: 800, color: '#166534', background: '#dcfce7', padding: '1px 5px', borderRadius: 2 }}>
-                          Balanced
+                        <span style={{
+                          fontSize: 9,
+                          fontWeight: 800,
+                          color: liveExhaust > 520 ? '#991b1b' : '#166534',
+                          background: liveExhaust > 520 ? '#fee2e2' : '#dcfce7',
+                          padding: '1px 5px',
+                          borderRadius: 2
+                        }}>
+                          {liveExhaust > 520 ? 'HIGH EGT' : 'Balanced'}
                         </span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, margin: '2px 0' }}>
-                        <span style={{ fontSize: 22, fontWeight: 900, color: '#7c3aed' }}>
-                          {activeTelemetryGen === 1 ? '418' : activeTelemetryGen === 2 ? '42' : '18'}
+                        <span style={{ fontSize: 22, fontWeight: 900, color: liveExhaust > 520 ? '#dc2626' : '#7c3aed' }}>
+                          {Math.round(liveExhaust)}
                         </span>
                         <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>°C</span>
                       </div>
@@ -690,22 +819,36 @@ export default function EnergyPage() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 6, fontSize: 10 }}>
                       <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: 6 }}>
                         <div style={{ color: '#64748b', fontSize: 9 }}>Life to Overhaul</div>
-                        <div style={{ fontWeight: 900, color: '#0b3b60', fontSize: 11.5 }}>3,840 Hrs (160 Days)</div>
-                        <div style={{ color: '#16a34a', fontSize: 8.5, fontWeight: 700 }}>Confidence: 98%</div>
+                        <div style={{ fontWeight: 900, color: isGenAnomaly ? '#dc2626' : '#0b3b60', fontSize: 11.5 }}>
+                          {isGenAnomaly ? 'EMERGENCY TRIP' : '3,840 Hrs (160 Days)'}
+                        </div>
+                        <div style={{ color: isGenAnomaly ? '#dc2626' : '#16a34a', fontSize: 8.5, fontWeight: 700 }}>
+                          {isGenAnomaly ? 'Trip Flagged' : 'Confidence: 98%'}
+                        </div>
                       </div>
                       <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: 6 }}>
                         <div style={{ color: '#64748b', fontSize: 9 }}>Next Service</div>
-                        <div style={{ fontWeight: 900, color: '#0b3b60', fontSize: 11.5 }}>Oil & Filter</div>
-                        <div style={{ color: '#ea580c', fontSize: 8.5, fontWeight: 700 }}>In 184 running hrs</div>
+                        <div style={{ fontWeight: 900, color: isGenAnomaly ? '#dc2626' : '#0b3b60', fontSize: 11.5 }}>
+                          {isGenAnomaly ? 'Inspect Bearing / Seal' : 'Oil & Filter'}
+                        </div>
+                        <div style={{ color: isGenAnomaly ? '#dc2626' : '#ea580c', fontSize: 8.5, fontWeight: 700 }}>
+                          {isGenAnomaly ? 'Action Required NOW' : 'In 184 running hrs'}
+                        </div>
                       </div>
                       <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: 6 }}>
                         <div style={{ color: '#64748b', fontSize: 9 }}>Piston Wear</div>
-                        <div style={{ fontWeight: 900, color: '#0b3b60', fontSize: 11.5 }}>1.4% (Minimal)</div>
-                        <div style={{ color: '#16a34a', fontSize: 8.5, fontWeight: 700 }}>No leaks</div>
+                        <div style={{ fontWeight: 900, color: isGenAnomaly ? '#ea580c' : '#0b3b60', fontSize: 11.5 }}>
+                          {isGenAnomaly ? 'Thermal Stress' : '1.4% (Minimal)'}
+                        </div>
+                        <div style={{ color: isGenAnomaly ? '#ea580c' : '#16a34a', fontSize: 8.5, fontWeight: 700 }}>
+                          {isGenAnomaly ? 'Vib Warning' : 'No leaks'}
+                        </div>
                       </div>
                       <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: 6 }}>
                         <div style={{ color: '#64748b', fontSize: 9 }}>Insulation</div>
-                        <div style={{ fontWeight: 900, color: '#0b3b60', fontSize: 11.5 }}>Dry & Safe</div>
+                        <div style={{ fontWeight: 900, color: '#0b3b60', fontSize: 11.5 }}>
+                          {isGenAnomaly ? 'Dry & Isolated' : 'Dry & Safe'}
+                        </div>
                         <div style={{ color: '#16a34a', fontSize: 8.5, fontWeight: 700 }}>Heater On</div>
                       </div>
                     </div>
@@ -745,8 +888,28 @@ export default function EnergyPage() {
             {activeTab === 'generators' && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
                 {[
-                  { id: 1, name: 'Generator 1 (Main Power)', status: 'Running (Main)', kw: Math.round(genOutput * 0.65), rpm: 1500, coolant: 82, oilPress: 4.8, egt: 410, fuelLhr: 18.2 },
-                  { id: 2, name: 'Generator 2 (Extra Power)', status: genOutput > 70 ? 'Running (Assisting)' : 'Ready (Standby)', kw: genOutput > 70 ? Math.round(genOutput * 0.35) : 0, rpm: genOutput > 70 ? 1500 : 0, coolant: 64, oilPress: genOutput > 70 ? 4.7 : 0, egt: genOutput > 70 ? 385 : 45, fuelLhr: genOutput > 70 ? 12.1 : 0 },
+                  {
+                    id: 1,
+                    name: 'Generator 1 (Main Power)',
+                    status: isGenAnomaly ? 'TRIPPED (Overheat / Vib)' : 'Running (Main)',
+                    kw: isGenAnomaly ? 0 : Math.round(genOutput * 0.65),
+                    rpm: isGenAnomaly ? 0 : 1500,
+                    coolant: isGenAnomaly ? 108 : 82,
+                    oilPress: isGenAnomaly ? 0.2 : 4.8,
+                    egt: isGenAnomaly ? 580 : 410,
+                    fuelLhr: isGenAnomaly ? 0 : 18.2,
+                  },
+                  {
+                    id: 2,
+                    name: 'Generator 2 (Extra Power)',
+                    status: isGenAnomaly ? 'Running (Emergency Fallback)' : (genOutput > 70 ? 'Running (Assisting)' : 'Ready (Standby)'),
+                    kw: isGenAnomaly ? Math.round(genOutput) : (genOutput > 70 ? Math.round(genOutput * 0.35) : 0),
+                    rpm: (isGenAnomaly || genOutput > 70) ? 1500 : 0,
+                    coolant: isGenAnomaly ? 84 : 64,
+                    oilPress: (isGenAnomaly || genOutput > 70) ? 4.7 : 0,
+                    egt: isGenAnomaly ? 425 : (genOutput > 70 ? 385 : 45),
+                    fuelLhr: (isGenAnomaly || genOutput > 70) ? 22.4 : 0,
+                  },
                   { id: 3, name: 'Generator 3 (Auto-Backup)', status: 'Ready (Standby)', kw: 0, rpm: 0, coolant: 58, oilPress: 0, egt: 28, fuelLhr: 0 },
                   { id: 4, name: 'Generator 4 (Emergency)', status: 'Emergency Reserve', kw: 0, rpm: 0, coolant: 42, oilPress: 0, egt: 22, fuelLhr: 0 },
                 ].map((gen) => {
@@ -833,12 +996,7 @@ export default function EnergyPage() {
             {/* ═══════════ TAB 3: FUEL STORAGE TANKS ═══════════ */}
             {activeTab === 'fuel' && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
-                {[
-                  { id: 'T1', name: 'Tank 1 — Daily Generator Tank', capacity: 5000, current: 4350, temp: 12, status: 'Ready to Use' },
-                  { id: 'T2', name: 'Tank 2 — Main Storage (Tank A)', capacity: 75000, current: 63200, temp: 6, status: 'Normal' },
-                  { id: 'T3', name: 'Tank 3 — Main Storage (Tank B)', capacity: 75000, current: 59100, temp: 5, status: 'Normal' },
-                  { id: 'T4', name: 'Tank 4 — Emergency Reserve Tank', capacity: 10000, current: 9800, temp: 8, status: 'Emergency Only' },
-                ].map((tank) => {
+                {fuelTankCards.map((tank) => {
                   const pct = Math.round((tank.current / tank.capacity) * 100)
                   return (
                     <div key={tank.id} style={{ background: '#ffffff', border: '1px solid #cbd5e1', padding: 14, boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
@@ -950,14 +1108,16 @@ export default function EnergyPage() {
 
                   <div style={{ background: '#f0f9ff', padding: 10, border: '1px solid #bae6fd', marginBottom: 10 }}>
                     <div style={{ fontSize: 10, color: '#0369a1', fontWeight: 800 }}>Ship Arrival:</div>
-                    <div style={{ fontSize: 15, fontWeight: 900, color: '#0b3b60', marginTop: 2 }}>In 68 Days</div>
-                    <div style={{ fontSize: 9.5, color: '#0369a1', marginTop: 4 }}>
-                      Safety Buffer: <strong>+{(daysOfAutonomy - 68)} extra days of fuel</strong>
+                    <div style={{ fontSize: 15, fontWeight: 900, color: '#0b3b60', marginTop: 2 }}>In {resupplyDaysLeft} Days</div>
+                    <div style={{ fontSize: 9.5, color: daysOfAutonomy < resupplyDaysLeft ? '#dc2626' : '#0369a1', marginTop: 4, fontWeight: daysOfAutonomy < resupplyDaysLeft ? 800 : 500 }}>
+                      {daysOfAutonomy >= resupplyDaysLeft
+                        ? `Safety Buffer: +${daysOfAutonomy - resupplyDaysLeft} extra days of fuel`
+                        : `DEFICIT WARNING: Exhaustion ${resupplyDaysLeft - daysOfAutonomy} days BEFORE resupply!`}
                     </div>
                   </div>
 
-                  <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 700 }}>
-                    ✓ Safe: Enough fuel until ship arrives
+                  <div style={{ fontSize: 10, color: daysOfAutonomy >= resupplyDaysLeft ? '#16a34a' : '#dc2626', fontWeight: 700 }}>
+                    {daysOfAutonomy >= resupplyDaysLeft ? '✓ Safe: Enough fuel until ship arrives' : '⚠️ Alert: Immediate fuel rationing required'}
                   </div>
                 </div>
               </div>
