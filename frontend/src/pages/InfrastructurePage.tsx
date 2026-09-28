@@ -8,10 +8,6 @@ import { useStation } from '../context/StationContext'
 import { useIoTSensors } from '../hooks/useIoTSensors'
 import type { IoTSensor, SensorParameter, AnomalyInjectionResult } from '../api/hq'
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-type StationId = 'maitri' | 'bharati'
-
 // ── Category config (colours + icons) ────────────────────────────────────────
 
 const CAT_META: Record<string, { color: string; bg: string; border: string; emoji: string }> = {
@@ -949,7 +945,6 @@ export default function InfrastructurePage() {
   const {
     stationId: activeStation,
     setStationId: setActiveStation,
-    linkState,
     isOnline,
     edgeBufferCount,
     flushEdgeBuffer,

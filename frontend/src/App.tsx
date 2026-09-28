@@ -23,8 +23,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <LanguageProvider>
-      <StationProvider>
-        <AuthProvider>
+      <AuthProvider>
+        <StationProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/blackbox" element={<ProtectedRoute><BlackBoxPage /></ProtectedRoute>} />
@@ -39,8 +39,8 @@ export default function App() {
             <Route path="/*" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           </Routes>
           <ChatBot />
-        </AuthProvider>
-      </StationProvider>
+        </StationProvider>
+      </AuthProvider>
     </LanguageProvider>
   )
 }

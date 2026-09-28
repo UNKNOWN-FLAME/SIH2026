@@ -6,6 +6,7 @@ import {
   type AnomalyInjectionResult,
   type SyncBufferResponse,
 } from '../api/hq'
+import { getToken } from '../api/client'
 import { useQueryClient } from '@tanstack/react-query'
 
 export type StationId = 'maitri' | 'bharati'
@@ -13,7 +14,7 @@ export type LinkState = 'UP' | 'DOWN' | 'DEGRADED'
 
 interface StationContextType {
   stationId: StationId
-  setStationId: (id: StationId) => void
+  setStationId: (id: StationId | ((prev: StationId) => StationId)) => void
   linkState: LinkState
   isOnline: boolean
   edgeBufferCount: number
@@ -30,7 +31,8 @@ const StationContext = createContext<StationContextType | undefined>(undefined)
 
 export function StationProvider({ children }: { children: React.ReactNode }) {
   const [stationId, setStationIdState] = useState<StationId>(() => {
-    return (localStorage.getItem('himantar_active_station') as StationId) || 'maitri'
+    const raw = localStorage.getItem('himantar_active_station')
+    return raw === 'bharati' ? 'bharati' : 'maitri'
   })
   const [linkState, setLinkState] = useState<LinkState>('UP')
   const [edgeBufferCount, setEdgeBufferCount] = useState<number>(0)
@@ -38,12 +40,18 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
   const [activeIncidentId, setActiveIncidentId] = useState<string | null>(null)
   const queryClient = useQueryClient()
 
-  const setStationId = useCallback((id: StationId) => {
-    setStationIdState(id)
-    localStorage.setItem('himantar_active_station', id)
+  const setStationId = useCallback((action: StationId | ((prev: StationId) => StationId)) => {
+    setStationIdState((prev) => {
+      const next = typeof action === 'function' ? action(prev) : action
+      const safe: StationId = next === 'bharati' ? 'bharati' : 'maitri'
+      localStorage.setItem('himantar_active_station', safe)
+      return safe
+    })
   }, [])
 
   const refreshLinkState = useCallback(async () => {
+    // Only query backend if authenticated; avoids 401 on login page
+    if (!getToken()) return
     try {
       const res = await getStationLinkState(stationId)
       setLinkState(res.link_state)
@@ -54,6 +62,7 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
   }, [stationId])
 
   useEffect(() => {
+    if (!getToken()) return
     refreshLinkState()
     const timer = setInterval(refreshLinkState, 8000)
     return () => clearInterval(timer)

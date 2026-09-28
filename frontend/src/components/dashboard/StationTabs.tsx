@@ -1,10 +1,11 @@
 import { useStations } from '../../hooks/useStations'
 import { useLanguage } from '../../context/LanguageContext'
+import type { StationId } from '../../context/StationContext'
 import DownloadReportButton from './DownloadReportButton'
 
 interface Props {
   active: string
-  onSelect: (s: string) => void
+  onSelect: (s: StationId) => void
   timeRange?: string
   onTimeRange?: (t: string) => void
 }
@@ -47,13 +48,13 @@ export default function StationTabs({ active, onSelect }: Props) {
       >
         {[
           {
-            id: 'maitri',
+            id: 'maitri' as StationId,
             name: t('station.maitri'),
             coords: t('station.maitri_coords'),
             status: maitri,
           },
           {
-            id: 'bharati',
+            id: 'bharati' as StationId,
             name: t('station.bharati'),
             coords: t('station.bharati_coords'),
             status: bharati,

@@ -17,12 +17,12 @@ import { useLanguage } from '../context/LanguageContext'
 import { useStation } from '../context/StationContext'
 
 export default function DashboardPage() {
-  const { stationId: activeStation, setStationId, isOnline, edgeBufferCount, flushEdgeBuffer, lastAnomalyResult } = useStation()
+  const { stationId: activeStation, setStationId: setActiveStation, isOnline, edgeBufferCount, flushEdgeBuffer } = useStation()
   const [timeRange, setTimeRange] = useState<string>('1H')
   const { t } = useLanguage()
 
   function toggleStation() {
-    setStationId(activeStation === 'maitri' ? 'bharati' : 'maitri')
+    setActiveStation(activeStation === 'maitri' ? 'bharati' : 'maitri')
   }
 
   return (

@@ -1,13 +1,19 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useLanguage } from '../context/LanguageContext'
 import GovtOfIndiaLogo from '../components/ui/GovtOfIndiaLogo'
 
 export default function LoginPage() {
-  const { login } = useAuth()
+  const { login, token } = useAuth()
   const navigate = useNavigate()
   const { lang, toggleLang, t } = useLanguage()
+
+  useEffect(() => {
+    if (token) {
+      navigate('/', { replace: true })
+    }
+  }, [token, navigate])
   const [username, setUsername] = useState('admin')
   const [password, setPassword] = useState('admin123')
   const [captchaInput, setCaptchaInput] = useState('7K9P2W')

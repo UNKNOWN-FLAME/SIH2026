@@ -32,7 +32,7 @@ export const ChatBot: React.FC = () => {
     try {
       const response = await sendChatQuery(userMessage);
       setMessages((prev) => [...prev, { role: 'ai', content: response.response }]);
-    } catch (error) {
+    } catch {
       setMessages((prev) => [
         ...prev,
         { role: 'ai', content: 'Sorry, I encountered an error. Please try again later.' },

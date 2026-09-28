@@ -16,7 +16,6 @@ import {
 import { generateWeatherMissionReportPDF } from '../utils/pdfGenerator'
 import { useStation } from '../context/StationContext'
 
-type StationId = 'maitri' | 'bharati'
 type TabType = 'fuel' | 'energy' | 'weather' | 'anomaly' | 'maintenance' | 'expedition'
 
 function computeWindChill(tempC: number, windKmh: number): number {

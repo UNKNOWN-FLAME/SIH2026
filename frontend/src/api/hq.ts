@@ -496,7 +496,7 @@ export async function triggerCompressionRollup(stationId: string): Promise<Compr
   return data
 }
 
-export async function getBlackBoxIncidents(stationId: string): Promise<any[]> {
+export async function getStationBlackBoxRollupIncidents(stationId: string): Promise<any[]> {
   const { data } = await api.get<any[]>(`/hq/stations/${stationId}/blackbox/incidents`)
   return data
 }

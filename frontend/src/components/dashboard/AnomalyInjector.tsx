@@ -855,11 +855,10 @@ function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalPr
 
 export default function AnomalyInjector({ activeStation }: { activeStation: string }) {
   const [open, setOpen] = useState(false)
-  const [pulse, setPulse] = useState(false)
+  const [pulse, setPulse] = useState(true)
 
   // Subtle pulse animation on first render to draw attention
   useEffect(() => {
-    setPulse(true)
     const t = setTimeout(() => setPulse(false), 4000)
     return () => clearTimeout(t)
   }, [])

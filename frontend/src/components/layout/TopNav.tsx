@@ -8,7 +8,7 @@ export default function TopNav() {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
   const { lang, toggleLang, t } = useLanguage()
-  const { stationId, setStationId, isOnline, linkState, edgeBufferCount, toggleLinkState, flushEdgeBuffer } = useStation()
+  const { isOnline, edgeBufferCount, toggleLinkState, flushEdgeBuffer } = useStation()
   const [timeStr, setTimeStr] = useState<string>('')
 
   useEffect(() => {
