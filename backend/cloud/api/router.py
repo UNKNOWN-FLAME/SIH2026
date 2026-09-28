@@ -1731,3 +1731,373 @@ async def get_weather_ensemble(station_id: str) -> dict:
     service = PredictiveAIService.get_instance()
     return await service.predict_weather_ensemble(station_id)
 
+
+# ---------------------------------------------------------------------------
+# Anomaly Injection Engine  (simulation — hardcoded, no DB writes)
+# ---------------------------------------------------------------------------
+
+# Registry of injectable anomalies with metadata and system-impact vectors
+_ANOMALY_REGISTRY = [
+    {
+        "id": "blizzard",
+        "name": "Polar Blizzard Event",
+        "icon": "❄️",
+        "severity": "HIGH",
+        "category": "meteorological",
+        "description": "Simulates a Category-4 polar blizzard with sustained winds > 100 km/h, visibility < 50 m, and temperature drop of −12 °C. IoT sensors may go offline. VSAT signal degrades.",
+        "estimated_duration_s": 4,
+        "impacts": [
+            "MAI-MET-001 / BHA-MET-001 — Wind sensor readings spike to 100+ km/h",
+            "MAI-MET-002 / BHA-MET-002 — Snowfall gauge → offline (sensor buried)",
+            "VSAT signal margin degrades by −8 dB",
+            "Outdoor temperature drops −12 °C from baseline",
+            "Fuel consumption rate increases 18 % (heating load surge)",
+            "Structural snow load increases to 5.8 kN/m²",
+        ],
+        "recovery_steps": [
+            "Deploy station crew for manual sensor inspection",
+            "Activate backup HF radio communication",
+            "Increase heating load allocation on generator",
+            "Flag NCPOR HQ via Iridium SBD message",
+        ],
+    },
+    {
+        "id": "thunderstorm",
+        "name": "Antarctic Thunderstorm",
+        "icon": "⛈️",
+        "severity": "MEDIUM",
+        "category": "meteorological",
+        "description": "Simulates an Antarctic thunderstorm with lightning strike risk, atmospheric pressure drop, and electrical noise on sensor bus. Comm antennas may require protection stow.",
+        "estimated_duration_s": 3,
+        "impacts": [
+            "Barometric pressure drops to 972 hPa (−22 hPa from normal)",
+            "VSAT antenna stowed — link switches to backup HF radio",
+            "UV radiation sensor reads anomalous values during lightning",
+            "Electrical surge risk on outdoor sensor bus",
+            "Wind speed 65–80 km/h, gusty and variable",
+        ],
+        "recovery_steps": [
+            "Un-stow VSAT antenna post-storm",
+            "Run sensor bus diagnostics",
+            "Check for lightning-induced ground faults",
+            "Inspect antenna mounts and guy wires",
+        ],
+    },
+    {
+        "id": "earthquake",
+        "name": "Seismic / Ice-Quake Event",
+        "icon": "🌍",
+        "severity": "CRITICAL",
+        "category": "seismic",
+        "description": "Simulates a Ml 3.8 ice-quake under the station. Seismic sensors register peak ground velocity > 12 mm/s. Foundation strain gauges spike. Glacial movement accelerates.",
+        "estimated_duration_s": 5,
+        "impacts": [
+            "Seismic sensor PGV spikes to 14.2 mm/s (well above 2 mm/s threshold)",
+            "Foundation strain gauge reads 228 μϵ (near 250 μϵ limit)",
+            "Glacial movement sensor → 38 cm/day acceleration",
+            "BHA-SES-002 (Glacial Sensor) comes online with alarming readings",
+            "Emergency structural advisory issued",
+            "NCPOR Goa notified via automatic alert",
+        ],
+        "recovery_steps": [
+            "Immediate station structural inspection",
+            "Check for cracks in foundation slabs",
+            "Halt outdoor activities for 2 hours",
+            "Review seismic event log for aftershocks",
+        ],
+    },
+    {
+        "id": "generator_failure",
+        "name": "Primary Generator Failure",
+        "icon": "⚡",
+        "severity": "CRITICAL",
+        "category": "power",
+        "description": "Simulates loss of the primary diesel generator. Station switches to backup generator. Battery bank activates. Non-essential loads are shed. Life-support remains on priority circuit.",
+        "estimated_duration_s": 4,
+        "impacts": [
+            "Primary generator (DG-1) trips — load drops to 0 kW",
+            "Battery bank activates: SOC drains at 2.8 % / hour",
+            "Backup generator DG-2 starts within 45 seconds",
+            "Non-essential lighting and lab equipment shed",
+            "Fuel consumption rate drops (single genset at 70 % load)",
+            "Generator hall temperature sensor spikes to 58 °C (exhaust backup)",
+        ],
+        "recovery_steps": [
+            "Engineer crew to Generator Hall for fault diagnosis",
+            "Check fuel injectors and coolant levels",
+            "If DG-2 cannot sustain load, enter Emergency Power Mode",
+            "Log incident to NCPOR HQ maintenance system",
+        ],
+    },
+    {
+        "id": "pressure_pipe_failure",
+        "name": "Pressure Pipe Burst / Freeze",
+        "icon": "💧",
+        "severity": "HIGH",
+        "category": "infrastructure",
+        "description": "Simulates a freeze-burst failure in the pressurized water pipe network. Water supply to habitation modules is interrupted. Fuel tank pressure sensors are unaffected.",
+        "estimated_duration_s": 3,
+        "impacts": [
+            "Water pressure drops to 0 bar in Zone B",
+            "Temperature in pipe corridor drops to −28 °C (freeze point breached)",
+            "Indoor humidity spikes as steam escapes",
+            "Water reserves drop 15 % as manual reserves are tapped",
+            "Life support heating load +12 % to maintain temperature",
+        ],
+        "recovery_steps": [
+            "Isolate pipe section using manual shutoff valve",
+            "Deploy trace-heating cable on frozen section",
+            "Crew to manually carry water to habitation",
+            "Inspect all pipe lagging in high-risk corridors",
+        ],
+    },
+    {
+        "id": "iot_mass_offline",
+        "name": "Mass IoT Sensor Outage",
+        "icon": "📡",
+        "severity": "HIGH",
+        "category": "communications",
+        "description": "Simulates a sensor bus failure or network switch fault causing 60 % of IoT sensors to go offline simultaneously. Data telemetry becomes unreliable. Edge black-box activates store-and-forward mode.",
+        "estimated_duration_s": 4,
+        "impacts": [
+            "60 % of IoT sensors report offline state",
+            "Temperature, pressure, and fuel level data gaps appear",
+            "Edge black-box activates — data buffered locally",
+            "VSAT telemetry falls back to 15-min batch uploads",
+            "Alert: 'Partial Telemetry Loss' raised in HQ dashboard",
+            "Manual readings by crew required until bus restored",
+        ],
+        "recovery_steps": [
+            "Reboot sensor network switch (Node A and Node B)",
+            "Run sensor bus diagnostics via SCADA terminal",
+            "Check POE switch power and cable integrity",
+            "Replay buffered data from edge black-box post-recovery",
+        ],
+    },
+    {
+        "id": "vsat_link_loss",
+        "name": "VSAT Satellite Link Loss",
+        "icon": "🛰️",
+        "severity": "HIGH",
+        "category": "communications",
+        "description": "Simulates complete loss of primary VSAT uplink. Station operates in autonomous 'Island Mode'. All live telemetry to NCPOR HQ is suspended. Edge system stores data locally.",
+        "estimated_duration_s": 4,
+        "impacts": [
+            "VSAT link drops to 0 Mbps — all cloud sync suspended",
+            "HQ dashboard shows station as 'DISCONNECTED'",
+            "Edge black-box enters DTN (Delay-Tolerant Networking) mode",
+            "HF radio backup activated for emergency voice contact",
+            "Iridium NEXT SBD sends status packets every 10 minutes",
+        ],
+        "recovery_steps": [
+            "Check VSAT dish alignment (possible ice accumulation)",
+            "Confirm GSAT-14 satellite pass schedule",
+            "Switch to Inmarsat backup VSAT terminal",
+            "Synchronise buffered telemetry on link restoration",
+        ],
+    },
+    {
+        "id": "fire_alarm",
+        "name": "Fire / Smoke Detection Trigger",
+        "icon": "🔥",
+        "severity": "CRITICAL",
+        "category": "fire_safety",
+        "description": "Simulates smoke detection trigger in Zone B (Laboratory Block). Fire suppression system activates. CO₂ extinguisher deployment. All personnel accounted for under Emergency Muster.",
+        "estimated_duration_s": 5,
+        "impacts": [
+            "MAI-FIR-001 / BHA-FIR-001 smoke density → 0.38 obs/m (threshold exceeded)",
+            "Zone B laboratory automatically sealed and vented",
+            "Temperature rise rate: 6.4 °C/min (below auto-suppression trigger of 8)",
+            "CO₂ suppression system armed in Zone B",
+            "Emergency muster: all 28 personnel accounted for",
+            "HVAC zone isolation to prevent smoke spread",
+        ],
+        "recovery_steps": [
+            "Station Commander leads post-incident inspection",
+            "Laboratory equipment checked for damage",
+            "Refill CO₂ extinguisher cylinders",
+            "Incident report filed with NCPOR HQ within 4 hours",
+        ],
+    },
+    {
+        "id": "fuel_critical_low",
+        "name": "Fuel Reserve Critical Low",
+        "icon": "⛽",
+        "severity": "HIGH",
+        "category": "fuel",
+        "description": "Simulates diesel fuel reserve dropping below the 30 % safety threshold (critical level). Emergency fuel rationing protocol activates. NCPOR Goa logistics alerted for emergency resupply.",
+        "estimated_duration_s": 3,
+        "impacts": [
+            "Diesel reserve level drops to 28.6 % (below 30 % threshold)",
+            "Volume remaining: 38 200 L (below 40 000 L minimum)",
+            "Non-essential generator loads shed to reduce consumption",
+            "Fuel consumption rate reduced to 420 L/day (forced rationing)",
+            "Days remaining: 91 days (emergency threshold)",
+            "NCPOR Goa logistics team notified for priority resupply",
+        ],
+        "recovery_steps": [
+            "Activate fuel rationing protocol (Station Order 7B)",
+            "Shut down non-essential electrical loads",
+            "Contact NCPOR Goa for emergency ship diversion",
+            "Monitor fuel level every 6 hours and log readings",
+        ],
+    },
+    {
+        "id": "wildlife_intrusion",
+        "name": "Wildlife Hazard Intrusion",
+        "icon": "🐧",
+        "severity": "MEDIUM",
+        "category": "environmental",
+        "description": "Simulates a large wildlife group (penguin colony or elephant seal) breaching the 10 m exclusion zone and potentially damaging exposed sensor cables or fuel bladders.",
+        "estimated_duration_s": 3,
+        "impacts": [
+            "Wildlife proximity sensor: 2 detections at 4.2 m (below 10 m minimum)",
+            "Infrared flux spikes to 3.84 W/m² (multiple heat signatures)",
+            "Risk: exposed cable damage from animals disturbing perimeter",
+            "Outdoor operations temporarily suspended (crew safety)",
+            "Wildlife observation log updated per Antarctic Treaty Protocol",
+        ],
+        "recovery_steps": [
+            "Dispatch observation team to record species and count",
+            "Non-invasive deterrents activated (audio beacons at 40 dB)",
+            "Inspect exposed sensor cables and fuel bladders for damage",
+            "File wildlife observation report per Antarctic Treaty Protocol",
+        ],
+    },
+    {
+        "id": "solar_flare_radiation",
+        "name": "Solar Flare / Radiation Surge",
+        "icon": "☀️",
+        "severity": "MEDIUM",
+        "category": "radiation",
+        "description": "Simulates a Class-M solar flare causing UV index spike, GPS signal degradation, and increased ionospheric interference on HF radio communications.",
+        "estimated_duration_s": 3,
+        "impacts": [
+            "UV index spikes to 8.4 UVI (from 1.4 baseline) — dangerous levels",
+            "Solar irradiance peaks at 1 180 W/m²",
+            "HF radio communications disrupted by ionospheric storms",
+            "GPS position error increases to ±85 m",
+            "Ozone column drops to 248 DU (potential ozone hole influence)",
+        ],
+        "recovery_steps": [
+            "All outdoor personnel to take UV protective measures immediately",
+            "Switch HF radio to satellite communication channels",
+            "Monitor UV dose accumulation every hour",
+            "Log event with NCPOR Space Weather Team",
+        ],
+    },
+    {
+        "id": "hvac_failure",
+        "name": "HVAC / Life Support Failure",
+        "icon": "🌡️",
+        "severity": "CRITICAL",
+        "category": "life_support",
+        "description": "Simulates primary HVAC unit failure in the living quarters. Indoor temperature begins dropping toward outside ambient. Emergency backup heating activates. CO₂ levels start rising.",
+        "estimated_duration_s": 4,
+        "impacts": [
+            "Living quarters temperature drops from 18.4 °C toward 4 °C",
+            "CO₂ indoor concentration rises to 1 480 ppm (above 1 000 ppm threshold)",
+            "Emergency backup HVAC unit activates (standby → running)",
+            "Heating load shifts entirely to backup unit — efficiency drops to 72 %",
+            "O₂ concentration drops to 20.1 % (watch threshold: 19.5 %)",
+        ],
+        "recovery_steps": [
+            "Engineering team to HVAC unit for fault diagnosis",
+            "Ensure all personnel remain in heated sections",
+            "Check compressor, heat exchanger, and refrigerant charge",
+            "If temp drops below 10 °C, activate Emergency Thermal Protocol",
+        ],
+    },
+]
+
+# In-memory store of last injection result (reset on each injection)
+_last_anomaly_injection: dict = {}
+
+
+@router.post("/anomaly/inject")
+async def inject_anomaly(
+    anomaly_id: str = Query(..., description="ID of the anomaly to inject"),
+    station_id: str = Query("maitri", description="Target station: maitri or bharati"),
+) -> dict:
+    """Simulate injecting an anomaly into the Antarctic station system.
+
+    This is a SIMULATION endpoint — no real DB writes are made.
+    It returns a structured impact report with simulated sensor delta values,
+    affected systems, and a placeholder for the PDF report download.
+    The frontend uses this to update UI state and show affected metrics.
+    """
+    anomaly = next((a for a in _ANOMALY_REGISTRY if a["id"] == anomaly_id), None)
+    if anomaly is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Anomaly '{anomaly_id}' not found in registry",
+        )
+
+    injected_at = datetime.now(timezone.utc).isoformat()
+    report_ref = f"NCPOR-ANM-{station_id.upper()[:3]}-{anomaly_id.upper()[:4]}-{datetime.now().strftime('%Y%m%d-%H%M')}"
+
+    # Build a simulation result payload
+    result = {
+        "status": "INJECTED",
+        "anomaly_id": anomaly_id,
+        "anomaly_name": anomaly["name"],
+        "station_id": station_id,
+        "severity": anomaly["severity"],
+        "category": anomaly["category"],
+        "description": anomaly["description"],
+        "impacts": anomaly["impacts"],
+        "recovery_steps": anomaly["recovery_steps"],
+        "injected_at": injected_at,
+        "report_reference": report_ref,
+        "pdf_download_ready": False,   # placeholder — PDF generation to be wired later
+        "pdf_download_url": f"/api/v1/hq/anomaly/report/{report_ref}.pdf",
+        "simulation_note": (
+            "This is a controlled simulation. No real station data has been modified. "
+            "The impact values below represent expected system behaviour under this anomaly "
+            "based on NCPOR operational experience and sensor network models."
+        ),
+    }
+
+    _last_anomaly_injection.update(result)
+    log.info("anomaly_injected", anomaly_id=anomaly_id, station=station_id, ref=report_ref)
+    return result
+
+
+@router.get("/anomaly/registry")
+async def get_anomaly_registry() -> dict:
+    """Return the full list of injectable anomaly types with metadata."""
+    return {
+        "anomalies": _ANOMALY_REGISTRY,
+        "total": len(_ANOMALY_REGISTRY),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@router.get("/anomaly/last-injection")
+async def get_last_injection() -> dict:
+    """Return the result of the most recent anomaly injection (in-memory)."""
+    if not _last_anomaly_injection:
+        return {"status": "NO_INJECTION", "message": "No anomaly has been injected in this session."}
+    return _last_anomaly_injection
+
+
+@router.get("/anomaly/report/{report_ref}.pdf")
+async def download_anomaly_report(report_ref: str) -> dict:
+    """Placeholder — returns metadata for the anomaly PDF report.
+
+    Full PDF generation will be implemented in a later phase.
+    """
+    return {
+        "status": "PENDING",
+        "report_reference": report_ref,
+        "message": "PDF report generation is not yet implemented. This endpoint is a placeholder for future integration.",
+        "expected_sections": [
+            "Executive Summary",
+            "Anomaly Type & Severity Classification",
+            "System Impact Analysis (per sensor / subsystem)",
+            "Timeline of Events",
+            "Recovery Procedures Followed",
+            "Data Integrity Assessment",
+            "Recommendations for Future Mitigation",
+        ],
+    }

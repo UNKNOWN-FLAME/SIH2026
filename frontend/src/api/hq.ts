@@ -638,3 +638,54 @@ export async function getWeatherEnsemble(stationId: string): Promise<WeatherEnse
   return data
 }
 
+// ── Anomaly Injection Engine ──────────────────────────────────────────────────
+
+export interface AnomalyDefinition {
+  id: string
+  name: string
+  icon: string
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+  category: string
+  description: string
+  estimated_duration_s: number
+  impacts: string[]
+  recovery_steps: string[]
+}
+
+export interface AnomalyRegistryOut {
+  anomalies: AnomalyDefinition[]
+  total: number
+  generated_at: string
+}
+
+export interface AnomalyInjectionResult {
+  status: string
+  anomaly_id: string
+  anomaly_name: string
+  station_id: string
+  severity: string
+  category: string
+  description: string
+  impacts: string[]
+  recovery_steps: string[]
+  injected_at: string
+  report_reference: string
+  pdf_download_ready: boolean
+  pdf_download_url: string
+  simulation_note: string
+}
+
+export async function getAnomalyRegistry(): Promise<AnomalyRegistryOut> {
+  const { data } = await api.get<AnomalyRegistryOut>('/hq/anomaly/registry')
+  return data
+}
+
+export async function injectAnomaly(
+  anomalyId: string,
+  stationId: string,
+): Promise<AnomalyInjectionResult> {
+  const { data } = await api.post<AnomalyInjectionResult>('/hq/anomaly/inject', null, {
+    params: { anomaly_id: anomalyId, station_id: stationId },
+  })
+  return data
+}
