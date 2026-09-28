@@ -146,6 +146,60 @@ export default function Sidebar({
             </a>
           )
         })}
+
+        {/* Black Box button just below Official Reports with a small gap */}
+        <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid #e2e8f0' }}>
+          <button
+            onClick={() => navigate('/blackbox')}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              padding: '8px 10px',
+              background: location.pathname === '/blackbox' ? '#0f172a' : '#1e293b',
+              color: '#ffffff',
+              border: location.pathname === '/blackbox' ? '1.5px solid #ef4444' : '1px solid #334155',
+              borderRadius: 4,
+              cursor: 'pointer',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#0f172a'
+              e.currentTarget.style.borderColor = '#ef4444'
+            }}
+            onMouseLeave={(e) => {
+              if (location.pathname !== '/blackbox') {
+                e.currentTarget.style.background = '#1e293b'
+                e.currentTarget.style.borderColor = '#334155'
+              }
+            }}
+          >
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                background: '#ef4444',
+                display: 'inline-block',
+                flexShrink: 0,
+              }}
+            />
+            <span
+              style={{
+                fontSize: 11.5,
+                fontWeight: 800,
+                letterSpacing: '0.06em',
+                fontFamily: 'monospace',
+                color: '#ffffff',
+              }}
+            >
+              BLACK BOX
+            </span>
+          </button>
+        </div>
       </nav>
     </aside>
   )
