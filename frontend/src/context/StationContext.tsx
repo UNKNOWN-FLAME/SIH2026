@@ -36,7 +36,26 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
   })
   const [linkState, setLinkState] = useState<LinkState>('UP')
   const [edgeBufferCount, setEdgeBufferCount] = useState<number>(0)
-  const [lastAnomalyResult, setLastAnomalyResult] = useState<AnomalyInjectionResult | null>(null)
+  const [lastAnomalyResult, setLastAnomalyResultState] = useState<AnomalyInjectionResult | null>(() => {
+    try {
+      const raw = localStorage.getItem('himantar_last_anomaly')
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  })
+
+  const setLastAnomalyResult = useCallback((res: AnomalyInjectionResult | null) => {
+    setLastAnomalyResultState(res)
+    try {
+      if (res) {
+        localStorage.setItem('himantar_last_anomaly', JSON.stringify(res))
+      } else {
+        localStorage.removeItem('himantar_last_anomaly')
+      }
+    } catch {}
+  }, [])
+
   const [activeIncidentId, setActiveIncidentId] = useState<string | null>(null)
   const queryClient = useQueryClient()
 

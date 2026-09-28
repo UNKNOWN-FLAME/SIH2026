@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import TopNav from '../components/layout/TopNav'
 import AlertStrip from '../components/layout/AlertStrip'
@@ -8,6 +8,9 @@ import { useLanguage } from '../context/LanguageContext'
 import { useStation } from '../context/StationContext'
 import { useSensors } from '../hooks/useSensors'
 import { useInventory } from '../hooks/useInventory'
+import { useIoTSensors } from '../hooks/useIoTSensors'
+import { useQuery } from '@tanstack/react-query'
+import { getResupply } from '../api/hq'
 import { generateGensetAuditPDF } from '../utils/pdfGenerator'
 
 export default function EnergyPage() {
@@ -30,22 +33,53 @@ export default function EnergyPage() {
   // ── Live sensor + inventory data from Neon ────────────────────────────────
   const { data: energySensors } = useSensors(activeStation, 'energy')
   const { data: inventoryItems } = useInventory(activeStation, 'FUEL')
+  const { data: iotData } = useIoTSensors(activeStation, 'fuel')
+  const { data: iotEnergyData } = useIoTSensors(activeStation, 'temperature')
+  const { data: resupplyData } = useQuery({
+    queryKey: ['resupply', activeStation],
+    queryFn: () => getResupply(activeStation),
+    refetchInterval: 300_000,
+    retry: false,
+  })
 
   /** Find latest sensor value by keyword in sensor_id */
   function sv(keyword: string): number | null {
     return energySensors?.find(s => s.sensor_id.toLowerCase().includes(keyword))?.latest_value ?? null
   }
 
+  /** Get a parameter value from IoT sensor by sensor name + param key */
+  function iotParam(sensors: typeof iotData, sensorNameHint: string, paramKey: string): number | null {
+    const sensor = sensors?.sensors?.find(s =>
+      s.name.toLowerCase().includes(sensorNameHint.toLowerCase()) ||
+      s.sensor_id.toLowerCase().includes(sensorNameHint.toLowerCase())
+    )
+    const param = sensor?.parameters?.find(p => p.key === paramKey || p.label.toLowerCase().includes(paramKey.toLowerCase()))
+    const val = param?.value
+    return typeof val === 'number' ? val : (typeof val === 'string' ? parseFloat(val) : null)
+  }
+
   // Live derived values (fall back to simulation defaults if DB returns null)
   const liveKwOutput = sv('kw_output') ?? sv('kw') ?? null
   const liveFuelPct  = sv('fuel_pct') ?? sv('fuel') ?? null
   const liveSolar    = sv('solar') ?? null
+  const liveWind     = sv('wind') ?? sv('wind_gen') ?? null
+  const liveBattery  = sv('battery') ?? sv('batt_soc') ?? null
 
-  // Fuel from inventory_items (first FUEL item by name containing 'diesel' or 'generator')
-  const dieselItem = inventoryItems?.find(i =>
-    i.name.toLowerCase().includes('diesel') || i.name.toLowerCase().includes('generator')
+  // Fuel from inventory_items — sum all FUEL category items or use individual tanks
+  const fuelItems = useMemo(() =>
+    (inventoryItems ?? []).filter(i =>
+      i.category?.toUpperCase() === 'FUEL' ||
+      i.name.toLowerCase().includes('diesel') ||
+      i.name.toLowerCase().includes('fuel')
+    ),
+    [inventoryItems]
   )
-  const fuelRemainingLitres = dieselItem?.quantity ?? (activeStation === 'maitri' ? 138400 : 210500)
+
+  // Total fuel across all tanks from DB
+  const totalFuelFromDB = fuelItems.length > 0
+    ? fuelItems.reduce((sum, i) => sum + i.quantity, 0)
+    : null
+  const fuelRemainingLitres = totalFuelFromDB ?? (activeStation === 'maitri' ? 138400 : 210500)
   const totalCapacityLitres = activeStation === 'maitri' ? 165000 : 250000
   const fuelPct = liveFuelPct !== null ? liveFuelPct : Math.round((fuelRemainingLitres / totalCapacityLitres) * 100)
 
@@ -56,13 +90,119 @@ export default function EnergyPage() {
   const currentTotalLoad = Math.round(baseLoad + tempFactor + occupancyFactor)
 
   const solarGen = liveSolar ?? (ambientTemp > -35 ? (activeStation === 'maitri' ? 18.5 : 34.0) : 0)
-  const windGen = activeStation === 'maitri' ? 24.2 : 16.8
-  const batterySoC = activeStation === 'maitri' ? 91 : 96
+  const windGen = liveWind ?? (activeStation === 'maitri' ? 24.2 : 16.8)
+  const batterySoC = liveBattery ?? (activeStation === 'maitri' ? 91 : 96)
   const genOutput = Math.max(0, currentTotalLoad - solarGen - windGen)
 
   const hourlyBurnLitres = (genOutput * 0.28).toFixed(1)
   const dailyBurnLitres = Math.round(parseFloat(hourlyBurnLitres) * 24)
-  const daysOfAutonomy = Math.round(fuelRemainingLitres / (dailyBurnLitres || 1))
+  // Prefer days_remaining from DB item, else compute
+  const dbDaysRemaining = fuelItems.find(i => i.days_remaining != null)?.days_remaining ?? null
+  const daysOfAutonomy = dbDaysRemaining ?? Math.round(fuelRemainingLitres / (dailyBurnLitres || 1))
+
+  // Resupply ship data from DB
+  const nextResupply = useMemo(() => {
+    if (!resupplyData?.length) return null
+    // Find nearest PLANNED or IN_TRANSIT resupply for this station
+    const sorted = resupplyData
+      .filter(r => r.status !== 'DELIVERED')
+      .sort((a, b) => {
+        const da = a.arrival_window_start ? new Date(a.arrival_window_start).getTime() : Infinity
+        const db = b.arrival_window_start ? new Date(b.arrival_window_start).getTime() : Infinity
+        return da - db
+      })
+    return sorted[0] ?? null
+  }, [resupplyData])
+
+  const resupplyDaysLeft = useMemo(() => {
+    if (!nextResupply?.arrival_window_start) return 68 // fallback
+    const arrivalDate = new Date(nextResupply.arrival_window_start)
+    const now = new Date()
+    const diff = arrivalDate.getTime() - now.getTime()
+    return Math.max(0, Math.round(diff / (1000 * 60 * 60 * 24)))
+  }, [nextResupply])
+
+  const resupplyShipName = nextResupply?.ship_name ?? 'MV Vasiliy Golovnin'
+
+  // ── Per-generator live telemetry from IoT sensor registry ────────────────
+  // Helper: get IoT sensor for generator N (looks for 'gen-N' or 'DG-N' in name/id)
+  const genSensors = useMemo(() => {
+    const all = iotData?.sensors ?? []
+    return [1, 2, 3, 4].map(n => {
+      const s = all.find(x =>
+        x.name.toLowerCase().includes(`gen ${n}`) ||
+        x.name.toLowerCase().includes(`dg-${n}`) ||
+        x.name.toLowerCase().includes(`dg ${n}`) ||
+        x.sensor_id.toLowerCase().includes(`gen_${n}`) ||
+        x.sensor_id.toLowerCase().includes(`dg_${n}`)
+      )
+      return s ?? null
+    })
+  }, [iotData])
+
+  function getGenParam(genIdx: number, paramKey: string): number | null {
+    const sensor = genSensors[genIdx]
+    if (!sensor) return null
+    const p = sensor.parameters.find(x => x.key === paramKey || x.label.toLowerCase().includes(paramKey.toLowerCase()))
+    const val = p?.value
+    return typeof val === 'number' ? val : (typeof val === 'string' ? parseFloat(val) || null : null)
+  }
+
+  // For active telemetry gen (1-indexed), get live values with DB fallbacks
+  const genIdx = activeTelemetryGen - 1
+  const isRunningGen1 = genSensors[0] ? genSensors[0].state === 'online' : true
+  const isRunningGen2 = genSensors[1] ? genSensors[1].state === 'online' : genOutput > 70
+
+  const liveVibration = getGenParam(genIdx, 'vibration') ?? getGenParam(genIdx, 'vib') ??
+    (activeTelemetryGen === 1 ? 1.82 : activeTelemetryGen === 2 ? 0.24 : 0.05)
+  const liveCoolant = getGenParam(genIdx, 'coolant') ?? getGenParam(genIdx, 'temperature') ??
+    (activeTelemetryGen === 1 ? 82.4 : activeTelemetryGen === 2 ? 58.0 : 34.2)
+  const liveOilPressure = getGenParam(genIdx, 'oil') ?? getGenParam(genIdx, 'pressure') ??
+    (activeTelemetryGen === 1 ? 4.65 : 0.00)
+  const liveExhaust = getGenParam(genIdx, 'exhaust') ?? getGenParam(genIdx, 'egt') ??
+    (activeTelemetryGen === 1 ? 418 : activeTelemetryGen === 2 ? 42 : 18)
+
+  // Overall generator health score (0-100) derived from live values
+  const genHealthScore = useMemo(() => {
+    if (!genSensors[0]) return 98 // fallback
+    const onlineCount = genSensors.filter(s => s?.state === 'online').length
+    const totalCount = genSensors.filter(s => s !== null).length || 4
+    // Coolant in range 75-92°C = healthy, vibration < 3.5 = healthy
+    const coolantOk = liveCoolant >= 70 && liveCoolant <= 92
+    const vibOk = liveVibration < 3.5
+    const oilOk = liveOilPressure > 2.0
+    const score = Math.round(
+      (onlineCount / totalCount) * 70 +
+      (coolantOk ? 10 : 0) +
+      (vibOk ? 10 : 0) +
+      (oilOk ? 10 : 0)
+    )
+    return Math.min(100, Math.max(0, score))
+  }, [genSensors, liveCoolant, liveVibration, liveOilPressure])
+
+  // Fuel tanks from inventory — map to tank display cards
+  const fuelTankCards = useMemo(() => {
+    if (fuelItems.length > 0) {
+      return fuelItems.slice(0, 4).map((item, i) => ({
+        id: `T${i + 1}`,
+        name: item.name,
+        capacity: item.min_safety_threshold
+          ? Math.round(item.quantity / Math.max(0.01, (item.quantity - item.min_safety_threshold) / item.quantity * 0.8 + 0.6))
+          : (i === 0 ? 5000 : i === 3 ? 10000 : 75000),
+        current: item.quantity,
+        temp: 6 + i * 2,
+        status: item.status === 'NOMINAL' ? (i === 3 ? 'Emergency Only' : 'Normal') :
+                item.status === 'WARNING' ? 'Low Stock' : 'CRITICAL',
+      }))
+    }
+    // Default fallback tanks when no DB data
+    return [
+      { id: 'T1', name: 'Tank 1 — Daily Generator Tank', capacity: 5000, current: 4350, temp: 12, status: 'Normal' },
+      { id: 'T2', name: 'Tank 2 — Main Storage (Tank A)', capacity: 75000, current: Math.round(fuelRemainingLitres * 0.47), temp: 6, status: 'Normal' },
+      { id: 'T3', name: 'Tank 3 — Main Storage (Tank B)', capacity: 75000, current: Math.round(fuelRemainingLitres * 0.44), temp: 5, status: 'Normal' },
+      { id: 'T4', name: 'Tank 4 — Emergency Reserve Tank', capacity: 10000, current: 9800, temp: 8, status: 'Emergency Only' },
+    ]
+  }, [fuelItems, fuelRemainingLitres])
 
   function runEngineDiagnostic() {
     setIsDiagnosticScanning(true)

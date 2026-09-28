@@ -102,7 +102,7 @@ function MetCard({
 
 export default function EnvironmentPage() {
   const navigate = useNavigate()
-  const { stationId: activeStation, setStationId: setActiveStation } = useStation()
+  const { stationId: activeStation, setStationId: setActiveStation, lastAnomalyResult } = useStation()
   const [activeTab, setActiveTab] = useState<TabType>('overview')
   const [metricView, setMetricView] = useState<MetricView>('temp_wind')
   const [hoveredHour, setHoveredHour] = useState<number | null>(12)
@@ -121,17 +121,21 @@ export default function EnvironmentPage() {
   const { data: glaciologySensors } = useSensors(activeStation, 'glaciology')
   const { data: otherWeather } = useSensors(otherStation, 'weather')
 
-  // Real readings mapped from live database
+  // Real readings mapped from live database with anomaly triggers
   const isM = activeStation === 'maitri'
+  const isQuake = lastAnomalyResult?.anomaly_id === 'earthquake'
+  const isStorm = lastAnomalyResult?.anomaly_id === 'thunderstorm'
+  const isSolar = lastAnomalyResult?.anomaly_id === 'solar_flare_radiation'
+
   const temp = sv(weatherSensors, 'temperature', isM ? -15.5 : -12.1)
-  const wind = sv(weatherSensors, 'wind_speed', isM ? 26.0 : 19.0)
+  const wind = isStorm ? 88.0 : sv(weatherSensors, 'wind_speed', isM ? 26.0 : 19.0)
   const windDir = sv(weatherSensors, 'wind_dir', isM ? 121.0 : 127.0)
   const humidity = sv(weatherSensors, 'humidity', isM ? 48.0 : 49.0)
-  const pressure = sv(weatherSensors, 'pressure', isM ? 960.0 : 950.0)
+  const pressure = isStorm ? 968.4 : sv(weatherSensors, 'pressure', isM ? 960.0 : 950.0)
   const snowfall = sv(weatherSensors, 'snowfall', isM ? 0.0 : 0.0)
-  const radiation = sv(weatherSensors, 'radiation', isM ? 95.0 : 110.0)
-  const seismicPgv = sv(seismicSensors, 'pgv', isM ? 0.12 : 0.08)
-  const magnitude = sv(seismicSensors, 'magnitude', isM ? 0.8 : 0.6)
+  const radiation = isSolar ? 1240.0 : sv(weatherSensors, 'radiation', isM ? 95.0 : 110.0)
+  const seismicPgv = isQuake ? 14.8 : sv(seismicSensors, 'pgv', isM ? 0.12 : 0.08)
+  const magnitude = isQuake ? 4.2 : sv(seismicSensors, 'magnitude', isM ? 0.8 : 0.6)
   const iceThickness = sv(glaciologySensors, 'ice_thickness', isM ? 1.85 : 2.15)
   const glacierFlow = sv(glaciologySensors, 'flow_rate', isM ? 1.22 : 0.95)
   const sst = sv(oceanSensors, 'sst', -1.82)

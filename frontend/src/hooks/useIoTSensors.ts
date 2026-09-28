@@ -5,7 +5,7 @@ export function useIoTSensors(stationId: string, category?: string, state?: stri
   return useQuery({
     queryKey: ['iot-sensors', stationId, category, state],
     queryFn: () => getIoTSensors(stationId, category, state),
-    refetchInterval: 90_000,
+    refetchInterval: 5_000,
     enabled: Boolean(stationId),
     retry: false,
   })

@@ -125,7 +125,7 @@ async def get_dashboard(
                 select(func.count(Alert.alert_id))
                 .where(Alert.station_id == sid)
                 .where(Alert.severity == sev)
-                .where(Alert.ack_state != "RESOLVED")
+                .where(Alert.ack_state == "OPEN")
             )
             n = cnt_result.scalar_one() or 0
             if sev == "CRITICAL":
@@ -136,7 +136,7 @@ async def get_dashboard(
         total_result = await session.execute(
             select(func.count(Alert.alert_id))
             .where(Alert.station_id == sid)
-            .where(Alert.ack_state != "RESOLVED")
+            .where(Alert.ack_state == "OPEN")
         )
         total_open += total_result.scalar_one() or 0
 
@@ -298,6 +298,17 @@ async def acknowledge_alert(
     row.ack_state = "ACKNOWLEDGED"
     row.acknowledged_by = body.acknowledged_by
     row.acknowledged_at = utcnow()
+
+    conn_result = await session.execute(
+        select(StationConnection).where(StationConnection.station_id == row.station_id)
+    )
+    conn = conn_result.scalar_one_or_none()
+    if conn:
+        if row.severity == "CRITICAL" and conn.open_critical_alerts and conn.open_critical_alerts > 0:
+            conn.open_critical_alerts -= 1
+        elif row.severity == "HIGH" and conn.open_high_alerts and conn.open_high_alerts > 0:
+            conn.open_high_alerts -= 1
+
     await session.commit()
     await session.refresh(row)
     log.info("cloud.api.alert_acknowledged", alert_id=alert_id, by=body.acknowledged_by)
@@ -2122,12 +2133,24 @@ def _apply_anomaly_to_iot_sensors(station_id: str, anomaly_id: str) -> list[Sens
 
     elif anomaly_id == "vsat_link_loss":
         _STATION_LINK_STATE[sid] = "DOWN"
+        update_param("COM-001", "signal_strength", 0.0)
+        update_param("COM-001", "latency", 9999.0)
+        update_param("COM-001", "bandwidth", 0.0)
+        for s in sensors:
+            if "COM-001" in s.get("sensor_id", ""):
+                s["state"] = "offline"
 
     elif anomaly_id == "fire_alarm":
-        update_param("TMP-003", "temperature", 68.4)
-        update_param("AQI-001", "co", 32.5)
-        update_param("AQI-001", "co2", 1450.0)
-        readings.append(SensorReading(station_id=sid, sensor_id=f"{sid}.environment.co", domain="environment", metric_name="co", value=32.5, unit="ppm", quality="CRITICAL", timestamp_utc=now))
+        update_param("FIR-001", "smoke_density", 0.88)
+        update_param("FIR-001", "temp_rise_rate", 14.8)
+        update_param("AQI-001", "co", 48.5)
+        update_param("AQI-001", "pm25", 185.0)
+        update_param("AQI-001", "co2", 1650.0)
+        update_param("TMP-003", "temperature", 78.4)
+        update_param("TMP-003", "exhaust_temp", 590.0)
+        readings.append(SensorReading(station_id=sid, sensor_id=f"{sid}.fire.smoke", domain="fire_safety", metric_name="smoke_density", value=0.88, unit="obs/m", quality="CRITICAL", timestamp_utc=now))
+        readings.append(SensorReading(station_id=sid, sensor_id=f"{sid}.environment.co", domain="environment", metric_name="co", value=48.5, unit="ppm", quality="CRITICAL", timestamp_utc=now))
+        readings.append(SensorReading(station_id=sid, sensor_id=f"{sid}.habitat.temp", domain="habitat", metric_name="temperature", value=78.4, unit="°C", quality="CRITICAL", timestamp_utc=now))
 
     elif anomaly_id == "fuel_critical_low":
         update_param("FUL-001", "fuel_level", 18.2)
@@ -2391,12 +2414,43 @@ async def sync_edge_buffer(
     _EDGE_BLACKBOX_BUFFER[sid] = []
     _STATION_LINK_STATE[sid] = "UP"
 
+    # Register into _ACTIVE_INCIDENTS so it immediately shows in Black Box Console
+    incident_id = latest_event.get("incident_id") or f"BB-{sid.upper()}-{datetime.now().strftime('%Y%m%d')}-01"
+    synced_incident = {
+        "id": incident_id,
+        "station_id": sid,
+        "title": f"Edge Flushed: {latest_event.get('anomaly_name', 'Severed Link Incident')}",
+        "severity": "CRITICAL",
+        "incident_timestamp": latest_event.get("timestamp_utc", datetime.now(timezone.utc).isoformat()),
+        "pre_window_hours": 5,
+        "post_window_hours": 5,
+        "hash_chain_signature": f"SHA256:{latest_event.get('frame_hash_hex', '')[:40]}",
+        "root_cause": f"Recorded autonomously during VSAT link outage. {latest_event.get('anomaly_name', '')} occurred at edge station. Hash-chain verified and synced upon reconnection.",
+        "affected_subsystems": ["Edge Ring Buffer", "VSAT Ground Link", "Flight Recorder"],
+        "sitrep_number": f"NCPOR/SITREP/45-ISEA/{sid.upper()[:3]}/{datetime.now().strftime('%Y-W%W')}",
+        "sensor_deltas": [
+            {
+                "sensor": imp.split(" — ")[0] if " — " in imp else imp.split(":")[0],
+                "before": "Edge Buffered",
+                "atIncident": imp,
+                "after": "Flushed to HQ Cloud DB",
+            }
+            for imp in latest_event.get("impacts", [])[:4]
+        ],
+    }
+    if sid not in _ACTIVE_INCIDENTS:
+        _ACTIVE_INCIDENTS[sid] = []
+    # Avoid duplicate
+    _ACTIVE_INCIDENTS[sid] = [inc for inc in _ACTIVE_INCIDENTS[sid] if inc["id"] != incident_id]
+    _ACTIVE_INCIDENTS[sid].insert(0, synced_incident)
+
     return {
         "synced": True,
         "flushed_frames_count": flushed_count,
         "chain_verified": True,
         "sha256_verification": "TAMPER-PROOF / ALL HASHES VALID",
         "station_id": sid,
+        "incident_id": incident_id,
         "message": f"Successfully flushed and synchronized {flushed_count} Edge Black Box frames to Cloud DB. VSAT link restored to NOMINAL.",
     }
 

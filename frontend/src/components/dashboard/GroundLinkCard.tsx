@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../../context/LanguageContext'
+import { useStation } from '../../context/StationContext'
 
 interface Props {
   stationId: string
@@ -9,10 +10,11 @@ interface Props {
 export default function GroundLinkCard({ stationId }: Props) {
   const navigate = useNavigate()
   const { lang } = useLanguage()
+  const { isOnline, edgeBufferCount, toggleLinkState, flushEdgeBuffer } = useStation()
 
-  // Link simulation state
-  const [linkState, setLinkState] = useState<'SYNCED' | 'OFFLINE' | 'SYNCING'>('SYNCED')
-  const [bufferBytes, setBufferBytes] = useState(0)
+  // Real-time link state directly from global StationContext
+  const [isSyncing, setIsSyncing] = useState(false)
+  const linkState = isSyncing ? 'SYNCING' : (!isOnline ? 'OFFLINE' : 'SYNCED')
   const [syncProgress, setSyncProgress] = useState(0)
   const [lastHandshakeSec, setLastHandshakeSec] = useState(2)
 
@@ -23,36 +25,25 @@ export default function GroundLinkCard({ stationId }: Props) {
         setLastHandshakeSec((prev) => (prev > 6 ? 1 : prev + 1))
       } else if (linkState === 'OFFLINE') {
         setLastHandshakeSec((prev) => prev + 1)
-        // Accumulate local buffer when offline (simulate telemetry arriving locally)
-        setBufferBytes((prev) => prev + Math.floor(1200 + Math.random() * 800))
       }
     }, 1000)
     return () => clearInterval(timer)
   }, [linkState])
 
-  function toggleOutage() {
-    if (linkState === 'SYNCED') {
-      // Sever the link
-      setLinkState('OFFLINE')
-    } else if (linkState === 'OFFLINE') {
-      // Reconnect and trigger store-and-forward sync
-      setLinkState('SYNCING')
-      setSyncProgress(15)
-
-      const p1 = setTimeout(() => setSyncProgress(48), 600)
-      const p2 = setTimeout(() => setSyncProgress(82), 1200)
-      const p3 = setTimeout(() => {
+  async function toggleOutage() {
+    if (isOnline) {
+      // Sever the link via backend API
+      await toggleLinkState()
+    } else {
+      // Reconnect and flush edge buffer
+      setIsSyncing(true)
+      setSyncProgress(25)
+      setTimeout(() => setSyncProgress(65), 500)
+      setTimeout(async () => {
         setSyncProgress(100)
-        setLinkState('SYNCED')
-        setBufferBytes(0)
-        setLastHandshakeSec(1)
-      }, 1800)
-
-      return () => {
-        clearTimeout(p1)
-        clearTimeout(p2)
-        clearTimeout(p3)
-      }
+        await flushEdgeBuffer()
+        setIsSyncing(false)
+      }, 1100)
     }
   }
 
@@ -185,7 +176,7 @@ export default function GroundLinkCard({ stationId }: Props) {
                 {linkState === 'SYNCED'
                   ? `${stationName} ↔ Goa HQ (${latency})`
                   : linkState === 'SYNCING'
-                  ? `Flushing ${Math.round(bufferBytes / 1024)} KB queue (${syncProgress}%)`
+                  ? `Flushing ${edgeBufferCount > 0 ? `${edgeBufferCount} frames` : 'buffer'} (${syncProgress}%)`
                   : `Blizzard blackout • Disconnected ${lastHandshakeSec}s ago`}
               </div>
             </div>
@@ -237,10 +228,10 @@ export default function GroundLinkCard({ stationId }: Props) {
                 color: linkState === 'OFFLINE' ? '#dc2626' : '#16a34a',
               }}
             >
-              {linkState === 'OFFLINE' ? `${(bufferBytes / 1024).toFixed(1)} KB` : '0 KB'}
+              {linkState === 'OFFLINE' ? (edgeBufferCount > 0 ? `${edgeBufferCount} frames` : 'Buffered') : '0 frames'}
             </div>
             <div style={{ fontSize: 8, color: '#94a3b8' }}>
-              {linkState === 'OFFLINE' ? 'Pending' : 'Queue Empty'}
+              {linkState === 'OFFLINE' ? 'Store & Forward' : 'Queue Empty'}
             </div>
           </div>
 

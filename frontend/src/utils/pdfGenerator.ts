@@ -96,7 +96,39 @@ function createGovtHeaderCanvas(
   ctx.fillStyle = '#475569'
   ctx.fillText(titleEnglish, centerX, 375)
 
-  return canvas.toDataURL('image/png')
+  // Use JPEG 0.88 to keep official header high-res while dropping file size from ~1.9 MB to ~40 KB
+  return canvas.toDataURL('image/jpeg', 0.88)
+}
+
+/**
+ * Safely trigger PDF file download with correct filename and MIME type.
+ * Uses a native Blob + anchor element with explicit download attribute to ensure
+ * Chromium/Edge/Windows saves the file with its proper .pdf extension instead of a raw
+ * internal Blob UUID string (e.g. c990f58d-1173-46c0-881b-7c9647059e6f).
+ */
+export function savePdfFile(doc: jsPDF, filename: string): void {
+  const safeFilename = filename.toLowerCase().endsWith('.pdf') ? filename : `${filename}.pdf`
+  try {
+    const pdfBlob = doc.output('blob')
+    const file = new File([pdfBlob], safeFilename, { type: 'application/pdf' })
+    const url = URL.createObjectURL(file)
+    const link = document.createElement('a')
+    link.style.display = 'none'
+    link.href = url
+    link.setAttribute('download', safeFilename)
+    link.download = safeFilename
+    document.body.appendChild(link)
+    link.click()
+    setTimeout(() => {
+      if (document.body.contains(link)) {
+        document.body.removeChild(link)
+      }
+      URL.revokeObjectURL(url)
+    }, 1500)
+  } catch (err) {
+    console.warn('[PDF] Native File download failed, falling back to doc.save:', err)
+    doc.save(safeFilename)
+  }
 }
 
 /**
@@ -112,7 +144,7 @@ export function drawGovtGazetteHeader(
   try {
     const dataUrl = createGovtHeaderCanvas(titleHindi, titleEnglish)
     if (dataUrl) {
-      doc.addImage(dataUrl, 'PNG', 0, 0, pageWidth, headerHeight)
+      doc.addImage(dataUrl, 'JPEG', 0, 0, pageWidth, headerHeight, undefined, 'FAST')
       return headerHeight + 3
     }
   } catch (err) {
@@ -830,7 +862,7 @@ export function generateOfficialReportPDF({ reportType, stationId, reportData }:
 
   // 8. Save and trigger download
   const filename = `NCPOR_Report_${reportType.toUpperCase()}_${stationId ? stationId.toUpperCase() : 'ALL'}_${new Date().toISOString().slice(0, 10)}.pdf`
-  doc.save(filename)
+  savePdfFile(doc, filename)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -903,7 +935,7 @@ export function generateLogisticsAuditPDF({ stationId, items }: { stationId: str
   addDocumentFooters(doc)
 
   const filename = `NCPOR_Logistics_Audit_${stationId.toUpperCase()}_${new Date().toISOString().slice(0, 10)}.pdf`
-  doc.save(filename)
+  savePdfFile(doc, filename)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -980,7 +1012,7 @@ export function generateGensetAuditPDF({
   addDocumentFooters(doc)
 
   const filename = `NCPOR_Genset_${genName}_Audit_${stationId.toUpperCase()}_${new Date().toISOString().slice(0, 10)}.pdf`
-  doc.save(filename)
+  savePdfFile(doc, filename)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1053,7 +1085,7 @@ export function generateMissionAlertsPDF({ stationId, alerts }: { stationId: str
   addDocumentFooters(doc)
 
   const filename = `NCPOR_Alerts_Audit_${stationId.toUpperCase()}_${new Date().toISOString().slice(0, 10)}.pdf`
-  doc.save(filename)
+  savePdfFile(doc, filename)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1272,7 +1304,7 @@ export function generateWeatherMissionReportPDF({
   addDocumentFooters(doc)
 
   const filename = `NCPOR_Weather_SITREP_${stationId.toUpperCase()}_${new Date().toISOString().slice(0, 10)}.pdf`
-  doc.save(filename)
+  savePdfFile(doc, filename)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1335,7 +1367,7 @@ export async function generateSitrepGazettePDF({
       }
 
       const filename = `${refId.replace(/\//g, '_')}.pdf`
-      doc.save(filename)
+      savePdfFile(doc, filename)
       return
     } catch (err) {
       console.warn('html2canvas capture failed, falling back to programmatic PDF:', err)
@@ -1406,5 +1438,5 @@ export async function generateSitrepGazettePDF({
   addDocumentFooters(doc)
 
   const filename = `${refId.replace(/\//g, '_')}.pdf`
-  doc.save(filename)
+  savePdfFile(doc, filename)
 }

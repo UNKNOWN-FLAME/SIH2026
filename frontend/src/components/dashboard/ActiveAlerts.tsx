@@ -1,10 +1,12 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useAlerts, useAcknowledgeAlert } from '../../hooks/useAlerts'
 import { useLanguage } from '../../context/LanguageContext'
 import type { AlertOut } from '../../api/hq'
 import { generateMissionAlertsPDF } from '../../utils/pdfGenerator'
 
-interface Props { stationId: string }
+interface Props {
+  stationId: string
+}
 
 export interface StoredAlert extends AlertOut {
   stored_at: string
@@ -21,7 +23,7 @@ const STORAGE_PREFIX = 'himantar_mission_alerts_store_'
 
 function getStoredAlerts(stationId: string): StoredAlert[] {
   try {
-    const raw = localStorage.getItem(`${STORAGE_PREFIX}${stationId}`)
+    const raw = localStorage.getItem(`${STORAGE_PREFIX}${stationId.toLowerCase()}`)
     if (raw) {
       return JSON.parse(raw)
     }
@@ -33,7 +35,7 @@ function getStoredAlerts(stationId: string): StoredAlert[] {
 
 function saveStoredAlerts(stationId: string, alerts: StoredAlert[]) {
   try {
-    localStorage.setItem(`${STORAGE_PREFIX}${stationId}`, JSON.stringify(alerts.slice(0, 100)))
+    localStorage.setItem(`${STORAGE_PREFIX}${stationId.toLowerCase()}`, JSON.stringify(alerts.slice(0, 150)))
   } catch (e) {
     console.error('Failed to save alerts to storage:', e)
   }
@@ -57,31 +59,30 @@ function fullDateLabel(iso: string) {
 }
 
 export default function ActiveAlerts({ stationId }: Props) {
-  const { data, isLoading } = useAlerts({ station_id: stationId, ack_state: 'OPEN', page_size: 10 })
+  const currentStation = stationId.toLowerCase()
+  const { data, isLoading } = useAlerts({ station_id: currentStation, ack_state: 'OPEN', page_size: 25 })
   const { mutate: ack, isPending } = useAcknowledgeAlert()
   const { t } = useLanguage()
 
   const [activeTab, setActiveTab] = useState<'active' | 'stored'>('active')
-  const [storedAlerts, setStoredAlerts] = useState<StoredAlert[]>(() => getStoredAlerts(stationId))
+  const [storedAlerts, setStoredAlerts] = useState<StoredAlert[]>(() => getStoredAlerts(currentStation))
+  const [ackedIds, setAckedIds] = useState<Set<string>>(new Set())
   const [sevFilter, setSevFilter] = useState<'ALL' | 'CRITICAL' | 'HIGH' | 'MEDIUM'>('ALL')
   const [modalOpen, setModalOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
-  const activeAlerts: AlertOut[] = data?.items ?? []
 
-  // Sync incoming alerts to persistent localStorage archive
+  // Sync incoming live alerts from backend into local archive
   useEffect(() => {
-    const currentStored = getStoredAlerts(stationId)
+    const currentStored = getStoredAlerts(currentStation)
     const map = new Map<string, StoredAlert>()
 
-    // Load existing stored alerts
     for (const a of currentStored) {
       map.set(a.alert_id, a)
     }
 
     let changed = false
 
-    // Merge live fetched alerts
     if (data?.items && data.items.length > 0) {
       for (const item of data.items) {
         const existing = map.get(item.alert_id)
@@ -95,155 +96,59 @@ export default function ActiveAlerts({ stationId }: Props) {
       }
     }
 
-    // Pre-populate with realistic historical station mission logs if storage was empty
-    if (currentStored.length === 0 && map.size <= 2) {
-      const now = Date.now()
-      const demoHistory: StoredAlert[] = [
-        {
-          alert_id: `ALT-HIST-${stationId}-01`,
-          station_id: stationId,
-          severity: 'CRITICAL',
-          domain: 'power',
-          asset_id: 'DG-1-EXHAUST',
-          triggered_at: new Date(now - 3600 * 1000 * 3.5).toISOString(),
-          stored_at: new Date(now - 3600 * 1000 * 3.5).toISOString(),
-          description: 'Exhaust gas temperature spike (492°C > 470°C threshold)',
-          ack_state: 'ACKNOWLEDGED',
-          acknowledged_by: 'Cmdr. Rajesh (Duty Eng)',
-          acknowledged_at: new Date(now - 3600 * 1000 * 3.2).toISOString(),
-          resolved_at: null,
-          black_box_activated: true,
-          synced_to_cloud: true,
-          duration_open_s: 720,
-        },
-        {
-          alert_id: `ALT-HIST-${stationId}-02`,
-          station_id: stationId,
-          severity: 'HIGH',
-          domain: 'weather',
-          asset_id: 'MET-MAST-01',
-          triggered_at: new Date(now - 3600 * 1000 * 7.5).toISOString(),
-          stored_at: new Date(now - 3600 * 1000 * 7.5).toISOString(),
-          description: 'Katabatic wind gust peaked at 82 km/h; rotor brake engaged',
-          ack_state: 'ACKNOWLEDGED',
-          acknowledged_by: 'Dr. Neha (Met Officer)',
-          acknowledged_at: new Date(now - 3600 * 1000 * 7.1).toISOString(),
-          resolved_at: null,
-          black_box_activated: false,
-          synced_to_cloud: true,
-          duration_open_s: 1800,
-        },
-        {
-          alert_id: `ALT-HIST-${stationId}-03`,
-          station_id: stationId,
-          severity: 'MEDIUM',
-          domain: 'structural',
-          asset_id: 'ROOF-ACC-03',
-          triggered_at: new Date(now - 3600 * 1000 * 18).toISOString(),
-          stored_at: new Date(now - 3600 * 1000 * 18).toISOString(),
-          description: 'Vibration accelerometer peak 0.042g during snow drift packing',
-          ack_state: 'RESOLVED',
-          acknowledged_by: 'System Auto-Ack',
-          acknowledged_at: new Date(now - 3600 * 1000 * 17.5).toISOString(),
-          resolved_at: new Date(now - 3600 * 1000 * 16.0).toISOString(),
-          black_box_activated: false,
-          synced_to_cloud: true,
-          duration_open_s: 7200,
-        },
-      ]
-
-      for (const demo of demoHistory) {
-        if (!map.has(demo.alert_id)) {
-          map.set(demo.alert_id, demo)
-        }
-      }
-      changed = true
-    }
-
-    if (changed || currentStored.length === 0) {
+    if (changed) {
       const sorted = Array.from(map.values()).sort(
         (a, b) => new Date(b.triggered_at).getTime() - new Date(a.triggered_at).getTime()
       )
-      saveStoredAlerts(stationId, sorted)
+      saveStoredAlerts(currentStation, sorted)
       setStoredAlerts(sorted)
     }
-  }, [data?.items, stationId])
+  }, [data?.items, currentStation])
 
-  // Acknowledge handler that updates both API and localStorage
-  const handleAcknowledge = (alertId: string) => {
-    ack({ alertId })
-    setStoredAlerts((prev) => {
-      const updated = prev.map((a) =>
-        a.alert_id === alertId
-          ? {
-              ...a,
-              ack_state: 'ACKNOWLEDGED' as const,
-              acknowledged_by: 'Station Duty Officer',
-              acknowledged_at: new Date().toISOString(),
-            }
-          : a
-      )
-      saveStoredAlerts(stationId, updated)
-      return updated
+  // Computed active alerts, immediately filtering out acknowledged IDs
+  const activeAlerts = useMemo(() => {
+    const raw = data?.items ?? []
+    return raw.filter((a) => !ackedIds.has(a.alert_id) && a.ack_state === 'OPEN')
+  }, [data?.items, ackedIds])
+
+  // Instant synchronized acknowledge handler
+  const handleAcknowledge = useCallback(
+    (alertId: string) => {
+      // 1. Optimistically hide from active view immediately
+      setAckedIds((prev) => new Set(prev).add(alertId))
+
+      // 2. Call backend mutation
+      ack({ alertId, note: 'Duty Officer Acknowledged' })
+
+      // 3. Update persistent stored archive
+      setStoredAlerts((prev) => {
+        const updated = prev.map((a) =>
+          a.alert_id === alertId
+            ? {
+                ...a,
+                ack_state: 'ACKNOWLEDGED' as const,
+                acknowledged_by: 'Station Duty Officer',
+                acknowledged_at: new Date().toISOString(),
+              }
+            : a
+        )
+        saveStoredAlerts(currentStation, updated)
+        return updated
+      })
+    },
+    [ack, currentStation]
+  )
+
+  // Download official PDF SITREP report
+  const handleDownloadPDF = useCallback(() => {
+    const listToExport = storedAlerts.length > 0 ? storedAlerts : activeAlerts
+    generateMissionAlertsPDF({
+      stationId: currentStation,
+      alerts: listToExport,
     })
-  }
+  }, [currentStation, storedAlerts, activeAlerts])
 
-  // Export stored alerts as CSV with official MoES metadata header
-  const handleExportCSV = () => {
-    if (storedAlerts.length === 0) return
-    const metaHeader = [
-      '# GOVERNMENT OF INDIA — MINISTRY OF EARTH SCIENCES (MoES)',
-      '# NATIONAL CENTRE FOR POLAR AND OCEAN RESEARCH (NCPOR), GOA',
-      `# HIMANTAR REAL-TIME DIGITAL TWIN — MISSION ALERTS AUDIT ARCHIVE (${stationId.toUpperCase()})`,
-      `# Export Timestamp: ${new Date().toISOString()} | Total Records: ${storedAlerts.length}`,
-      '# Classification: RESTRICTED / OFFICIAL TELEMETRY RECORD',
-      '#',
-    ].join('\n')
-
-    const headers = [
-      'Alert ID',
-      'Severity',
-      'Domain',
-      'Asset ID',
-      'Triggered At (ISO)',
-      'Triggered At (Local)',
-      'Description',
-      'Ack Status',
-      'Acknowledged By',
-      'Acknowledged At',
-    ]
-    const rows = storedAlerts.map((a) => [
-      a.alert_id,
-      a.severity,
-      a.domain,
-      a.asset_id || 'N/A',
-      a.triggered_at,
-      new Date(a.triggered_at).toLocaleString('en-IN'),
-      `"${(a.description || '').replace(/"/g, '""')}"`,
-      a.ack_state,
-      a.acknowledged_by || 'Unacknowledged',
-      a.acknowledged_at || '—',
-    ])
-    const csvContent = `${metaHeader}\n${headers.join(',')}\n${rows.map((r) => r.join(',')).join('\n')}`
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', `${stationId}_mission_alerts_audit_log_${new Date().toISOString().slice(0, 10)}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
-  // Clear stored alerts
-  const handleClearHistory = () => {
-    if (window.confirm('Clear all stored mission alerts history for this station?')) {
-      localStorage.removeItem(`${STORAGE_PREFIX}${stationId}`)
-      setStoredAlerts([])
-    }
-  }
-
-  // Filtered stored alerts
+  // Filtered stored archive for view/modal
   const filteredStored = useMemo(() => {
     return storedAlerts.filter((a) => {
       const matchSev = sevFilter === 'ALL' || a.severity === sevFilter
@@ -260,6 +165,7 @@ export default function ActiveAlerts({ stationId }: Props) {
 
   return (
     <>
+      {/* ── CARD ROOT CONTAINER: Strictly bounded so layout never distorts other cards ── */}
       <div
         style={{
           background: '#ffffff',
@@ -267,71 +173,116 @@ export default function ActiveAlerts({ stationId }: Props) {
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.06)',
           display: 'flex',
           flexDirection: 'column',
+          height: 255,
+          maxHeight: 255,
+          minHeight: 255,
+          overflow: 'hidden',
+          borderRadius: 2,
         }}
       >
-        {/* Official Header Strip */}
+        {/* Card Header Strip */}
         <div
           style={{
             background: '#0b3b60',
             borderBottom: '2px solid #ff9933',
-            padding: '6px 12px',
+            padding: '5px 10px',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: 6,
+            flexShrink: 0,
+            height: 35,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 15, color: '#ff9933' }}>
-              notifications_active
+          {/* Title & Status Badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+            <span
+              className="material-symbols-outlined"
+              style={{ fontSize: 16, color: activeAlerts.length > 0 ? '#ff9933' : '#4ade80', flexShrink: 0 }}
+            >
+              {activeAlerts.length > 0 ? 'notifications_active' : 'verified_user'}
             </span>
-            <span style={{ fontSize: 11.5, fontWeight: 800, color: '#ffffff', letterSpacing: '0.04em' }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: '#ffffff', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
               {t('alerts.title')}
+            </span>
+            <span
+              style={{
+                fontSize: 8.5,
+                fontWeight: 800,
+                padding: '1px 5px',
+                borderRadius: 2,
+                background: activeAlerts.length > 0 ? '#dc2626' : 'rgba(22, 163, 74, 0.3)',
+                color: '#ffffff',
+                border: activeAlerts.length > 0 ? '1px solid #ef4444' : '1px solid #22c55e',
+                flexShrink: 0,
+              }}
+            >
+              {activeAlerts.length > 0 ? `${activeAlerts.length} OPEN` : 'NOMINAL'}
             </span>
           </div>
 
-          {/* Mode Switcher: Active Alerts vs Stored History */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {/* Action Tools: Tab Switcher, PDF Button, Expand */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
             <button
               type="button"
               onClick={() => setActiveTab('active')}
               style={{
-                fontSize: 9.5,
-                fontWeight: 800,
-                padding: '2px 8px',
+                fontSize: 9,
+                fontWeight: 700,
+                padding: '2px 6px',
                 borderRadius: 2,
                 border: activeTab === 'active' ? '1px solid #ff9933' : '1px solid rgba(255,255,255,0.2)',
                 background: activeTab === 'active' ? '#ff9933' : 'rgba(255,255,255,0.1)',
                 color: activeTab === 'active' ? '#0b3b60' : '#ffffff',
                 cursor: 'pointer',
-                transition: 'all 0.15s ease',
               }}
             >
-              🚨 Active ({activeAlerts.length})
+              Active ({activeAlerts.length})
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('stored')}
               style={{
-                fontSize: 9.5,
-                fontWeight: 800,
-                padding: '2px 8px',
+                fontSize: 9,
+                fontWeight: 700,
+                padding: '2px 6px',
                 borderRadius: 2,
                 border: activeTab === 'stored' ? '1px solid #ff9933' : '1px solid rgba(255,255,255,0.2)',
                 background: activeTab === 'stored' ? '#ff9933' : 'rgba(255,255,255,0.1)',
                 color: activeTab === 'stored' ? '#0b3b60' : '#ffffff',
                 cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
               }}
             >
-              📁 Stored Log ({storedAlerts.length})
+              Archive ({storedAlerts.length})
             </button>
 
+            {/* ONLY PDF Download Option — Compact & Highlighted */}
+            <button
+              type="button"
+              onClick={handleDownloadPDF}
+              title="Download Official Mission Alerts SITREP PDF"
+              style={{
+                fontSize: 9,
+                fontWeight: 800,
+                padding: '2px 7px',
+                borderRadius: 2,
+                background: '#dc2626',
+                color: '#ffffff',
+                border: '1px solid #ef4444',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 3,
+                boxShadow: '0 1px 2px rgba(220,38,38,0.3)',
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 12 }}>
+                picture_as_pdf
+              </span>
+              <span>PDF</span>
+            </button>
+
+            {/* Expand Dialog */}
             <button
               type="button"
               onClick={() => setModalOpen(true)}
@@ -341,47 +292,68 @@ export default function ActiveAlerts({ stationId }: Props) {
                 border: 'none',
                 color: '#ffffff',
                 cursor: 'pointer',
-                padding: '2px 4px',
+                padding: '2px',
                 display: 'flex',
                 alignItems: 'center',
               }}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 15 }}>
                 open_in_new
               </span>
             </button>
           </div>
         </div>
 
-        {/* Content Area */}
-        <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {/* ── CARD BODY: Scrollable container strictly locked to remaining height ── */}
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            padding: '6px 8px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 5,
+          }}
+        >
           {activeTab === 'active' ? (
             /* ──── ACTIVE ALERTS VIEW ──── */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <>
               {isLoading && (
-                <div style={{ fontSize: 11, color: '#64748b', padding: '4px 0' }}>{t('alerts.loading')}</div>
+                <div style={{ fontSize: 10.5, color: '#64748b', padding: '16px 0', textAlign: 'center' }}>
+                  {t('alerts.loading')}
+                </div>
               )}
 
               {!isLoading && activeAlerts.length === 0 && (
                 <div
                   style={{
-                    fontSize: 11,
-                    color: '#16a34a',
-                    padding: '8px 10px',
+                    fontSize: 10.5,
+                    color: '#166534',
+                    padding: '10px 12px',
                     background: '#f0fdf4',
                     border: '1px solid #bbf7d0',
                     fontWeight: 600,
+                    borderRadius: 2,
                     display: 'flex',
-                    justifyContent: 'space-between',
+                    flexDirection: 'column',
                     alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    height: '100%',
                   }}
                 >
-                  <span>✓ {t('alerts.none')}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#16a34a' }}>
+                      check_circle
+                    </span>
+                    <span>{t('alerts.none')}</span>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setActiveTab('stored')}
                     style={{
-                      fontSize: 10,
+                      fontSize: 9.5,
                       fontWeight: 700,
                       color: '#0b3b60',
                       background: 'none',
@@ -390,34 +362,36 @@ export default function ActiveAlerts({ stationId }: Props) {
                       textDecoration: 'underline',
                     }}
                   >
-                    View past stored alerts ({storedAlerts.length}) →
+                    View past archive log ({storedAlerts.length}) →
                   </button>
                 </div>
               )}
 
-              {activeAlerts.slice(0, 3).map((alert) => (
+              {activeAlerts.map((alert) => (
                 <div
                   key={alert.alert_id}
                   style={{
                     background: '#ffffff',
                     border: '1px solid #e2e8f0',
                     borderLeft: `4px solid ${SEV_COLOR[alert.severity] ?? '#64748b'}`,
-                    padding: '6px 10px',
+                    padding: '5px 8px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     gap: 8,
+                    borderRadius: 2,
                     boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                    flexShrink: 0,
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
                     <span
                       style={{
-                        fontSize: 8.5,
-                        fontWeight: 800,
+                        fontSize: 8,
+                        fontWeight: 900,
                         color: '#ffffff',
                         background: SEV_COLOR[alert.severity] ?? '#64748b',
-                        padding: '2px 6px',
+                        padding: '1px 5px',
                         borderRadius: 2,
                         letterSpacing: '0.04em',
                         flexShrink: 0,
@@ -426,74 +400,89 @@ export default function ActiveAlerts({ stationId }: Props) {
                       {alert.severity}
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 9.5, fontWeight: 700, color: '#64748b', fontFamily: 'monospace' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: '#64748b', fontFamily: 'monospace' }}>
                           {timeLabel(alert.triggered_at)} IST
                         </span>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: '#0f172a' }}>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: '#0f172a',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                          title={alert.description}
+                        >
                           {alert.description}
                         </span>
                       </div>
-                      {alert.asset_id && (
-                        <div style={{ fontSize: 9, color: '#64748b', marginTop: 1 }}>
-                          Asset: {alert.asset_id} • Domain: {alert.domain}
-                        </div>
-                      )}
+                      <div style={{ fontSize: 8.5, color: '#64748b' }}>
+                        {alert.asset_id ? `${alert.asset_id} • ` : ''}{alert.domain.toUpperCase()}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Acknowledge button */}
+                  {/* 1-Click Acknowledge Button */}
                   <button
                     onClick={() => handleAcknowledge(alert.alert_id)}
                     disabled={isPending}
-                    title="Acknowledge & Store in Log"
+                    title="Acknowledge & Archive Incident"
                     style={{
-                      background: '#ffffff',
-                      border: '1px solid #0b3b60',
-                      color: '#0b3b60',
-                      fontSize: 9,
+                      background: '#0b3b60',
+                      border: 'none',
+                      color: '#ffffff',
+                      fontSize: 8.5,
                       fontWeight: 800,
-                      letterSpacing: '0.04em',
+                      letterSpacing: '0.03em',
                       padding: '3px 8px',
                       cursor: 'pointer',
                       flexShrink: 0,
-                      fontFamily: 'Inter',
-                      transition: 'all 0.15s',
                       borderRadius: 2,
                       display: 'flex',
                       alignItems: 'center',
                       gap: 3,
+                      transition: 'background 0.15s ease',
                     }}
                     onMouseOver={(e) => {
-                      (e.currentTarget as HTMLElement).style.background = '#0b3b60'
-                      ;(e.currentTarget as HTMLElement).style.color = '#ffffff'
+                      (e.currentTarget as HTMLElement).style.background = '#15803d'
                     }}
                     onMouseOut={(e) => {
-                      (e.currentTarget as HTMLElement).style.background = '#ffffff'
-                      ;(e.currentTarget as HTMLElement).style.color = '#0b3b60'
+                      (e.currentTarget as HTMLElement).style.background = '#0b3b60'
                     }}
                   >
-                    <span className="material-symbols-outlined" style={{ fontSize: 12 }}>check</span>
+                    <span className="material-symbols-outlined" style={{ fontSize: 11 }}>
+                      done
+                    </span>
                     <span>{t('alerts.ack')}</span>
                   </button>
                 </div>
               ))}
-            </div>
+            </>
           ) : (
             /* ──── STORED ALERTS ARCHIVE VIEW ──── */
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              {/* Quick Filter Bar & Export */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 4, paddingBottom: 2 }}>
-                <div style={{ display: 'flex', gap: 4 }}>
+            <>
+              {/* Quick Severity Filter Pills */}
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  paddingBottom: 2,
+                  borderBottom: '1px solid #f1f5f9',
+                }}
+              >
+                <div style={{ display: 'flex', gap: 3 }}>
                   {(['ALL', 'CRITICAL', 'HIGH', 'MEDIUM'] as const).map((sev) => (
                     <button
                       key={sev}
                       type="button"
                       onClick={() => setSevFilter(sev)}
                       style={{
-                        fontSize: 8.5,
+                        fontSize: 8,
                         fontWeight: 700,
-                        padding: '1px 6px',
+                        padding: '1px 5px',
                         borderRadius: 2,
                         border: `1px solid ${sevFilter === sev ? '#0b3b60' : '#cbd5e1'}`,
                         background: sevFilter === sev ? '#0b3b60' : '#ffffff',
@@ -506,131 +495,107 @@ export default function ActiveAlerts({ stationId }: Props) {
                   ))}
                 </div>
 
-                <div style={{ display: 'flex', gap: 4 }}>
-                  <button
-                    type="button"
-                    onClick={handleExportCSV}
-                    title="Export stored alerts to CSV file"
-                    style={{
-                      fontSize: 8.5,
-                      fontWeight: 800,
-                      padding: '2px 6px',
-                      background: '#f0fdf4',
-                      color: '#166534',
-                      border: '1px solid #bbf7d0',
-                      borderRadius: 2,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 2,
-                    }}
-                  >
-                    <span className="material-symbols-outlined" style={{ fontSize: 11 }}>ios_share</span>
-                    Export CSV
-                  </button>
-                </div>
+                <span style={{ fontSize: 8.5, color: '#64748b' }}>
+                  {filteredStored.length} archived
+                </span>
               </div>
 
-              {/* Stored Alert Items List */}
-              <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4, paddingRight: 2 }}>
-                {filteredStored.length === 0 ? (
-                  <div style={{ fontSize: 10.5, color: '#64748b', textAlign: 'center', padding: '12px 0' }}>
-                    No stored alerts found for this filter.
-                  </div>
-                ) : (
-                  filteredStored.slice(0, 5).map((a) => (
-                    <div
-                      key={a.alert_id}
-                      style={{
-                        background: '#f8fafc',
-                        border: '1px solid #e2e8f0',
-                        borderLeft: `3px solid ${SEV_COLOR[a.severity] ?? '#64748b'}`,
-                        padding: '5px 8px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 2,
-                        borderRadius: 2,
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                          <span
-                            style={{
-                              fontSize: 8,
-                              fontWeight: 800,
-                              color: '#ffffff',
-                              background: SEV_COLOR[a.severity] ?? '#64748b',
-                              padding: '1px 4px',
-                              borderRadius: 2,
-                            }}
-                          >
-                            {a.severity}
-                          </span>
-                          <span style={{ fontSize: 9, fontWeight: 700, color: '#64748b' }}>
-                            {fullDateLabel(a.triggered_at)}
-                          </span>
-                        </div>
-
+              {filteredStored.length === 0 ? (
+                <div style={{ fontSize: 10, color: '#64748b', textAlign: 'center', padding: '16px 0' }}>
+                  No archived alerts matching filter.
+                </div>
+              ) : (
+                filteredStored.map((a) => (
+                  <div
+                    key={a.alert_id}
+                    style={{
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      borderLeft: `3px solid ${SEV_COLOR[a.severity] ?? '#64748b'}`,
+                      padding: '4px 7px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 2,
+                      borderRadius: 2,
+                      flexShrink: 0,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <span
                           style={{
-                            fontSize: 8,
-                            fontWeight: 800,
-                            padding: '1px 5px',
+                            fontSize: 7.5,
+                            fontWeight: 900,
+                            color: '#ffffff',
+                            background: SEV_COLOR[a.severity] ?? '#64748b',
+                            padding: '1px 4px',
                             borderRadius: 2,
-                            background: a.ack_state === 'OPEN' ? '#fee2e2' : a.ack_state === 'ACKNOWLEDGED' ? '#fef3c7' : '#dcfce7',
-                            color: a.ack_state === 'OPEN' ? '#b91c1c' : a.ack_state === 'ACKNOWLEDGED' ? '#92400e' : '#15803d',
                           }}
                         >
-                          {a.ack_state === 'OPEN' ? '🔴 OPEN' : a.ack_state === 'ACKNOWLEDGED' ? '✓ ACKED' : 'RESOLVED'}
+                          {a.severity}
+                        </span>
+                        <span style={{ fontSize: 8.5, fontWeight: 700, color: '#64748b' }}>
+                          {timeLabel(a.triggered_at)} IST
                         </span>
                       </div>
 
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#0f172a', lineHeight: 1.3 }}>
-                        {a.description}
-                      </div>
-
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 8.5, color: '#64748b' }}>
-                        <span>Asset: {a.asset_id || 'System'} • {a.domain}</span>
-                        {a.acknowledged_by && <span>By: {a.acknowledged_by}</span>}
-                      </div>
+                      <span
+                        style={{
+                          fontSize: 7.5,
+                          fontWeight: 800,
+                          padding: '1px 4px',
+                          borderRadius: 2,
+                          background:
+                            a.ack_state === 'OPEN'
+                              ? '#fee2e2'
+                              : a.ack_state === 'ACKNOWLEDGED'
+                              ? '#fef3c7'
+                              : '#dcfce7',
+                          color:
+                            a.ack_state === 'OPEN'
+                              ? '#b91c1c'
+                              : a.ack_state === 'ACKNOWLEDGED'
+                              ? '#92400e'
+                              : '#15803d',
+                        }}
+                      >
+                        {a.ack_state === 'OPEN' ? 'OPEN' : a.ack_state === 'ACKNOWLEDGED' ? 'ACKED' : 'RESOLVED'}
+                      </span>
                     </div>
-                  ))
-                )}
-              </div>
 
-              {/* Footer View All Link */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: 4 }}>
-                <span style={{ fontSize: 8.5, color: '#64748b' }}>
-                  Showing {Math.min(5, filteredStored.length)} of {filteredStored.length} stored logs
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setModalOpen(true)}
-                  style={{
-                    fontSize: 9,
-                    fontWeight: 800,
-                    color: '#0b3b60',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    textDecoration: 'underline',
-                  }}
-                >
-                  Open Full Audit Table ({storedAlerts.length}) →
-                </button>
-              </div>
-            </div>
+                    <div
+                      style={{
+                        fontSize: 9.5,
+                        fontWeight: 700,
+                        color: '#0f172a',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                      title={a.description}
+                    >
+                      {a.description}
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: '#64748b' }}>
+                      <span>{a.asset_id || currentStation.toUpperCase()} • {a.domain}</span>
+                      {a.acknowledged_by && <span>Ack: {a.acknowledged_by}</span>}
+                    </div>
+                  </div>
+                ))
+              )}
+            </>
           )}
         </div>
       </div>
 
-      {/* ──── FULL-SCREEN / AUDIT MODAL DIALOG ──── */}
+      {/* ──── FULL AUDIT ARCHIVE MODAL DIALOG ──── */}
       {modalOpen && (
         <div
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
+            background: 'rgba(15, 23, 42, 0.7)',
             backdropFilter: 'blur(3px)',
             display: 'flex',
             alignItems: 'center',
@@ -646,10 +611,10 @@ export default function ActiveAlerts({ stationId }: Props) {
             style={{
               background: '#ffffff',
               width: '100%',
-              maxWidth: 900,
+              maxWidth: 880,
               maxHeight: '85vh',
-              borderRadius: 6,
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
+              borderRadius: 4,
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.25)',
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
@@ -661,7 +626,7 @@ export default function ActiveAlerts({ stationId }: Props) {
               style={{
                 background: '#0b3b60',
                 borderBottom: '3px solid #ff9933',
-                padding: '12px 18px',
+                padding: '10px 16px',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
@@ -669,51 +634,30 @@ export default function ActiveAlerts({ stationId }: Props) {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 22, color: '#ff9933' }}>
-                  history_edu
+                <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#ff9933' }}>
+                  assignment_late
                 </span>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: '0.04em' }}>
-                    MISSION ALERTS AUDIT ARCHIVE — {stationId.toUpperCase()}
+                    MISSION ALERTS AUDIT ARCHIVE — {currentStation.toUpperCase()}
                   </div>
-                  <div style={{ fontSize: 10, color: '#cbd5e1' }}>
-                    Persistent storage log of all historical operational incidents and alarms
+                  <div style={{ fontSize: 9.5, color: '#cbd5e1' }}>
+                    NCPOR Official Station Telemetry Alarms & Operational Incident Record
                   </div>
                 </div>
               </div>
 
+              {/* ONLY PDF Download & Close in Modal Header */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <button
                   type="button"
-                  onClick={handleExportCSV}
-                  title="Export complete stored audit log as CSV"
-                  style={{
-                    background: '#15803d',
-                    color: '#ffffff',
-                    border: 'none',
-                    padding: '5px 10px',
-                    borderRadius: 3,
-                    fontSize: 10.5,
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                  }}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>ios_share</span>
-                  Export CSV
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => generateMissionAlertsPDF({ stationId, alerts: storedAlerts })}
-                  title="Export certified MoES incident audit archive as PDF"
+                  onClick={handleDownloadPDF}
+                  title="Download Certified Official MoES SITREP PDF"
                   style={{
                     background: '#dc2626',
                     color: '#ffffff',
                     border: 'none',
-                    padding: '5px 10px',
+                    padding: '5px 12px',
                     borderRadius: 3,
                     fontSize: 10.5,
                     fontWeight: 800,
@@ -724,25 +668,10 @@ export default function ActiveAlerts({ stationId }: Props) {
                     boxShadow: '0 1px 3px rgba(220, 38, 38, 0.4)',
                   }}
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#ffffff' }}>picture_as_pdf</span>
-                  Export PDF
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleClearHistory}
-                  style={{
-                    background: 'rgba(239, 68, 68, 0.2)',
-                    color: '#fca5a5',
-                    border: '1px solid #ef4444',
-                    padding: '5px 10px',
-                    borderRadius: 3,
-                    fontSize: 10.5,
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Clear History
+                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                    picture_as_pdf
+                  </span>
+                  <span>Download PDF SITREP</span>
                 </button>
 
                 <button
@@ -758,15 +687,17 @@ export default function ActiveAlerts({ stationId }: Props) {
                     alignItems: 'center',
                   }}
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
+                  <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+                    close
+                  </span>
                 </button>
               </div>
             </div>
 
-            {/* Modal Controls: Search and Filters */}
+            {/* Modal Search & Severity Filters */}
             <div
               style={{
-                padding: '10px 18px',
+                padding: '8px 16px',
                 background: '#f8fafc',
                 borderBottom: '1px solid #e2e8f0',
                 display: 'flex',
@@ -776,22 +707,21 @@ export default function ActiveAlerts({ stationId }: Props) {
                 gap: 8,
               }}
             >
-              {/* Search Box */}
-              <div style={{ position: 'relative', width: 280 }}>
+              <div style={{ position: 'relative', width: 260 }}>
                 <span
                   className="material-symbols-outlined"
-                  style={{ position: 'absolute', left: 8, top: 7, fontSize: 16, color: '#64748b' }}
+                  style={{ position: 'absolute', left: 7, top: 6, fontSize: 16, color: '#64748b' }}
                 >
                   search
                 </span>
                 <input
                   type="text"
-                  placeholder="Search alert description, asset, domain..."
+                  placeholder="Filter by description, domain, or ID..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '5px 8px 5px 28px',
+                    padding: '4px 8px 4px 26px',
                     fontSize: 11,
                     border: '1px solid #cbd5e1',
                     borderRadius: 3,
@@ -800,8 +730,7 @@ export default function ActiveAlerts({ stationId }: Props) {
                 />
               </div>
 
-              {/* Severity Pills */}
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
                 <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b' }}>Severity:</span>
                 {(['ALL', 'CRITICAL', 'HIGH', 'MEDIUM'] as const).map((sev) => (
                   <button
@@ -809,11 +738,11 @@ export default function ActiveAlerts({ stationId }: Props) {
                     type="button"
                     onClick={() => setSevFilter(sev)}
                     style={{
-                      fontSize: 10,
+                      fontSize: 9.5,
                       fontWeight: 700,
-                      padding: '3px 8px',
-                      borderRadius: 3,
-                      border: `1.5px solid ${sevFilter === sev ? '#0b3b60' : '#cbd5e1'}`,
+                      padding: '2px 7px',
+                      borderRadius: 2,
+                      border: `1px solid ${sevFilter === sev ? '#0b3b60' : '#cbd5e1'}`,
                       background: sevFilter === sev ? '#0b3b60' : '#ffffff',
                       color: sevFilter === sev ? '#ffffff' : '#334155',
                       cursor: 'pointer',
@@ -826,71 +755,62 @@ export default function ActiveAlerts({ stationId }: Props) {
             </div>
 
             {/* Modal Table Body */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '0 18px' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 11 }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 10.5 }}>
                 <thead>
-                  <tr style={{ borderBottom: '2px solid #cbd5e1', color: '#0b3b60', fontSize: 10, fontWeight: 900 }}>
-                    <th style={{ padding: '10px 8px' }}>TIMESTAMP (IST)</th>
-                    <th style={{ padding: '10px 8px' }}>SEVERITY</th>
-                    <th style={{ padding: '10px 8px' }}>DESCRIPTION</th>
-                    <th style={{ padding: '10px 8px' }}>ASSET & DOMAIN</th>
-                    <th style={{ padding: '10px 8px' }}>STATUS</th>
-                    <th style={{ padding: '10px 8px' }}>ACTION</th>
+                  <tr style={{ borderBottom: '2px solid #cbd5e1', color: '#0b3b60', fontSize: 9.5, fontWeight: 900 }}>
+                    <th style={{ padding: '8px 6px' }}>TIMESTAMP (IST)</th>
+                    <th style={{ padding: '8px 6px' }}>SEVERITY</th>
+                    <th style={{ padding: '8px 6px' }}>DESCRIPTION</th>
+                    <th style={{ padding: '8px 6px' }}>ASSET & DOMAIN</th>
+                    <th style={{ padding: '8px 6px' }}>STATUS</th>
+                    <th style={{ padding: '8px 6px' }}>ACTION</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredStored.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: '30px 0', color: '#64748b' }}>
-                        No stored alerts match the query criteria.
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '24px 0', color: '#64748b' }}>
+                        No alerts match the filter query.
                       </td>
                     </tr>
                   ) : (
                     filteredStored.map((a) => (
                       <tr
                         key={a.alert_id}
-                        style={{
-                          borderBottom: '1px solid #f1f5f9',
-                          transition: 'background 0.15s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                          (e.currentTarget as HTMLElement).style.background = '#f8fafc'
-                        }}
-                        onMouseLeave={(e) => {
-                          (e.currentTarget as HTMLElement).style.background = 'transparent'
-                        }}
+                        style={{ borderBottom: '1px solid #f1f5f9' }}
                       >
-                        <td style={{ padding: '8px 8px', fontFamily: 'monospace', color: '#475569', fontSize: 10 }}>
+                        <td style={{ padding: '6px 6px', fontFamily: 'monospace', color: '#475569', fontSize: 9.5 }}>
                           {fullDateLabel(a.triggered_at)}
                         </td>
-                        <td style={{ padding: '8px 8px' }}>
+                        <td style={{ padding: '6px 6px' }}>
                           <span
                             style={{
-                              fontSize: 9,
+                              fontSize: 8.5,
                               fontWeight: 900,
                               color: '#ffffff',
                               background: SEV_COLOR[a.severity] ?? '#64748b',
-                              padding: '2px 6px',
+                              padding: '1px 5px',
                               borderRadius: 2,
                             }}
                           >
                             {a.severity}
                           </span>
                         </td>
-                        <td style={{ padding: '8px 8px', fontWeight: 700, color: '#0f172a', maxWidth: 300 }}>
+                        <td style={{ padding: '6px 6px', fontWeight: 700, color: '#0f172a', maxWidth: 300 }}>
                           {a.description}
                         </td>
-                        <td style={{ padding: '8px 8px', color: '#64748b' }}>
-                          <span style={{ fontWeight: 800, color: '#334155' }}>{a.asset_id || 'STATION'}</span>
-                          <span style={{ fontSize: 9.5, color: '#94a3b8', display: 'block' }}>{a.domain}</span>
+                        <td style={{ padding: '6px 6px', color: '#64748b' }}>
+                          <span style={{ fontWeight: 800, color: '#334155' }}>{a.asset_id || currentStation.toUpperCase()}</span>
+                          <span style={{ fontSize: 9, color: '#94a3b8', display: 'block' }}>{a.domain}</span>
                         </td>
-                        <td style={{ padding: '8px 8px' }}>
+                        <td style={{ padding: '6px 6px' }}>
                           <span
                             style={{
-                              fontSize: 9,
+                              fontSize: 8.5,
                               fontWeight: 800,
-                              padding: '2px 7px',
-                              borderRadius: 3,
+                              padding: '1px 6px',
+                              borderRadius: 2,
                               background:
                                 a.ack_state === 'OPEN'
                                   ? '#fee2e2'
@@ -907,22 +827,17 @@ export default function ActiveAlerts({ stationId }: Props) {
                           >
                             {a.ack_state}
                           </span>
-                          {a.acknowledged_by && (
-                            <span style={{ fontSize: 8.5, color: '#64748b', display: 'block', marginTop: 2 }}>
-                              {a.acknowledged_by}
-                            </span>
-                          )}
                         </td>
-                        <td style={{ padding: '8px 8px' }}>
+                        <td style={{ padding: '6px 6px' }}>
                           {a.ack_state === 'OPEN' ? (
                             <button
                               type="button"
                               onClick={() => handleAcknowledge(a.alert_id)}
                               disabled={isPending}
                               style={{
-                                fontSize: 9,
+                                fontSize: 8.5,
                                 fontWeight: 800,
-                                padding: '3px 8px',
+                                padding: '2px 7px',
                                 background: '#0b3b60',
                                 color: '#ffffff',
                                 border: 'none',
@@ -933,7 +848,7 @@ export default function ActiveAlerts({ stationId }: Props) {
                               Acknowledge
                             </button>
                           ) : (
-                            <span style={{ fontSize: 9.5, color: '#16a34a', fontWeight: 700 }}>✓ Stored</span>
+                            <span style={{ fontSize: 9, color: '#16a34a', fontWeight: 700 }}>✓ Stored</span>
                           )}
                         </td>
                       </tr>
@@ -946,17 +861,17 @@ export default function ActiveAlerts({ stationId }: Props) {
             {/* Modal Footer */}
             <div
               style={{
-                padding: '10px 18px',
+                padding: '8px 16px',
                 background: '#f1f5f9',
                 borderTop: '1px solid #cbd5e1',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                fontSize: 10.5,
+                fontSize: 10,
                 color: '#64748b',
               }}
             >
-              <span>Total Archive: <strong>{storedAlerts.length} incidents logged</strong></span>
+              <span>Total Archive: <strong>{storedAlerts.length} entries recorded</strong></span>
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
@@ -964,9 +879,9 @@ export default function ActiveAlerts({ stationId }: Props) {
                   background: '#0b3b60',
                   color: '#ffffff',
                   border: 'none',
-                  padding: '5px 14px',
-                  borderRadius: 3,
-                  fontSize: 10.5,
+                  padding: '4px 12px',
+                  borderRadius: 2,
+                  fontSize: 10,
                   fontWeight: 800,
                   cursor: 'pointer',
                 }}

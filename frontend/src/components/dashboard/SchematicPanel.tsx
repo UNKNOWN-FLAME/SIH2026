@@ -1,27 +1,311 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useStation } from '../../context/StationContext'
+import { useIoTSensors } from '../../hooks/useIoTSensors'
+import { useAlerts, useAcknowledgeAlert } from '../../hooks/useAlerts'
+import type { IoTSensor, AlertOut } from '../../api/hq'
 
 function isPartAffectedByAnomaly(partId: string, anomalyId?: string): boolean {
   if (!anomalyId) return false
   const p = partId.toLowerCase()
   const a = anomalyId.toLowerCase()
   if (a.includes('generator') || a.includes('power') || a.includes('fuel')) {
-    return p.includes('gen') || p.includes('fuel') || p.includes('energy')
+    return p.includes('gen') || p.includes('fuel') || p.includes('energy') || p.includes('power')
   }
-  if (a.includes('blizzard') || a.includes('thunderstorm') || a.includes('weather')) {
+  if (a.includes('blizzard') || a.includes('thunderstorm') || a.includes('weather') || a.includes('wind')) {
     return p.includes('met')
   }
   if (a.includes('earthquake') || a.includes('seismic')) {
-    return p.includes('cmd') || p.includes('main') || p.includes('hub')
+    return p.includes('cmd') || p.includes('main') || p.includes('hub') || p.includes('labs')
   }
-  if (a.includes('vsat') || a.includes('iot') || a.includes('comm')) {
-    return p.includes('comm') || p.includes('hub')
+  if (a.includes('vsat') || a.includes('iot') || a.includes('comm') || a.includes('satellite')) {
+    return p.includes('comm') || p.includes('hub') || p.includes('main') || p.includes('antenna') || p.includes('radome')
   }
-  if (a.includes('fire') || a.includes('hvac')) {
-    return p.includes('cmd') || p.includes('living') || p.includes('gen')
+  if (a.includes('fire') || a.includes('smoke')) {
+    return p.includes('cmd') || p.includes('main') || p.includes('hub') || p.includes('living') || p.includes('hab') || p.includes('gen')
+  }
+  if (a.includes('hvac') || a.includes('heat') || a.includes('temp')) {
+    return p.includes('living') || p.includes('hab') || p.includes('main')
   }
   return false
+}
+
+function isPartAffectedByOpenAlerts(
+  partId: string,
+  openAlerts: AlertOut[],
+  activeAnomalyId?: string
+): boolean {
+  if (!openAlerts || openAlerts.length === 0) return false
+
+  const p = partId.toLowerCase()
+
+  for (const alert of openAlerts) {
+    const desc = (alert.description || '').toLowerCase()
+    const domain = (alert.domain || '').toLowerCase()
+    const asset = (alert.asset_id || '').toLowerCase()
+
+    if (asset && (asset.includes(p) || p.includes(asset))) return true
+    if (desc.includes('fire') || domain.includes('fire') || desc.includes('smoke')) {
+      if (p.includes('cmd') || p.includes('main') || p.includes('hub') || p.includes('living') || p.includes('hab') || p.includes('gen')) return true
+    }
+    if (desc.includes('generator') || desc.includes('fuel') || domain.includes('power') || domain.includes('energy')) {
+      if (p.includes('gen') || p.includes('fuel') || p.includes('energy') || p.includes('power')) return true
+    }
+    if (desc.includes('blizzard') || desc.includes('wind') || domain.includes('weather') || desc.includes('storm')) {
+      if (p.includes('met')) return true
+    }
+    if (desc.includes('earthquake') || desc.includes('seismic') || domain.includes('seismic')) {
+      if (p.includes('cmd') || p.includes('labs') || p.includes('main')) return true
+    }
+    if (desc.includes('vsat') || desc.includes('comm') || domain.includes('comm') || desc.includes('satellite')) {
+      if (p.includes('comm') || p.includes('hub') || p.includes('antenna') || p.includes('radome') || p.includes('main')) return true
+    }
+    if (desc.includes('hvac') || desc.includes('heat') || desc.includes('temp')) {
+      if (p.includes('hab') || p.includes('living') || p.includes('main')) return true
+    }
+  }
+
+  if (activeAnomalyId) {
+    return isPartAffectedByAnomaly(partId, activeAnomalyId)
+  }
+
+  return false
+}
+
+function applyLiveAnomalyToPart(
+  part: HotspotPart,
+  anomalyId?: string,
+  _anomalyName?: string,
+  iotSensors?: IoTSensor[]
+): { part: HotspotPart; isAffected: boolean } {
+  if (!anomalyId) return { part, isAffected: false }
+
+  const p = part.id.toLowerCase()
+  const a = anomalyId.toLowerCase()
+  const isAffected = isPartAffectedByAnomaly(part.id, anomalyId)
+
+  if (!isAffected) return { part, isAffected: false }
+
+  // Extract live sensor values from database if available
+  const firSensor = iotSensors?.find((s) => s.sensor_id.includes('FIR'))
+  const smokeVal = firSensor?.parameters.find((param) => param.key === 'smoke_density')?.value ?? 0.88
+  const aqiSensor = iotSensors?.find((s) => s.sensor_id.includes('AQI'))
+  const coVal = aqiSensor?.parameters.find((param) => param.key === 'co')?.value ?? 48.5
+  const tmpSensor = iotSensors?.find((s) => s.sensor_id.includes('TMP-003'))
+  const tmpVal = tmpSensor?.parameters.find((param) => param.key === 'temperature')?.value ?? 78.4
+
+  const fulSensor = iotSensors?.find((s) => s.sensor_id.includes('FUL'))
+  const fuelLvl = fulSensor?.parameters.find((param) => param.key === 'fuel_level')?.value ?? 18.2
+
+  const sesSensor = iotSensors?.find((s) => s.sensor_id.includes('SES'))
+  const sesPgv = sesSensor?.parameters.find((param) => param.key === 'ground_velocity')?.value ?? 14.8
+
+  // 1. Fire / Smoke Anomaly
+  if (a.includes('fire')) {
+    if (p.includes('cmd') || p.includes('main') || p.includes('hub')) {
+      return {
+        isAffected: true,
+        part: {
+          ...part,
+          status: 'CRITICAL ALERT',
+          statusColor: '#dc2626',
+          healthScore: 18,
+          about: `🚨 EMERGENCY FIRE ALARM: Smoke density spike (${smokeVal} obs/m) & thermal runaway detected. FM-200 armed.`,
+          stats: [
+            { label: 'Inside Temp', value: `+${tmpVal}°C`, note: '🔥 Thermal runaway detected', good: false },
+            { label: 'Smoke Array', value: `${smokeVal} obs/m`, note: '🚨 Critical smoke density', good: false },
+            { label: 'Safety Alarms', value: 'FIRE TRIGGER', note: `🚨 CO ${coVal} ppm (Critical)`, good: false },
+            { label: 'Building Health', value: 'COMPROMISED', note: 'FM-200 gas flooding armed', good: false },
+          ],
+          telemetryChannels: [
+            { name: 'Smoke Density (FIR-001)', value: `${smokeVal}`, unit: 'obs/m', range: '< 0.10 obs/m', status: 'Critical' },
+            { name: 'Carbon Monoxide (CO)', value: `${coVal}`, unit: 'ppm', range: '< 9.0 ppm', status: 'Critical' },
+            { name: 'Cabin Ambient Temp', value: `+${tmpVal}`, unit: '°C', range: '20.0 - 23.0 °C', status: 'Critical' },
+            { name: 'FM-200 Fire Suppression', value: 'DISCHARGE ARMED', unit: 'state', range: 'Standby', status: 'Critical' },
+          ],
+          syncStatus: '🚨 Real-time Critical Alert Synced to HQ Cloud Twin',
+        },
+      }
+    }
+    if (p.includes('gen') || p.includes('living') || p.includes('hab') || p.includes('power')) {
+      return {
+        isAffected: true,
+        part: {
+          ...part,
+          status: 'ALERT',
+          statusColor: '#dc2626',
+          healthScore: 32,
+          about: '⚠ HIGH SMOKE ADJACENCY: Smoke diffusion from central corridor detected.',
+          stats: [
+            { label: 'Fire Safety', value: 'ALARMED', note: 'Adjacent zone smoke alert', good: false },
+            { label: 'Emergency Exit', value: 'ACTIVE', note: 'Evacuation corridors clear', good: true },
+            { label: 'Exhaust Heat', value: 'Elevated', note: 'Emergency air dampers closed', good: false },
+            { label: 'Alarm System', value: 'TRIGGERED', note: 'Audible siren active', good: false },
+          ],
+        },
+      }
+    }
+  }
+
+  // 2. Generator Failure
+  if (a.includes('generator') || a.includes('power')) {
+    if (p.includes('gen') || p.includes('power')) {
+      return {
+        isAffected: true,
+        part: {
+          ...part,
+          status: 'CRITICAL ALERT',
+          statusColor: '#dc2626',
+          healthScore: 12,
+          about: '🚨 POWER GRID TRIP: Primary generator DG-1 has tripped to 0 kW. Emergency DG-2 online.',
+          stats: [
+            { label: 'DG-1 Primary', value: '0.0 kW', note: 'TRIPPED (Generator Trip)', good: false },
+            { label: 'DG-2 Backup', value: '84.0 kW', note: 'Emergency startup load', good: true },
+            { label: 'Fuel Pressure', value: '0.22 bar', note: 'Pressure drop warning', good: false },
+            { label: 'Power Grid', value: 'DEGRADED', note: 'Non-critical loads shed', good: false },
+          ],
+          telemetryChannels: [
+            { name: 'DG-1 Active Power', value: '0.0', unit: 'kW', range: '80 - 150 kW', status: 'Critical' },
+            { name: 'DG-2 Backup Power', value: '84.0', unit: 'kW', range: 'Standby / Load', status: 'Normal' },
+            { name: 'Fuel Rail Pressure', value: '0.22', unit: 'bar', range: '3.5 - 4.5 bar', status: 'Critical' },
+            { name: 'Emergency Battery SOC', value: '94.2', unit: '%', range: '> 80 %', status: 'Optimal' },
+          ],
+        },
+      }
+    }
+  }
+
+  // 3. Fuel Critical Low
+  if (a.includes('fuel')) {
+    if (p.includes('fuel')) {
+      return {
+        isAffected: true,
+        part: {
+          ...part,
+          status: 'CRITICAL ALERT',
+          statusColor: '#ea580c',
+          healthScore: 28,
+          about: `⚠ FUEL CRITICAL: Total station polar fuel level dropped to ${fuelLvl}%.`,
+          stats: [
+            { label: 'Fuel Reserve', value: `${fuelLvl}%`, note: '28,400 L remaining', good: false },
+            { label: 'Days Remaining', value: '38 Days', note: 'Emergency rationing required', good: false },
+            { label: 'Daily Burn', value: '540 L/day', note: 'Conservation mode active', good: false },
+            { label: 'Leak Sensors', value: 'LOW RESERVE', note: 'Urgent tanker supply needed', good: false },
+          ],
+        },
+      }
+    }
+  }
+
+  // 4. Pressure Pipe Failure
+  if (a.includes('pressure') || a.includes('pipe')) {
+    if (p.includes('fuel') || p.includes('gen') || p.includes('power')) {
+      return {
+        isAffected: true,
+        part: {
+          ...part,
+          status: 'CRITICAL ALERT',
+          statusColor: '#dc2626',
+          healthScore: 22,
+          about: '⚠ PIPE FAILURE: Fuel transfer pressure line dropped to 0.12 bar. Pipe breach detected.',
+          stats: [
+            { label: 'Line Pressure', value: '0.12 bar', note: 'Pipe depressurized', good: false },
+            { label: 'Vapor Pressure', value: '0.02 bar', note: 'Loss of line integrity', good: false },
+            { label: 'Safety Alarms', value: 'VALVE SHUT', note: 'Emergency cutoff engaged', good: false },
+            { label: 'Building Health', value: 'LEAK RISK', note: 'Containment checked', good: false },
+          ],
+        },
+      }
+    }
+  }
+
+  // 5. Earthquake / Seismic Tremor
+  if (a.includes('earthquake') || a.includes('seismic')) {
+    return {
+      isAffected: true,
+      part: {
+        ...part,
+        status: 'ALERT',
+        statusColor: '#dc2626',
+        healthScore: 40,
+        about: `⚠ SEISMIC SHOCK: Ground motion tremor (PGV ${sesPgv} mm/s, M4.2) registered across bedrock.`,
+        stats: [
+          { label: 'Ground Velocity', value: `${sesPgv} mm/s`, note: 'Peak PGV exceeded', good: false },
+          { label: 'Richter Scale', value: '4.2 Mag', note: '6 events in 24h', good: false },
+          { label: 'Safety Alarms', value: 'SEISMIC TRIGGER', note: 'Bedrock sensor active', good: false },
+          { label: 'Building Health', value: 'STRAIN RISK', note: 'Settlement 21.4mm', good: false },
+        ],
+      },
+    }
+  }
+
+  // 6. VSAT Link Loss / Comms Severed
+  if (a.includes('vsat') || a.includes('link') || a.includes('comm')) {
+    if (p.includes('cmd') || p.includes('comm') || p.includes('hub') || p.includes('main')) {
+      return {
+        isAffected: true,
+        part: {
+          ...part,
+          status: 'OFFLINE',
+          statusColor: '#dc2626',
+          healthScore: 30,
+          about: '🔴 VSAT SEVERED: Carrier satellite uplink disconnected. Autonomous Edge Buffering active.',
+          stats: [
+            { label: 'Satellite Link', value: 'DISCONNECTED', note: '0.0 dB (Offline)', good: false },
+            { label: 'Latency', value: '9,999 ms', note: 'No carrier sync', good: false },
+            { label: 'Safety Alarms', value: 'LINK LOST', note: 'Edge buffering active', good: false },
+            { label: 'Building Health', value: 'STANDALONE', note: 'Autonomous store-and-forward', good: false },
+          ],
+        },
+      }
+    }
+  }
+
+  // 7. HVAC Failure
+  if (a.includes('hvac')) {
+    if (p.includes('hab') || p.includes('living') || p.includes('main')) {
+      return {
+        isAffected: true,
+        part: {
+          ...part,
+          status: 'CRITICAL ALERT',
+          statusColor: '#dc2626',
+          healthScore: 35,
+          about: '❄ HVAC FAILURE: Heating loop offline. Living quarters temp plunging to +3.8°C.',
+          stats: [
+            { label: 'Room Temp', value: '+3.8°C', note: '❄ Freezing risk / HVAC trip', good: false },
+            { label: 'Fresh Air (CO₂)', value: 'Fresh (420 ppm)', note: 'Air handler low', good: false },
+            { label: 'Hot Water', value: '+14.2°C', note: 'Loss of glycol heat loop', good: false },
+            { label: 'Safety Alarms', value: 'HVAC TRIP', note: 'Auxiliary fan heaters on', good: false },
+          ],
+        },
+      }
+    }
+  }
+
+  // 8. Thunderstorm / Blizzard
+  if (a.includes('thunderstorm') || a.includes('blizzard') || a.includes('met')) {
+    if (p.includes('met')) {
+      return {
+        isAffected: true,
+        part: {
+          ...part,
+          status: 'CRITICAL ALERT',
+          statusColor: '#dc2626',
+          healthScore: 40,
+          about: '🌬 BLIZZARD / STORM: Sustained polar winds 88.0 km/h, barometer 968.4 hPa.',
+          stats: [
+            { label: 'Wind Velocity', value: '88.0 km/h', note: 'Severe storm gale', good: false },
+            { label: 'Barometer', value: '968.4 hPa', note: 'Extreme pressure drop', good: false },
+            { label: 'Blizzard Alert', value: 'CRITICAL', note: 'Whiteout hazard', good: false },
+            { label: 'Outside Temp', value: '-28.5°C', note: 'Wind chill hazard', good: false },
+          ],
+        },
+      }
+    }
+  }
+
+  return { part, isAffected: false }
 }
 
 interface Props {
@@ -40,13 +324,13 @@ export interface HotspotPart {
   commissioned: string
   box: { left: number; top: number; width: number; height: number }
   pin: { x: number; y: number }
-  status: 'Normal' | 'Running' | 'Online' | 'Active'
+  status: 'Normal' | 'Running' | 'Online' | 'Active' | 'ALERT' | 'CRITICAL' | 'CRITICAL ALERT' | 'OFFLINE' | string
   statusColor: string
   about: string
   detailedOverview: string
   stats: Array<{ label: string; value: string; note?: string; good?: boolean }>
   keySpecs: Array<{ label: string; value: string }>
-  telemetryChannels: Array<{ name: string; value: string; unit: string; range: string; status: 'Optimal' | 'Normal' | 'Active' }>
+  telemetryChannels: Array<{ name: string; value: string; unit: string; range: string; status: 'Optimal' | 'Normal' | 'Active' | 'Warning' | 'Critical' | string }>
   syncStatus: string
   edgeStorage: string
 }
@@ -725,6 +1009,46 @@ const BHARATI_PARTS: HotspotPart[] = [
 
 export default function SchematicPanel({ stationId }: Props) {
   const { lastAnomalyResult } = useStation()
+  const { data: iotData } = useIoTSensors(stationId)
+  const { data: alertsData } = useAlerts({ station_id: stationId, ack_state: 'OPEN', page_size: 25 })
+  const { mutate: ackAlert, isPending: isAckPending } = useAcknowledgeAlert()
+
+  const iotSensors = useMemo(() => iotData?.sensors ?? [], [iotData?.sensors])
+  const openAlerts: AlertOut[] = useMemo(() => alertsData?.items ?? [], [alertsData?.items])
+  const hasOpenAlerts = openAlerts.length > 0
+
+  // NOTE: Do NOT auto-clear lastAnomalyResult here. An acknowledged alert does NOT
+  // mean the event is resolved. The anomaly must remain visible on Live Telemetry
+  // until the operator explicitly clears it via the "Clear Simulation" button.
+
+  // Active anomaly is ONLY active if there is an actual OPEN alert in the database / cache!
+  const activeAnomalyId = useMemo(() => {
+    if (!hasOpenAlerts) return undefined
+
+    if (lastAnomalyResult?.anomaly_id) {
+      return lastAnomalyResult.anomaly_id
+    }
+
+    const firstAlert = openAlerts[0]
+    const desc = (firstAlert?.description || '').toLowerCase()
+    const domain = (firstAlert?.domain || '').toLowerCase()
+
+    if (desc.includes('fire') || domain.includes('fire') || desc.includes('smoke')) return 'fire_alarm'
+    if (desc.includes('generator') || desc.includes('fuel') || domain.includes('power')) return 'generator_failure'
+    if (desc.includes('blizzard') || desc.includes('wind') || domain.includes('weather')) return 'severe_blizzard'
+    if (desc.includes('vsat') || desc.includes('comm') || domain.includes('comm') || desc.includes('satellite')) return 'vsat_link_loss'
+    if (desc.includes('seismic') || desc.includes('earthquake') || domain.includes('seismic')) return 'earthquake_swarm'
+    if (desc.includes('hvac') || desc.includes('heat') || desc.includes('temp')) return 'hvac_failure'
+
+    return 'general_alert'
+  }, [hasOpenAlerts, lastAnomalyResult, openAlerts])
+
+  const activeAnomalyName = useMemo(() => {
+    if (!hasOpenAlerts) return undefined
+    if (lastAnomalyResult?.anomaly_name) return lastAnomalyResult.anomaly_name
+    return openAlerts[0]?.description ?? 'Telemetry Alert'
+  }, [hasOpenAlerts, lastAnomalyResult, openAlerts])
+
   const [hoveredPartId, setHoveredPartId] = useState<string | null>(null)
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null)
   const [showAllPins, setShowAllPins] = useState<boolean>(true)
@@ -732,11 +1056,27 @@ export default function SchematicPanel({ stationId }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   const isMaitri = stationId === 'maitri'
-  const activePartsList = isMaitri ? MAITRI_PARTS : BHARATI_PARTS
+  const basePartsList = isMaitri ? MAITRI_PARTS : BHARATI_PARTS
+
+  const dynamicPartsList = useMemo(() => {
+    return basePartsList.map((part) => {
+      const isAffected = isPartAffectedByOpenAlerts(part.id, openAlerts, activeAnomalyId)
+      if (isAffected && activeAnomalyId) {
+        const { part: dynamicPart } = applyLiveAnomalyToPart(
+          part,
+          activeAnomalyId,
+          activeAnomalyName,
+          iotSensors
+        )
+        return dynamicPart
+      }
+      return part
+    })
+  }, [basePartsList, openAlerts, activeAnomalyId, activeAnomalyName, iotSensors])
 
   // If a modal is open, selectedPart holds it; hoveredPart only shows when modal is closed
-  const selectedPart = activePartsList.find((p) => p.id === selectedPartId) ?? null
-  const hoveredPart = !selectedPartId && hoveredPartId ? activePartsList.find((p) => p.id === hoveredPartId) ?? null : null
+  const selectedPart = dynamicPartsList.find((p) => p.id === selectedPartId) ?? null
+  const hoveredPart = !selectedPartId && hoveredPartId ? dynamicPartsList.find((p) => p.id === hoveredPartId) ?? null : null
 
   const handleSelectPart = (id: string) => {
     setSelectedPartId(id)
@@ -798,10 +1138,10 @@ export default function SchematicPanel({ stationId }: Props) {
           Buildings:
         </span>
 
-        {activePartsList.map((part) => {
+        {dynamicPartsList.map((part) => {
           const isHovered = hoveredPartId === part.id
           const isSelected = selectedPartId === part.id
-          const isAffected = isPartAffectedByAnomaly(part.id, lastAnomalyResult?.anomaly_id)
+          const isAffected = isPartAffectedByOpenAlerts(part.id, openAlerts, activeAnomalyId)
           return (
             <button
               key={part.id}
@@ -915,7 +1255,7 @@ export default function SchematicPanel({ stationId }: Props) {
         />
 
         {/* ── Interactive Bounding Boxes ── */}
-        {activePartsList.map((part) => {
+        {dynamicPartsList.map((part) => {
           const isHovered = hoveredPartId === part.id
           const isSelected = selectedPartId === part.id
           const isActive = isHovered || isSelected
@@ -974,10 +1314,10 @@ export default function SchematicPanel({ stationId }: Props) {
 
         {/* ── Visual Pins on the Station ── */}
         {showAllPins &&
-          activePartsList.map((part) => {
+          dynamicPartsList.map((part) => {
             const isHovered = hoveredPartId === part.id
             const isSelected = selectedPartId === part.id
-            const isAffected = isPartAffectedByAnomaly(part.id, lastAnomalyResult?.anomaly_id)
+            const isAffected = isPartAffectedByOpenAlerts(part.id, openAlerts, activeAnomalyId)
             const isActive = isHovered || isSelected || isAffected
             const pinColor = isAffected ? '#dc2626' : isActive ? '#ff9933' : '#38bdf8'
 
@@ -1034,81 +1374,111 @@ export default function SchematicPanel({ stationId }: Props) {
           })}
 
         {/* ── Normal Hover Card (Shows on hover when modal is NOT open) ── */}
-        {hoveredPart && (
-          <div
-            style={{
-              position: 'absolute',
-              right: hoveredPart.pin.x > 60 ? `${100 - hoveredPart.box.left + 2}%` : 'auto',
-              left: hoveredPart.pin.x <= 60 ? `${hoveredPart.box.left + hoveredPart.box.width + 1.5}%` : 'auto',
-              top: `${Math.max(6, Math.min(48, hoveredPart.box.top - 4))}%`,
-              zIndex: 45,
-              width: 255,
-              background: '#ffffff',
-              border: '1px solid #cbd5e1',
-              borderLeft: '4px solid #ff9933',
-              boxShadow: '0 6px 18px rgba(11, 59, 96, 0.16)',
-              color: '#0f172a',
-              pointerEvents: 'none',
-              padding: '10px 12px',
-              borderRadius: 2,
-            }}
-          >
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-              <span style={{ fontSize: 9.5, fontWeight: 800, color: '#ff9933', textTransform: 'uppercase' }}>
-                {hoveredPart.simpleTag}
-              </span>
-              <span
-                style={{
-                  fontSize: 9,
-                  fontWeight: 800,
-                  color: '#15803d',
-                  background: '#f0fdf4',
-                  padding: '1px 5px',
-                  border: '1px solid #bbf7d0',
-                }}
-              >
-                ● {hoveredPart.status}
-              </span>
-            </div>
-
-            {/* Simple Title */}
-            <div style={{ fontSize: 12.5, fontWeight: 900, color: '#0b3b60', lineHeight: 1.2, marginBottom: 4 }}>
-              {hoveredPart.name}
-            </div>
-
-            {/* Easy one-line explanation */}
-            <div style={{ fontSize: 10.5, color: '#475569', lineHeight: 1.35, marginBottom: 8 }}>
-              {hoveredPart.about}
-            </div>
-
-            {/* 4 Clean Stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 5 }}>
-              {hoveredPart.stats.map((s, i) => (
+        {hoveredPart && (() => {
+          const isHoveredPartAffected = isPartAffectedByOpenAlerts(hoveredPart.id, openAlerts, activeAnomalyId)
+          return (
+            <div
+              style={{
+                position: 'absolute',
+                right: hoveredPart.pin.x > 60 ? `${100 - hoveredPart.box.left + 2}%` : 'auto',
+                left: hoveredPart.pin.x <= 60 ? `${hoveredPart.box.left + hoveredPart.box.width + 1.5}%` : 'auto',
+                top: `${Math.max(6, Math.min(48, hoveredPart.box.top - 4))}%`,
+                zIndex: 45,
+                width: 265,
+                background: '#ffffff',
+                border: isHoveredPartAffected ? '1.5px solid #dc2626' : '1px solid #cbd5e1',
+                borderLeft: isHoveredPartAffected ? '5px solid #dc2626' : '4px solid #ff9933',
+                boxShadow: isHoveredPartAffected ? '0 8px 24px rgba(220, 38, 38, 0.28)' : '0 6px 18px rgba(11, 59, 96, 0.16)',
+                color: '#0f172a',
+                pointerEvents: 'none',
+                padding: '10px 12px',
+                borderRadius: 2,
+              }}
+            >
+              {/* Emergency Banner inside card if anomaly active */}
+              {isHoveredPartAffected && (
                 <div
-                  key={i}
                   style={{
-                    background: '#f8fafc',
-                    border: '1px solid #e2e8f0',
-                    padding: '4px 6px',
+                    background: 'linear-gradient(90deg, #b91c1c 0%, #dc2626 100%)',
+                    color: '#ffffff',
+                    fontSize: 8.5,
+                    fontWeight: 900,
+                    padding: '3px 7px',
+                    marginBottom: 6,
+                    borderRadius: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    letterSpacing: '0.04em',
+                    boxShadow: '0 2px 6px rgba(220, 38, 38, 0.35)',
                   }}
                 >
-                  <div style={{ fontSize: 9, color: '#64748b' }}>{s.label}</div>
-                  <div style={{ fontSize: 11.5, fontWeight: 800, color: '#0f172a', marginTop: 1 }}>{s.value}</div>
-                  {s.note && (
-                    <div style={{ fontSize: 8.5, color: s.good ? '#15803d' : '#64748b', fontWeight: 600 }}>
-                      {s.note}
-                    </div>
-                  )}
+                  <span className="material-symbols-outlined" style={{ fontSize: 13, animation: 'pulse 1s infinite' }}>warning</span>
+                  <span>ACTIVE ANOMALY: {activeAnomalyName || 'TELEMETRY EXCEEDED'}</span>
                 </div>
-              ))}
-            </div>
+              )}
 
-            <div style={{ marginTop: 6, fontSize: 9, color: '#0284c7', fontWeight: 700, textAlign: 'right' }}>
-              👆 Click for full detailed specs
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <span style={{ fontSize: 9.5, fontWeight: 800, color: '#ff9933', textTransform: 'uppercase' }}>
+                  {hoveredPart.simpleTag}
+                </span>
+                <span
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 800,
+                    color: isHoveredPartAffected ? '#b91c1c' : '#15803d',
+                    background: isHoveredPartAffected ? '#fef2f2' : '#f0fdf4',
+                    padding: '1px 5px',
+                    border: isHoveredPartAffected ? '1px solid #fca5a5' : '1px solid #bbf7d0',
+                  }}
+                >
+                  ● {hoveredPart.status}
+                </span>
+              </div>
+
+              {/* Simple Title */}
+              <div style={{ fontSize: 12.5, fontWeight: 900, color: isHoveredPartAffected ? '#dc2626' : '#0b3b60', lineHeight: 1.2, marginBottom: 4 }}>
+                {hoveredPart.name}
+              </div>
+
+              {/* Easy one-line explanation */}
+              <div style={{ fontSize: 10.5, color: isHoveredPartAffected ? '#991b1b' : '#475569', lineHeight: 1.35, marginBottom: 8, fontWeight: isHoveredPartAffected ? 600 : 400 }}>
+                {hoveredPart.about}
+              </div>
+
+              {/* 4 Clean Stats */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 5 }}>
+                {hoveredPart.stats.map((s, i) => {
+                  const isBad = s.good === false
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        background: isBad ? '#fef2f2' : '#f8fafc',
+                        border: isBad ? '1px solid #fecaca' : '1px solid #e2e8f0',
+                        padding: '4px 6px',
+                        borderRadius: 2,
+                      }}
+                    >
+                      <div style={{ fontSize: 9, color: isBad ? '#b91c1c' : '#64748b', fontWeight: isBad ? 700 : 500 }}>{s.label}</div>
+                      <div style={{ fontSize: 11.5, fontWeight: 900, color: isBad ? '#dc2626' : '#0f172a', marginTop: 1 }}>{s.value}</div>
+                      {s.note && (
+                        <div style={{ fontSize: 8.5, color: isBad ? '#dc2626' : s.good ? '#15803d' : '#64748b', fontWeight: 700 }}>
+                          {s.note}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div style={{ marginTop: 6, fontSize: 9, color: isHoveredPartAffected ? '#dc2626' : '#0284c7', fontWeight: 800, textAlign: 'right' }}>
+                👆 Click for full emergency telemetry
+              </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
 
         {/* ── Bottom Subtle Legend ── */}
         <div
@@ -1207,12 +1577,12 @@ export default function SchematicPanel({ stationId }: Props) {
                     <span
                       style={{
                         fontSize: 8.5,
-                        color: '#86efac',
-                        background: 'rgba(22, 163, 74, 0.25)',
-                        border: '1px solid rgba(134, 239, 172, 0.4)',
+                        color: isPartAffectedByOpenAlerts(selectedPart.id, openAlerts, activeAnomalyId) ? '#fecaca' : '#86efac',
+                        background: isPartAffectedByOpenAlerts(selectedPart.id, openAlerts, activeAnomalyId) ? 'rgba(220, 38, 38, 0.4)' : 'rgba(22, 163, 74, 0.25)',
+                        border: isPartAffectedByOpenAlerts(selectedPart.id, openAlerts, activeAnomalyId) ? '1px solid #f87171' : '1px solid rgba(134, 239, 172, 0.4)',
                         padding: '1px 5px',
                         borderRadius: 2,
-                        fontWeight: 700,
+                        fontWeight: 800,
                       }}
                     >
                       ● {selectedPart.status}
@@ -1246,12 +1616,71 @@ export default function SchematicPanel({ stationId }: Props) {
 
             {/* Modal Body - Minimal & Clean */}
             <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 9, background: '#f8fafc' }}>
+              {/* Emergency Banner in Modal if Anomaly Active */}
+              {isPartAffectedByOpenAlerts(selectedPart.id, openAlerts, activeAnomalyId) && (
+                <div
+                  style={{
+                    background: 'linear-gradient(90deg, #991b1b 0%, #dc2626 100%)',
+                    color: '#ffffff',
+                    padding: '8px 12px',
+                    borderRadius: 3,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    boxShadow: '0 2px 8px rgba(220, 38, 38, 0.25)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 20, animation: 'ping 1.5s infinite' }}>warning</span>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.03em' }}>
+                        CRITICAL ANOMALY ACTIVE: {activeAnomalyName || 'TELEMETRY EXCEEDED'}
+                      </div>
+                      <div style={{ fontSize: 9.5, color: '#fecaca' }}>
+                        Autonomous digital twin sensors registering live emergency deviations.
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const first = openAlerts[0]
+                        if (first) {
+                          ackAlert({ alertId: first.alert_id, note: 'Duty Officer Acknowledged on Map' })
+                        }
+                      }}
+                      disabled={isAckPending}
+                      style={{
+                        background: '#ffffff',
+                        color: '#991b1b',
+                        border: 'none',
+                        padding: '4px 8px',
+                        borderRadius: 2,
+                        fontSize: 9,
+                        fontWeight: 900,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 3,
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 12 }}>done</span>
+                      <span>{isAckPending ? 'Acking...' : 'Ack Alert'}</span>
+                    </button>
+                    <span style={{ background: '#000000', padding: '2px 8px', borderRadius: 2, fontSize: 9, fontWeight: 800 }}>
+                      ACTIVE
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {/* Short 1-Line Description Box */}
               <div
                 style={{
                   background: '#ffffff',
                   border: '1px solid #e2e8f0',
-                  borderLeft: '3px solid #0284c7',
+                  borderLeft: isPartAffectedByOpenAlerts(selectedPart.id, openAlerts, activeAnomalyId) ? '3px solid #dc2626' : '3px solid #0284c7',
                   borderRadius: 3,
                   padding: '6px 9px',
                   fontSize: 10,
@@ -1381,7 +1810,12 @@ export default function SchematicPanel({ stationId }: Props) {
                 color: '#64748b',
               }}
             >
-              <span>Himantar Digital Twin • Health: <strong style={{ color: '#16a34a' }}>{selectedPart.healthScore}% Nominal</strong></span>
+              <span>
+                Himantar Digital Twin • Health:{' '}
+                <strong style={{ color: isPartAffectedByAnomaly(selectedPart.id, activeAnomalyId) ? '#dc2626' : '#16a34a' }}>
+                  {selectedPart.healthScore}% {isPartAffectedByAnomaly(selectedPart.id, activeAnomalyId) ? 'CRITICAL / DEGRADED' : 'Nominal'}
+                </strong>
+              </span>
               <button
                 type="button"
                 onClick={() => setSelectedPartId(null)}

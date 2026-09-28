@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStation } from '../context/StationContext'
+import { useQuery } from '@tanstack/react-query'
+import { getBlackBoxIncidents, type BlackBoxIncidentItem } from '../api/hq'
 import {
   AreaChart,
   Area,
@@ -131,15 +133,56 @@ function generate10HourReplay(stationId: StationId, anomalyId?: string): Telemet
 export default function BlackBoxPage() {
   const navigate = useNavigate()
   const { stationId, setStationId, isOnline, edgeBufferCount, flushEdgeBuffer, lastAnomalyResult } = useStation()
-  const [selectedMode, setSelectedMode] = useState<'historical' | 'injected'>(() => {
+  const [selectedCustomIncident, setSelectedCustomIncident] = useState<BlackBoxIncidentItem | null>(null)
+  const [selectedMode, setSelectedMode] = useState<'historical' | 'injected' | 'custom'>(() => {
     return lastAnomalyResult ? 'injected' : 'historical'
   })
+  const [flushNotice, setFlushNotice] = useState<string | null>(null)
+  const [isFlushing, setIsFlushing] = useState<boolean>(false)
+
+  const { data: bbData } = useQuery({
+    queryKey: ['blackbox-incidents', stationId],
+    queryFn: () => getBlackBoxIncidents(stationId),
+    refetchInterval: 3000,
+  })
+
+  const backendIncidents = bbData?.incidents ?? []
+
+  async function handleFlush() {
+    setIsFlushing(true)
+    try {
+      const res = await flushEdgeBuffer()
+      if (res) {
+        setFlushNotice(`✅ Flushed & Synchronized ${res.flushed_frames_count} Edge Frames to Cloud DB! VSAT Link Restored.`)
+        // Auto-select latest flushed incident if returned
+        if (res.incident_id) {
+          const match = backendIncidents.find((i) => i.id === res.incident_id)
+          if (match) setSelectedCustomIncident(match)
+          setSelectedMode('custom')
+        }
+        setPlayheadOffset(0.0)
+      }
+    } finally {
+      setIsFlushing(false)
+    }
+  }
+
   const [playheadOffset, setPlayheadOffset] = useState<number>(0.0) // default to Blackout Event (T=0)
   const [isPlaying, setIsPlaying] = useState<boolean>(false)
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1)
   const playTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const incident: IncidentConfig = useMemo(() => {
+    if (selectedMode === 'custom' && selectedCustomIncident) {
+      return {
+        id: selectedCustomIncident.id,
+        stationId: (selectedCustomIncident.station_id || stationId) as StationId,
+        stationName: (selectedCustomIncident.station_id || stationId) === 'maitri' ? 'Maitri Research Station' : 'Bharati Research Station',
+        incidentName: `${selectedCustomIncident.title} (${selectedCustomIncident.severity})`,
+        incidentDate: `${new Date(selectedCustomIncident.incident_timestamp).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}, ${new Date(selectedCustomIncident.incident_timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })} IST • Flushed Edge Incident`,
+        sitrepNumber: selectedCustomIncident.sitrep_number,
+      }
+    }
     if (selectedMode === 'injected' && lastAnomalyResult) {
       return {
         id: lastAnomalyResult.incident_id || 'BB-INJECTED-ANM',
@@ -151,10 +194,10 @@ export default function BlackBoxPage() {
       }
     }
     return INCIDENTS[stationId]
-  }, [selectedMode, lastAnomalyResult, stationId])
+  }, [selectedMode, selectedCustomIncident, lastAnomalyResult, stationId])
 
   const telemetryData = useMemo(() => {
-    const anomId = selectedMode === 'injected' ? lastAnomalyResult?.anomaly_id : undefined
+    const anomId = selectedMode === 'injected' ? lastAnomalyResult?.anomaly_id : selectedMode === 'custom' ? 'generator_failure' : undefined
     return generate10HourReplay(stationId, anomId)
   }, [stationId, selectedMode, lastAnomalyResult])
 
@@ -330,7 +373,8 @@ export default function BlackBoxPage() {
               </div>
             </div>
             <button
-              onClick={() => flushEdgeBuffer()}
+              onClick={handleFlush}
+              disabled={isFlushing}
               style={{
                 background: '#dc2626',
                 color: '#ffffff',
@@ -338,11 +382,37 @@ export default function BlackBoxPage() {
                 padding: '5px 12px',
                 fontSize: 10.5,
                 fontWeight: 800,
-                cursor: 'pointer',
+                cursor: isFlushing ? 'wait' : 'pointer',
                 borderRadius: 2,
               }}
             >
-              ⚡ RESTORE LINK &amp; FLUSH ({edgeBufferCount} FRAMES)
+              {isFlushing ? 'RECONNECTING & FLUSHING...' : `⚡ RESTORE LINK & FLUSH (${edgeBufferCount} FRAMES)`}
+            </button>
+          </div>
+        )}
+
+        {/* Flush Confirmation Banner */}
+        {flushNotice && (
+          <div
+            style={{
+              background: '#f0fdf4',
+              border: '1px solid #bbf7d0',
+              borderLeft: '5px solid #16a34a',
+              padding: '8px 14px',
+              marginBottom: 10,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              fontSize: 11,
+              color: '#166534',
+            }}
+          >
+            <span>{flushNotice}</span>
+            <button
+              onClick={() => setFlushNotice(null)}
+              style={{ background: 'none', border: 'none', color: '#166534', cursor: 'pointer', fontWeight: 800 }}
+            >
+              ✕
             </button>
           </div>
         )}
@@ -481,6 +551,33 @@ export default function BlackBoxPage() {
                 <span style={{ fontSize: 9, background: '#ef4444', color: '#fff', padding: '1px 5px', borderRadius: 2 }}>LIVE</span>
               </button>
             )}
+
+            {backendIncidents.map((inc) => (
+              <button
+                key={inc.id}
+                onClick={() => {
+                  setSelectedCustomIncident(inc)
+                  setSelectedMode('custom')
+                  setPlayheadOffset(0.0)
+                }}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: 11,
+                  fontWeight: 900,
+                  cursor: 'pointer',
+                  background: selectedMode === 'custom' && selectedCustomIncident?.id === inc.id ? '#991b1b' : '#fef2f2',
+                  color: selectedMode === 'custom' && selectedCustomIncident?.id === inc.id ? '#ffffff' : '#991b1b',
+                  border: '1px solid #fecaca',
+                  borderRadius: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                }}
+              >
+                <span>📦 {inc.title.length > 25 ? `${inc.title.slice(0, 25)}...` : inc.title}</span>
+                <span style={{ fontSize: 9, background: '#ef4444', color: '#fff', padding: '1px 5px', borderRadius: 2 }}>{inc.severity}</span>
+              </button>
+            ))}
           </div>
 
           {/* Right: Return to Operations Button */}

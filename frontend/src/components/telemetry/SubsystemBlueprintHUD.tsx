@@ -5,6 +5,10 @@ interface Props {
   fuelPressureBar: number
   coolantTempC: number
   habitatTempC: number
+  isOnline?: boolean
+  smokeDensity?: number
+  coPpm?: number
+  anomalyTitle?: string
 }
 
 export default function SubsystemBlueprintHUD({
@@ -14,20 +18,26 @@ export default function SubsystemBlueprintHUD({
   fuelPressureBar,
   coolantTempC,
   habitatTempC,
+  isOnline = true,
+  smokeDensity = 0.02,
+  coPpm = 2.0,
+  anomalyTitle,
 }: Props) {
   const stationLabel = stationId === 'maitri' ? 'Maitri Research Station' : 'Bharati Research Station'
+  const isFireAlert = smokeDensity > 0.1 || habitatTempC > 50
+  const isAlertActive = isBlackBox || Boolean(anomalyTitle) || isFireAlert
 
   return (
     <div
       style={{
-        background: isBlackBox
+        background: isAlertActive
           ? 'linear-gradient(180deg, #1f0a0a 0%, #0c0404 100%)'
           : 'linear-gradient(180deg, #09192f 0%, #06101e 100%)',
-        border: isBlackBox ? '2px solid #ef4444' : '1px solid #1e3a5f',
+        border: isAlertActive ? '2px solid #ef4444' : '1px solid #1e3a5f',
         padding: '12px 14px',
         marginBottom: 12,
         borderRadius: 3,
-        boxShadow: isBlackBox
+        boxShadow: isAlertActive
           ? '0 0 25px rgba(239, 68, 68, 0.35), inset 0 0 15px rgba(239, 68, 68, 0.15)'
           : '0 2px 8px rgba(0, 0, 0, 0.25)',
         transition: 'all 0.3s ease',
@@ -40,7 +50,7 @@ export default function SubsystemBlueprintHUD({
         style={{
           position: 'absolute',
           inset: 0,
-          backgroundImage: isBlackBox
+          backgroundImage: isAlertActive
             ? 'linear-gradient(rgba(239, 68, 68, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(239, 68, 68, 0.05) 1px, transparent 1px)'
             : 'linear-gradient(rgba(56, 189, 248, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(56, 189, 248, 0.04) 1px, transparent 1px)',
           backgroundSize: '24px 24px',
@@ -48,8 +58,8 @@ export default function SubsystemBlueprintHUD({
         }}
       />
 
-      {/* Emergency Siren Ribbon during Black Box Mode */}
-      {isBlackBox && (
+      {/* Emergency Siren Ribbon during Anomaly or Black Box Mode */}
+      {isAlertActive && (
         <div
           style={{
             background: 'repeating-linear-gradient(45deg, #b91c1c, #b91c1c 12px, #7f1d1d 12px, #7f1d1d 24px)',
@@ -64,16 +74,21 @@ export default function SubsystemBlueprintHUD({
             letterSpacing: '0.06em',
             borderRadius: 2,
             boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+            animation: 'pulse 2s infinite',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span className="material-symbols-outlined" style={{ fontSize: 18, animation: 'ping 1s infinite' }}>
               fmd_bad
             </span>
-            <span>🚨 BLACK-BOX EMERGENCY REPLAY: CRITICAL SUBSYSTEM FAILURE LOCKED</span>
+            <span>
+              {isBlackBox
+                ? '🚨 BLACK-BOX EMERGENCY REPLAY: CRITICAL SUBSYSTEM FAILURE LOCKED'
+                : `🚨 LIVE ANOMALY DETECTED: ${(anomalyTitle || 'CRITICAL ANOMALOUS TELEMETRY').toUpperCase()} — SENSORS ACTIVELY RESPONDING`}
+            </span>
           </div>
           <span style={{ background: '#000000', padding: '2px 8px', borderRadius: 2, fontSize: 9.5 }}>
-            UNCOMPRESSED 1Hz TELEMETRY BUFFER
+            {isBlackBox ? 'UNCOMPRESSED 1Hz TELEMETRY BUFFER' : '🔴 LIVE HIGH-FREQUENCY STREAM'}
           </span>
         </div>
       )}
@@ -95,8 +110,27 @@ export default function SubsystemBlueprintHUD({
           </span>
         </div>
 
-        <div style={{ fontSize: 9.5, color: '#94a3b8', fontFamily: 'monospace' }}>
-          SCADA BUS: <span style={{ color: isBlackBox ? '#ef4444' : '#38bdf8', fontWeight: 800 }}>{isBlackBox ? 'FAULT PROPAGATING' : 'SYNCHRONIZED'}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {anomalyTitle && (
+            <span
+              style={{
+                fontSize: 9.5,
+                background: 'rgba(239, 68, 68, 0.18)',
+                border: '1px solid #ef4444',
+                color: '#fca5a5',
+                padding: '2px 8px',
+                borderRadius: 2,
+                fontWeight: 800,
+                letterSpacing: '0.04em',
+                animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              }}
+            >
+              ⚠ INJECTED: {anomalyTitle}
+            </span>
+          )}
+          <div style={{ fontSize: 9.5, color: '#94a3b8', fontFamily: 'monospace' }}>
+            SCADA BUS: <span style={{ color: isBlackBox ? '#ef4444' : '#38bdf8', fontWeight: 800 }}>{isBlackBox ? 'FAULT PROPAGATING' : 'SYNCHRONIZED'}</span>
+          </div>
         </div>
       </div>
 
@@ -212,11 +246,19 @@ export default function SubsystemBlueprintHUD({
           </div>
         </div>
 
-        {/* Node 4: Habitat Living Quarters */}
+        {/* Node 4: Habitat / Fire & Safety Module */}
         <div
           style={{
-            background: isBlackBox && habitatTempC < 18 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(15, 39, 68, 0.6)',
-            border: isBlackBox && habitatTempC < 18 ? '2px solid #ef4444' : '1px solid #1e3a5f',
+            background: isFireAlert
+              ? 'rgba(239, 68, 68, 0.25)'
+              : isBlackBox && habitatTempC < 18
+              ? 'rgba(239, 68, 68, 0.2)'
+              : 'rgba(15, 39, 68, 0.6)',
+            border: isFireAlert
+              ? '2px solid #ef4444'
+              : isBlackBox && habitatTempC < 18
+              ? '2px solid #ef4444'
+              : '1px solid #1e3a5f',
             padding: '8px 10px',
             borderRadius: 2,
             transition: 'all 0.3s ease',
@@ -224,33 +266,33 @@ export default function SubsystemBlueprintHUD({
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: 9, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase' }}>NODE 04</span>
-            <span className="material-symbols-outlined" style={{ fontSize: 14, color: isBlackBox && habitatTempC < 18 ? '#ef4444' : '#c084fc' }}>
-              roofing
+            <span className="material-symbols-outlined" style={{ fontSize: 14, color: isFireAlert ? '#ef4444' : isBlackBox && habitatTempC < 18 ? '#ef4444' : '#c084fc' }}>
+              {isFireAlert ? 'local_fire_department' : 'roofing'}
             </span>
           </div>
           <div style={{ fontSize: 11, fontWeight: 900, color: '#ffffff', marginTop: 2 }}>
-            Living Quarters
+            {isFireAlert ? '🔥 Smoke / Fire Array' : 'Living Quarters'}
           </div>
-          <div style={{ fontSize: 14, fontWeight: 900, color: isBlackBox && habitatTempC < 18 ? '#f87171' : '#e879f9', marginTop: 2 }}>
-            +{habitatTempC}°C
+          <div style={{ fontSize: 14, fontWeight: 900, color: isFireAlert ? '#f87171' : isBlackBox && habitatTempC < 18 ? '#f87171' : '#e879f9', marginTop: 2 }}>
+            {isFireAlert ? `${smokeDensity} obs/m` : `+${habitatTempC}°C`}
           </div>
           <div
             style={{
               fontSize: 8.5,
               fontWeight: 800,
-              color: isBlackBox && habitatTempC < 18 ? '#fca5a5' : '#86efac',
+              color: isFireAlert ? '#fca5a5' : isBlackBox && habitatTempC < 18 ? '#fca5a5' : '#86efac',
               marginTop: 2,
             }}
           >
-            {isBlackBox && habitatTempC < 18 ? '⚠️ HYPOTHERMIA RISK' : '● WARM (+21°C)'}
+            {isFireAlert ? `⚠️ CO: ${coPpm} ppm (ALARM)` : isBlackBox && habitatTempC < 18 ? '⚠️ HYPOTHERMIA RISK' : '● WARM (+21°C)'}
           </div>
         </div>
 
         {/* Node 5: VSAT Satellite Radome */}
         <div
           style={{
-            background: 'rgba(15, 39, 68, 0.6)',
-            border: '1px solid #1e3a5f',
+            background: !isOnline ? 'rgba(239, 68, 68, 0.25)' : 'rgba(15, 39, 68, 0.6)',
+            border: !isOnline ? '2px solid #ef4444' : '1px solid #1e3a5f',
             padding: '8px 10px',
             borderRadius: 2,
             transition: 'all 0.3s ease',
@@ -258,18 +300,18 @@ export default function SubsystemBlueprintHUD({
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: 9, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase' }}>NODE 05</span>
-            <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#38bdf8' }}>
-              satellite_alt
+            <span className="material-symbols-outlined" style={{ fontSize: 14, color: !isOnline ? '#ef4444' : '#38bdf8' }}>
+              {!isOnline ? 'cloud_off' : 'satellite_alt'}
             </span>
           </div>
           <div style={{ fontSize: 11, fontWeight: 900, color: '#ffffff', marginTop: 2 }}>
             ISRO GSAT-30
           </div>
-          <div style={{ fontSize: 14, fontWeight: 900, color: '#38bdf8', marginTop: 2 }}>
-            584 ms
+          <div style={{ fontSize: 14, fontWeight: 900, color: !isOnline ? '#f87171' : '#38bdf8', marginTop: 2 }}>
+            {!isOnline ? 'TIMEOUT' : '584 ms'}
           </div>
-          <div style={{ fontSize: 8.5, fontWeight: 800, color: '#86efac', marginTop: 2 }}>
-            ● LINK SYNCED
+          <div style={{ fontSize: 8.5, fontWeight: 800, color: !isOnline ? '#fca5a5' : '#86efac', marginTop: 2 }}>
+            {!isOnline ? '🔴 SEVERED (BUFFERING)' : '● LINK SYNCED'}
           </div>
         </div>
       </div>

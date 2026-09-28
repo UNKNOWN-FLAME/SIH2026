@@ -164,6 +164,11 @@ body {
   min-width: 0;
 }
 
+.bento-side-stack > * {
+  min-width: 0;
+  flex-shrink: 0;
+}
+
 .bento-bottom-card {
   grid-column: span 4;
   min-width: 0;

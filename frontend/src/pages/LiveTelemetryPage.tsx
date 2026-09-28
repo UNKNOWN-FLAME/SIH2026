@@ -5,6 +5,7 @@ import AlertStrip from '../components/layout/AlertStrip'
 import Sidebar from '../components/layout/Sidebar'
 import Footer from '../components/layout/Footer'
 import { useLanguage } from '../context/LanguageContext'
+import { useStation } from '../context/StationContext'
 import {
   AreaChart,
   Area,
@@ -16,9 +17,11 @@ import {
   ReferenceArea,
 } from 'recharts'
 
-import { triggerCompressionRollup } from '../api/hq'
+import { triggerCompressionRollup, type AnomalyInjectionResult } from '../api/hq'
 import SubsystemBlueprintHUD from '../components/telemetry/SubsystemBlueprintHUD'
 import ArchivedGazetteModal from '../components/telemetry/ArchivedGazetteModal'
+import { useAlerts } from '../hooks/useAlerts'
+import AnomalyInjector from '../components/dashboard/AnomalyInjector'
 
 type StationId = 'maitri' | 'bharati'
 
@@ -47,6 +50,8 @@ interface TelemetryPoint {
   coolantTempC: number
   habitatTempC: number
   vibrationRms: number
+  smokeDensityObsM?: number
+  coPpm?: number
   isBlackBox: boolean
 }
 
@@ -93,7 +98,11 @@ const INCIDENTS: Record<StationId, BlackBoxIncident> = {
 
 // ── Synthetic 7-Day Telemetry Generator ────────────────────────────────────────
 
-function generate7DayTelemetry(stationId: StationId, incident: BlackBoxIncident): TelemetryPoint[] {
+function generate7DayTelemetry(
+  stationId: StationId,
+  incident: BlackBoxIncident,
+  lastAnomaly?: AnomalyInjectionResult | null,
+): TelemetryPoint[] {
   const points: TelemetryPoint[] = []
   const now = Date.now()
   const sevenDaysHours = 7 * 24 // 168 hours total
@@ -102,6 +111,9 @@ function generate7DayTelemetry(stationId: StationId, incident: BlackBoxIncident)
   const incTime = incident.incidentTimestamp
   const preStart = incTime - incident.preWindowMs
   const postEnd = incTime + incident.postWindowMs
+  const hasActiveAnomaly =
+    lastAnomaly &&
+    (lastAnomaly.station_id === stationId || !lastAnomaly.station_id)
 
   for (let h = -sevenDaysHours; h <= 0; h += stepHours) {
     const ptTime = now + h * 3600 * 1000
@@ -118,6 +130,8 @@ function generate7DayTelemetry(stationId: StationId, incident: BlackBoxIncident)
     let coolantTemp = 86
     let habitatTemp = 21.4
     let vibration = 1.2
+    let smokeDensity = 0.02
+    let coPpm = 2.0
 
     if (inBlackBox) {
       if (isAtOrAfterIncident) {
@@ -132,6 +146,53 @@ function generate7DayTelemetry(stationId: StationId, incident: BlackBoxIncident)
         fuelPressure = 3.1
         coolantTemp = 91.2
         vibration = 3.6
+      }
+    } else if (hasActiveAnomaly && h >= -3) {
+      // Dynamically injected anomaly active in current live telemetry window
+      const aid = lastAnomaly.anomaly_id
+      if (aid === 'fire_alarm') {
+        habitatTemp = 78.4
+        coolantTemp = 96.2
+        powerKw = 34.0
+        vibration = 3.8
+        smokeDensity = 0.88
+        coPpm = 48.5
+      } else if (aid === 'generator_failure') {
+        powerKw = 0.0
+        fuelPressure = 0.22
+        coolantTemp = 108.5
+        vibration = 6.4
+        habitatTemp = 16.2
+      } else if (aid === 'pressure_pipe_failure') {
+        fuelPressure = 0.12
+        habitatTemp = 8.5
+        vibration = 4.2
+      } else if (aid === 'fuel_critical_low') {
+        fuelPressure = 1.05
+        powerKw = 42.0
+      } else if (aid === 'earthquake' || aid === 'earthquake_swarm') {
+        vibration = 14.8
+        powerKw = 42.0
+        fuelPressure = 2.4
+      } else if (aid === 'blizzard' || aid === 'severe_blizzard') {
+        habitatTemp = 4.2
+        vibration = 7.4
+        powerKw = 98.0
+      } else if (aid === 'hvac_failure') {
+        habitatTemp = 3.8
+        coolantTemp = 94.0
+        powerKw = 62.0
+      } else if (aid === 'thunderstorm') {
+        vibration = 8.2
+        powerKw = 48.0
+        fuelPressure = 3.2
+      } else if (aid === 'wildlife_intrusion') {
+        vibration = 3.9
+      } else {
+        // General anomaly disturbance
+        powerKw *= 0.6
+        coolantTemp += 12.0
+        vibration = 4.8
       }
     } else {
       // Normal minor sinusoidal daily ripple
@@ -150,6 +211,8 @@ function generate7DayTelemetry(stationId: StationId, incident: BlackBoxIncident)
       coolantTempC: Number(coolantTemp.toFixed(1)),
       habitatTempC: Number(habitatTemp.toFixed(1)),
       vibrationRms: Number(vibration.toFixed(2)),
+      smokeDensityObsM: smokeDensity,
+      coPpm,
       isBlackBox: inBlackBox,
     })
   }
@@ -157,26 +220,124 @@ function generate7DayTelemetry(stationId: StationId, incident: BlackBoxIncident)
   return points
 }
 
-import { useStation } from '../context/StationContext'
-
 export default function LiveTelemetryPage() {
   const navigate = useNavigate()
   const { lang, t } = useLanguage()
-  const { stationId: activeStation, setStationId: setActiveStation } = useStation()
+  const {
+    stationId: activeStation,
+    setStationId: setActiveStation,
+    lastAnomalyResult,
+    setLastAnomalyResult,
+    isOnline,
+    edgeBufferCount,
+    flushEdgeBuffer,
+  } = useStation()
   const incident = INCIDENTS[activeStation]
 
-  // Telemetry data stream
-  const telemetryData = useMemo(() => generate7DayTelemetry(activeStation, incident), [activeStation, incident])
+  // Live query: fetch ALL alerts (open + acknowledged) so anomaly persists after ACK
+  const { data: allAlertsData } = useAlerts({ station_id: activeStation, page_size: 25 })
+  const allAlerts = useMemo(() => allAlertsData?.items ?? [], [allAlertsData?.items])
+  const openAlerts = useMemo(() => allAlerts.filter(a => a.ack_state === 'OPEN'), [allAlerts])
+  const hasOpenAlerts = openAlerts.length > 0
+  // Check if the anomaly alert has already been acknowledged (but event still happened)
+  const isAnomalyAcknowledged = useMemo(() => {
+    if (!lastAnomalyResult) return false
+    const matchingAlert = allAlerts.find(
+      (a) => a.alert_id === lastAnomalyResult.alert_id ||
+             a.alert_id === lastAnomalyResult.report_reference
+    )
+    return matchingAlert ? matchingAlert.ack_state === 'ACKNOWLEDGED' : !hasOpenAlerts && allAlerts.length > 0
+  }, [lastAnomalyResult, allAlerts, hasOpenAlerts])
+
+  // Active anomaly: persists from lastAnomalyResult (localStorage) even after ACK.
+  // Falls back to synthesizing from any alert (open OR acknowledged) in DB.
+  const activeAnomaly = useMemo(() => {
+    // 1. If explicit lastAnomalyResult matches current station — always show it
+    if (
+      lastAnomalyResult &&
+      (lastAnomalyResult.station_id === activeStation || !lastAnomalyResult.station_id)
+    ) {
+      return lastAnomalyResult
+    }
+
+    // 2. Fallback: synthesize from any alert (open or acknowledged) in DB for this station
+    const firstAlert = openAlerts[0] ?? allAlerts[0]
+    if (!firstAlert) return null
+
+    const desc = (firstAlert.description || '').toLowerCase()
+    const domain = (firstAlert.domain || '').toLowerCase()
+
+    let anomId = 'general_alert'
+    let anomName = firstAlert.description.slice(0, 40)
+    if (desc.includes('fire') || domain.includes('fire') || desc.includes('smoke')) {
+      anomId = 'fire_alarm'; anomName = 'Fire / Smoke Detection'
+    } else if (desc.includes('generator') || desc.includes('diesel') || domain.includes('power')) {
+      anomId = 'generator_failure'; anomName = 'Primary Generator Failure'
+    } else if (desc.includes('pipe') || desc.includes('water') || desc.includes('pressure')) {
+      anomId = 'pressure_pipe_failure'; anomName = 'Pressure Pipe Failure'
+    } else if (desc.includes('fuel') || desc.includes('tank')) {
+      anomId = 'fuel_critical_low'; anomName = 'Critical Fuel Low'
+    } else if (desc.includes('blizzard') || desc.includes('wind') || domain.includes('weather')) {
+      anomId = 'blizzard'; anomName = 'Polar Blizzard Event'
+    } else if (desc.includes('seismic') || desc.includes('quake') || domain.includes('seismic')) {
+      anomId = 'earthquake'; anomName = 'Seismic Ice-Quake'
+    } else if (desc.includes('hvac') || desc.includes('temp')) {
+      anomId = 'hvac_failure'; anomName = 'HVAC Thermal Loss'
+    } else if (desc.includes('vsat') || desc.includes('satellite') || desc.includes('comm')) {
+      anomId = 'vsat_link_loss'; anomName = 'VSAT Satellite Link Loss'
+    }
+
+    return {
+      status: 'injected_alert',
+      anomaly_id: anomId,
+      anomaly_name: anomName,
+      station_id: activeStation,
+      severity: firstAlert.severity,
+      category: firstAlert.domain,
+      description: firstAlert.description,
+      impacts: [],
+      recovery_steps: [],
+      injected_at: firstAlert.triggered_at,
+      report_reference: firstAlert.alert_id,
+      pdf_download_ready: false,
+      pdf_download_url: '',
+      simulation_note: 'Synthesized from live DB alert',
+      affected_subsystems: [firstAlert.domain],
+      link_state: 'UP',
+    } as AnomalyInjectionResult
+  }, [lastAnomalyResult, activeStation, openAlerts, allAlerts])
+
+  // Telemetry data stream incorporating active anomaly
+  const telemetryData = useMemo(
+    () => generate7DayTelemetry(activeStation, incident, activeAnomaly),
+    [activeStation, incident, activeAnomaly],
+  )
 
   // Scrubber index (0 to telemetryData.length - 1). Last index = LIVE.
   const [scrubberIndex, setScrubberIndex] = useState<number>(telemetryData.length - 1)
   const [isPlaying, setIsPlaying] = useState<boolean>(false)
   const [playSpeed, setPlaySpeed] = useState<1 | 10 | 60>(1)
 
-  // Modals & Panels
+  // Modals, Notifications & Flush State
   const [showForensicDrawer, setShowForensicDrawer] = useState<boolean>(false)
   const [showArchivalModal, setShowArchivalModal] = useState<boolean>(false)
   const [downloadSuccessMsg, setDownloadSuccessMsg] = useState<string | null>(null)
+  const [syncNotification, setSyncNotification] = useState<string | null>(null)
+  const [isFlushing, setIsFlushing] = useState<boolean>(false)
+
+  async function handleFlushBuffer() {
+    setIsFlushing(true)
+    try {
+      const res = await flushEdgeBuffer()
+      if (res) {
+        setSyncNotification(
+          `✅ VSAT Link Restored! Flushed ${res.flushed_frames_count} Edge Black Box frames to Cloud DB. Telemetry stream is fully synchronized.`
+        )
+      }
+    } finally {
+      setIsFlushing(false)
+    }
+  }
 
   // Current interpolated point
   const currentPoint = telemetryData[scrubberIndex] ?? telemetryData[telemetryData.length - 1]
@@ -204,6 +365,9 @@ export default function LiveTelemetryPage() {
   const displayedCoolant = Number((currentPoint.coolantTempC + (isLive ? liveJitter.coolant : 0)).toFixed(1))
   const displayedHabitat = Number((currentPoint.habitatTempC + (isLive ? liveJitter.habitat : 0)).toFixed(1))
   const displayedVibration = Number((currentPoint.vibrationRms + (isLive ? liveJitter.vibration : 0)).toFixed(2))
+  const isFireActive = activeAnomaly?.anomaly_id === 'fire_alarm'
+  const displayedSmoke = Number((currentPoint.smokeDensityObsM ?? (isFireActive ? 0.88 : 0.02)).toFixed(2))
+  const displayedCo = Number((currentPoint.coPpm ?? (isFireActive ? 48.5 : 2.0)).toFixed(1))
 
   // Playback timer loop
   const playTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -355,6 +519,9 @@ export default function LiveTelemetryPage() {
                   </button>
                 </div>
 
+                {/* Direct Simulation Injector Trigger */}
+                <AnomalyInjector activeStation={activeStation} />
+
                 <button
                   type="button"
                   onClick={handleRunRollup}
@@ -424,6 +591,208 @@ export default function LiveTelemetryPage() {
               </div>
             )}
 
+            {/* ═══════════ OUTAGE BUFFERING / RECONNECTION BANNER ═══════════ */}
+            {!isOnline && (
+              <div
+                style={{
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderLeft: '5px solid #dc2626',
+                  padding: '10px 14px',
+                  marginBottom: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 10,
+                  boxShadow: '0 1px 3px rgba(220,38,38,0.06)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 24, color: '#dc2626' }}>
+                    cloud_off
+                  </span>
+                  <div>
+                    <strong style={{ color: '#b91c1c', fontSize: 12 }}>
+                      VSAT SATELLITE LINK SEVERED — EDGE STORE-AND-FORWARD BUFFERING ACTIVE
+                    </strong>
+                    <div style={{ color: '#7f1d1d', fontSize: 10.5, marginTop: 2 }}>
+                      Telemetry packets are being encrypted with SHA-256 hash chaining into local Edge Black Box memory ({edgeBufferCount} frames queued).
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleFlushBuffer}
+                  disabled={isFlushing}
+                  style={{
+                    background: '#dc2626',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '6px 14px',
+                    fontSize: 10.5,
+                    fontWeight: 800,
+                    cursor: isFlushing ? 'wait' : 'pointer',
+                    borderRadius: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: 15 }}>bolt</span>
+                  <span>{isFlushing ? 'RECONNECTING & FLUSHING...' : `⚡ RESTORE LINK & FLUSH (${edgeBufferCount} FRAMES)`}</span>
+                </button>
+              </div>
+            )}
+
+            {/* Sync Notification Banner */}
+            {syncNotification && (
+              <div
+                style={{
+                  background: '#f0fdf4',
+                  border: '1px solid #bbf7d0',
+                  borderLeft: '5px solid #16a34a',
+                  padding: '8px 14px',
+                  marginBottom: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 8,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#166534', fontSize: 11 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#16a34a' }}>check_circle</span>
+                  <span>{syncNotification}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/blackbox')}
+                  style={{
+                    background: '#16a34a',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '4px 10px',
+                    fontSize: 10,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    borderRadius: 2,
+                  }}
+                >
+                  INSPECT IN BLACK BOX RECORDER ➡️
+                </button>
+              </div>
+            )}
+
+            {/* ═══════════ ACTIVE ANOMALY ALERT BANNER ═══════════ */}
+            {activeAnomaly && (
+              <div
+                style={{
+                  background: isAnomalyAcknowledged ? '#f0fdf4' : '#fff1f2',
+                  border: `1px solid ${isAnomalyAcknowledged ? '#bbf7d0' : '#fecdd3'}`,
+                  borderLeft: `5px solid ${isAnomalyAcknowledged ? '#16a34a' : '#e11d48'}`,
+                  padding: '10px 14px',
+                  marginBottom: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 10,
+                  boxShadow: isAnomalyAcknowledged ? '0 1px 3px rgba(22,163,74,0.08)' : '0 1px 3px rgba(225,29,72,0.08)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 22 }}>
+                    {isAnomalyAcknowledged ? '✅' : activeAnomaly.anomaly_id === 'fire_alarm' ? '🔥' : '🚨'}
+                  </span>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <strong style={{ color: isAnomalyAcknowledged ? '#166534' : '#9f1239', fontSize: 12 }}>
+                        {isAnomalyAcknowledged
+                          ? `ANOMALY ACKNOWLEDGED — TELEMETRY IMPACT STILL ACTIVE: ${activeAnomaly.anomaly_name.toUpperCase()}`
+                          : `LIVE ANOMALY PROPAGATION: ${activeAnomaly.anomaly_name.toUpperCase()}`}
+                      </strong>
+                      <span style={{
+                        background: isAnomalyAcknowledged ? '#16a34a' : '#e11d48',
+                        color: '#ffffff',
+                        fontSize: 9,
+                        fontWeight: 900,
+                        padding: '1px 5px',
+                        borderRadius: 2,
+                      }}>
+                        {isAnomalyAcknowledged ? 'ACKNOWLEDGED' : activeAnomaly.severity}
+                      </span>
+                      {!isAnomalyAcknowledged && (
+                        <span style={{ background: '#e11d48', color: '#ffffff', fontSize: 9, fontWeight: 900, padding: '1px 5px', borderRadius: 2 }}>
+                          {activeAnomaly.severity}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ color: isAnomalyAcknowledged ? '#166534' : '#881337', fontSize: 10.5, marginTop: 2 }}>
+                      {isAnomalyAcknowledged
+                        ? `Alert acknowledged by duty officer. Sensor readings remain impacted — charts & gauges reflect ongoing anomaly. Clear simulation when event is resolved.`
+                        : activeAnomaly.anomaly_id === 'fire_alarm'
+                          ? '🔥 Smoke & Fire Detection Array Triggered (FIR-001) • Smoke: 0.88 obs/m (ALARM) • CO: 48.5 ppm • Temp: 78.4°C'
+                          : activeAnomaly.description}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {!isAnomalyAcknowledged && (
+                    <button
+                      type="button"
+                      onClick={() => navigate('/infrastructure')}
+                      style={{
+                        background: '#9f1239',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '4px 10px',
+                        fontSize: 10,
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        borderRadius: 2,
+                      }}
+                    >
+                      🏢 IoT SENSORS
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => navigate('/blackbox')}
+                    style={{
+                      background: '#0b3b60',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '4px 10px',
+                      fontSize: 10,
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      borderRadius: 2,
+                    }}
+                  >
+                    📼 BLACK BOX RECORDER
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLastAnomalyResult(null)}
+                    title="Clear the anomaly simulation — telemetry will return to normal baseline"
+                    style={{
+                      background: isAnomalyAcknowledged ? '#166534' : '#374151',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '4px 10px',
+                      fontSize: 10,
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      borderRadius: 2,
+                    }}
+                  >
+                    ✕ CLEAR SIMULATION
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* ═══════════ STATION SUBSYSTEM BLUEPRINT HUD ═══════════ */}
             <SubsystemBlueprintHUD
               stationId={activeStation}
@@ -432,6 +801,10 @@ export default function LiveTelemetryPage() {
               fuelPressureBar={displayedFuel}
               coolantTempC={displayedCoolant}
               habitatTempC={displayedHabitat}
+              isOnline={isOnline}
+              smokeDensity={displayedSmoke}
+              coPpm={displayedCo}
+              anomalyTitle={activeAnomaly?.anomaly_name}
             />
 
             {/* ═══════════ MAIN DVR TIME-MACHINE CONTROLLER ═══════════ */}
@@ -464,23 +837,45 @@ export default function LiveTelemetryPage() {
                 {/* State Indicator Badge */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   {isLive ? (
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        background: '#dcfce7',
-                        border: '1px solid #86efac',
-                        padding: '4px 10px',
-                        borderRadius: 2,
-                        fontSize: 10.5,
-                        fontWeight: 900,
-                        color: '#166534',
-                      }}
-                    >
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#16a34a', animation: 'ping 1.5s infinite' }} />
-                      <span>🔴 LIVE STREAM (SYNCED)</span>
-                    </div>
+                    activeAnomaly ? (
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          background: '#fef2f2',
+                          border: '1.5px solid #ef4444',
+                          padding: '4px 10px',
+                          borderRadius: 2,
+                          fontSize: 10.5,
+                          fontWeight: 900,
+                          color: '#b91c1c',
+                          animation: 'pulse 1.5s infinite',
+                          boxShadow: '0 0 10px rgba(239, 68, 68, 0.3)',
+                        }}
+                      >
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#dc2626' }} />
+                        <span>🚨 LIVE ANOMALY DETECTED: {activeAnomaly.anomaly_name.toUpperCase()}</span>
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          background: '#dcfce7',
+                          border: '1px solid #86efac',
+                          padding: '4px 10px',
+                          borderRadius: 2,
+                          fontSize: 10.5,
+                          fontWeight: 900,
+                          color: '#166534',
+                        }}
+                      >
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#16a34a', animation: 'ping 1.5s infinite' }} />
+                        <span>🔴 LIVE STREAM (SYNCED)</span>
+                      </div>
+                    )
                   ) : isInBlackBoxZone ? (
                     <div
                       style={{
@@ -681,7 +1076,13 @@ export default function LiveTelemetryPage() {
                     <span>D-3</span>
                     <span>D-2</span>
                     <span>Yesterday</span>
-                    <span style={{ color: '#16a34a', fontWeight: 900 }}>NOW (LIVE) 🟢</span>
+                    {activeAnomaly ? (
+                      <span style={{ color: '#dc2626', fontWeight: 900, animation: 'pulse 1.5s infinite' }}>
+                        NOW (⚠️ ANOMALY LIVE) 🔴
+                      </span>
+                    ) : (
+                      <span style={{ color: '#16a34a', fontWeight: 900 }}>NOW (LIVE) 🟢</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -890,6 +1291,33 @@ export default function LiveTelemetryPage() {
                   {displayedVibration > 4.0 ? '⚠️ MECHANICAL CAVITATION' : '● SMOOTH ROTATION'}
                 </div>
               </div>
+
+              {/* Metric 6: Smoke & Fire Array (FIR-001) */}
+              <div
+                style={{
+                  background: displayedSmoke > 0.05 ? '#fff1f2' : '#ffffff',
+                  border: displayedSmoke > 0.05 ? '1px solid #fecdd3' : '1px solid #cbd5e1',
+                  borderLeft: displayedSmoke > 0.05 ? '4px solid #dc2626' : '4px solid #16a34a',
+                  padding: 10,
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                  animation: displayedSmoke > 0.05 ? 'pulse 2s infinite' : 'none',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                  <span style={{ fontSize: 9.5, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                    Smoke / Fire Array (FIR-001)
+                  </span>
+                  <span className="material-symbols-outlined" style={{ fontSize: 15, color: displayedSmoke > 0.05 ? '#dc2626' : '#16a34a' }}>
+                    {displayedSmoke > 0.05 ? 'local_fire_department' : 'detector_status'}
+                  </span>
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: displayedSmoke > 0.05 ? '#dc2626' : '#0f172a' }}>
+                  {displayedSmoke} <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>obs/m</span>
+                </div>
+                <div style={{ fontSize: 9, color: displayedSmoke > 0.05 ? '#b91c1c' : '#16a34a', fontWeight: 700, marginTop: 2 }}>
+                  {displayedSmoke > 0.05 ? `🔥 SMOKE DETECTED • CO: ${displayedCo} ppm` : '● 24/24 DETECTORS CLEAR'}
+                </div>
+              </div>
             </div>
 
             {/* ═══════════ MULTI-METRIC TELEMETRY WAVEFORM (RECHARTS) ═══════════ */}
@@ -949,6 +1377,18 @@ export default function LiveTelemetryPage() {
                       contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 2, fontSize: 11, color: '#ffffff' }}
                       formatter={(val: any, name: any) => [val, name === 'powerKw' ? 'Grid Power (kW)' : 'Fuel Press. (Bar)']}
                     />
+
+                    {/* Live Injected Anomaly Window highlight */}
+                    {activeAnomaly && (
+                      <ReferenceArea
+                        x1={telemetryData[Math.max(0, telemetryData.length - 4)]?.timeLabel}
+                        x2={telemetryData[telemetryData.length - 1]?.timeLabel}
+                        fill="#fee2e2"
+                        fillOpacity={0.65}
+                        stroke="#dc2626"
+                        strokeDasharray="2 2"
+                      />
+                    )}
 
                     {/* Black Box Incident highlight area */}
                     {incidentPoint && (

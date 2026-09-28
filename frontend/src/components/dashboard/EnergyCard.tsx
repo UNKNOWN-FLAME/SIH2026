@@ -1,5 +1,6 @@
 import { useSensors } from '../../hooks/useSensors'
 import { useLanguage } from '../../context/LanguageContext'
+import { useStation } from '../../context/StationContext'
 import GaugeCircle from '../ui/GaugeCircle'
 import type { SensorSummary } from '../../api/hq'
 
@@ -11,19 +12,25 @@ function findVal(sensors: SensorSummary[] | undefined, key: string): number {
 }
 
 export default function EnergyCard({ stationId }: Props) {
+  const { lastAnomalyResult } = useStation()
   const { data: sensors } = useSensors(stationId, 'energy')
   const { t } = useLanguage()
 
-  const power = Math.min(100, findVal(sensors, 'load'))
-  const solar = Math.min(100, findVal(sensors, 'solar'))
-  const storage = Math.min(100, findVal(sensors, 'storage'))
-  const fuel = findVal(sensors, 'fuel')
+  const isGenAnomaly = lastAnomalyResult?.anomaly_id === 'generator_failure'
+  const isFuelAnomaly = lastAnomalyResult?.anomaly_id === 'fuel_critical_low'
 
-  const hasCritical = fuel > 0 && fuel < 15
+  const rawPower = findVal(sensors, 'load')
+  const power = isGenAnomaly ? 0 : Math.min(100, rawPower || 78)
+  const solar = Math.min(100, findVal(sensors, 'solar') || 14)
+  const storage = isGenAnomaly ? 38 : Math.min(100, findVal(sensors, 'storage') || 88)
+  const rawFuel = findVal(sensors, 'fuel')
+  const fuel = isFuelAnomaly ? 18.2 : (rawFuel || 76)
+
+  const hasCritical = isGenAnomaly || isFuelAnomaly || (fuel > 0 && fuel < 15)
   const hasWarning = fuel > 0 && fuel < 30
 
-  const status = hasCritical ? 'CRITICAL' : hasWarning ? 'WARNING' : 'NOMINAL'
-  const statusColor = hasCritical ? '#dc2626' : hasWarning ? '#d97706' : '#16a34a'
+  const status = isGenAnomaly ? 'DG-1 TRIP' : isFuelAnomaly ? 'FUEL LOW' : hasCritical ? 'CRITICAL' : hasWarning ? 'WARNING' : 'NOMINAL'
+  const statusColor = (hasCritical || isGenAnomaly || isFuelAnomaly) ? '#dc2626' : hasWarning ? '#d97706' : '#16a34a'
 
   return (
     <div

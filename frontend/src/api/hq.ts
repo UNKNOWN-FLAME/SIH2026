@@ -694,6 +694,7 @@ export interface SyncBufferResponse {
   chain_verified: boolean
   sha256_verification?: string
   station_id: string
+  incident_id?: string
   message: string
 }
 

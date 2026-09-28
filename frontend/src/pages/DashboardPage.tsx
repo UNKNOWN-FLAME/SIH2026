@@ -201,7 +201,7 @@ export default function DashboardPage() {
                 <GroundLinkCard stationId={activeStation} />
                 <WeatherCard stationId={activeStation} />
                 <EnergyCard stationId={activeStation} />
-                <ActiveAlerts stationId={activeStation} />
+                <ActiveAlerts key={activeStation} stationId={activeStation} />
               </div>
 
               {/* ── Bottom Row ── */}
