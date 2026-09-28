@@ -13,6 +13,7 @@ import GlacialCard from '../components/dashboard/GlacialCard'
 import SeismicCard from '../components/dashboard/SeismicCard'
 import GroundLinkCard from '../components/dashboard/GroundLinkCard'
 import EmergencyWarningModal from '../components/dashboard/EmergencyWarningModal'
+import ActiveAnomalyBanner from '../components/dashboard/ActiveAnomalyBanner'
 import { useLanguage } from '../context/LanguageContext'
 import { useStation } from '../context/StationContext'
 
@@ -139,6 +140,9 @@ export default function DashboardPage() {
               timeRange={timeRange}
               onTimeRange={setTimeRange}
             />
+
+            {/* Live Active Anomaly Alert & Action Banner */}
+            <ActiveAnomalyBanner />
 
             {/* Bento Grid */}
             <div className="bento-grid">

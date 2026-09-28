@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStation } from '../../context/StationContext'
+import { getCardAnomalyImpact } from '../../utils/anomalyImpact'
 
 interface Props {
   stationId: string
@@ -10,7 +11,10 @@ interface Props {
 export default function GroundLinkCard({ stationId }: Props) {
   const navigate = useNavigate()
   const { lang } = useLanguage()
-  const { isOnline, edgeBufferCount, toggleLinkState, flushEdgeBuffer } = useStation()
+  const { isOnline, edgeBufferCount, toggleLinkState, flushEdgeBuffer, lastAnomalyResult } = useStation()
+
+  const anomalyImpact = getCardAnomalyImpact('groundlink', lastAnomalyResult, stationId)
+  const isInfected = Boolean(anomalyImpact?.isInfected)
 
   // Real-time link state directly from global StationContext
   const [isSyncing, setIsSyncing] = useState(false)
@@ -55,43 +59,70 @@ export default function GroundLinkCard({ stationId }: Props) {
     <div
       style={{
         background: '#ffffff',
-        border: '1px solid #cbd5e1',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.06)',
+        border: isInfected ? '1.5px solid rgba(239, 68, 68, 0.45)' : '1px solid #cbd5e1',
+        boxShadow: isInfected
+          ? '0 0 10px rgba(239, 68, 68, 0.12)'
+          : '0 1px 3px 0 rgba(0, 0, 0, 0.06)',
         display: 'flex',
         flexDirection: 'column',
+        position: 'relative',
+        transition: 'all 0.25s ease',
       }}
     >
       {/* Official Government Card Header Strip */}
       <div
         style={{
           background: '#0b3b60',
-          borderBottom: '2px solid #ff9933',
+          borderBottom: isInfected ? '2px solid #ef4444' : '2px solid #ff9933',
           padding: '6px 12px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          transition: 'all 0.25s ease',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span className="material-symbols-outlined" style={{ fontSize: 15, color: '#ff9933' }}>
-            satellite_alt
+          <span
+            className="material-symbols-outlined"
+            style={{
+              fontSize: 15,
+              color: isInfected ? '#f87171' : '#ff9933',
+            }}
+          >
+            {isInfected ? 'warning' : 'satellite_alt'}
           </span>
           <span style={{ fontSize: 11.5, fontWeight: 800, color: '#ffffff', letterSpacing: '0.04em' }}>
             {lang === 'hi' ? 'उपग्रह लिंक एवं सिंक स्थिति' : 'SATELLITE SYNC & GROUND LINK'}
           </span>
+          {isInfected && anomalyImpact && (
+            <span
+              style={{
+                fontSize: 8.5,
+                fontWeight: 800,
+                background: 'rgba(239, 68, 68, 0.2)',
+                color: '#fecaca',
+                padding: '1px 5px',
+                borderRadius: 2,
+                border: '1px solid rgba(239, 68, 68, 0.35)',
+                letterSpacing: '0.03em',
+              }}
+            >
+              ● {anomalyImpact.tag}
+            </span>
+          )}
         </div>
         <span
           style={{
             fontSize: 8.5,
             fontWeight: 800,
-            color: '#ffedd5',
-            background: 'rgba(255, 153, 51, 0.25)',
+            color: isInfected ? '#dc2626' : '#ffedd5',
+            background: isInfected ? '#fee2e2' : 'rgba(255, 153, 51, 0.25)',
             padding: '1px 6px',
-            border: '1px solid #ff9933',
+            border: isInfected ? '1px solid #fca5a5' : '1px solid #ff9933',
             borderRadius: 2,
           }}
         >
-          ISRO GSAT-30
+          {isInfected ? 'LINK FAULT' : 'ISRO GSAT-30'}
         </span>
       </div>
 

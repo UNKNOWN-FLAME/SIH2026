@@ -1,5 +1,7 @@
 import { useSensors } from '../../hooks/useSensors'
 import { useLanguage } from '../../context/LanguageContext'
+import { useStation } from '../../context/StationContext'
+import { getCardAnomalyImpact } from '../../utils/anomalyImpact'
 import type { SensorSummary } from '../../api/hq'
 
 interface Props { stationId: string }
@@ -13,8 +15,12 @@ function fmtVal(s: SensorSummary | undefined, decimals = 1, unit = '') {
 }
 
 export default function MetMastCard({ stationId }: Props) {
+  const { lastAnomalyResult } = useStation()
   const { data: sensors } = useSensors(stationId, 'weather')
   const { t } = useLanguage()
+
+  const anomalyImpact = getCardAnomalyImpact('metmast', lastAnomalyResult, stationId)
+  const isInfected = Boolean(anomalyImpact?.isInfected)
 
   const windSpd = find(sensors, 'wind_speed')
   const windDir = find(sensors, 'wind_dir')
@@ -57,35 +63,61 @@ export default function MetMastCard({ stationId }: Props) {
       style={{
         width: '100%',
         background: '#ffffff',
-        border: '1px solid #cbd5e1',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.06)',
+        border: isInfected ? '1.5px solid rgba(239, 68, 68, 0.45)' : '1px solid #cbd5e1',
+        boxShadow: isInfected
+          ? '0 0 10px rgba(239, 68, 68, 0.12)'
+          : '0 1px 3px 0 rgba(0, 0, 0, 0.06)',
         display: 'flex',
         flexDirection: 'column',
         minHeight: 185,
         position: 'relative',
         overflow: 'hidden',
+        transition: 'all 0.25s ease',
       }}
     >
       {/* Official Header Strip */}
       <div
         style={{
           background: '#0b3b60',
-          borderBottom: '2px solid #ff9933',
+          borderBottom: isInfected ? '2px solid #ef4444' : '2px solid #ff9933',
           padding: '6px 12px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           position: 'relative',
           zIndex: 3,
+          transition: 'all 0.25s ease',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#ff9933' }}>
-            cell_tower
+          <span
+            className="material-symbols-outlined"
+            style={{
+              fontSize: 16,
+              color: isInfected ? '#f87171' : '#ff9933',
+            }}
+          >
+            {isInfected ? 'warning' : 'cell_tower'}
           </span>
           <span style={{ fontSize: 11.5, fontWeight: 800, color: '#ffffff', letterSpacing: '0.04em' }}>
             {t('met.title')} (10M)
           </span>
+          {isInfected && anomalyImpact && (
+            <span
+              style={{
+                fontSize: 8.5,
+                fontWeight: 800,
+                background: 'rgba(239, 68, 68, 0.2)',
+                color: '#fecaca',
+                padding: '1px 5px',
+                borderRadius: 2,
+                border: '1px solid rgba(239, 68, 68, 0.35)',
+                letterSpacing: '0.03em',
+              }}
+            >
+              ● {anomalyImpact.tag}
+            </span>
+          )}
         </div>
         <span
           style={{

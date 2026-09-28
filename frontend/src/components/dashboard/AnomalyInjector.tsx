@@ -1120,6 +1120,9 @@ export default function AnomalyInjector({
 }) {
   const [open, setOpen] = useState(false)
   const [pulse, setPulse] = useState(true)
+  const { lastAnomalyResult } = useStation()
+
+  const isSimActive = Boolean(lastAnomalyResult)
 
   // Subtle pulse animation on first render to draw attention
   useEffect(() => {
@@ -1133,6 +1136,10 @@ export default function AnomalyInjector({
         @keyframes anomaly-pulse {
           0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); }
           50% { box-shadow: 0 0 0 8px rgba(220, 38, 38, 0); }
+        }
+        @keyframes anomaly-active-beacon {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.35; transform: scale(0.85); }
         }
         .anomaly-btn:hover {
           background: #b91c1c !important;
@@ -1163,34 +1170,38 @@ export default function AnomalyInjector({
             justifyContent: 'center',
             gap: 6,
             padding: '7px 8px',
-            background: '#dc2626',
+            background: isSimActive ? '#dc2626' : '#dc2626',
             color: '#ffffff',
-            border: '1px solid #b91c1c',
+            border: isSimActive ? '1px solid rgba(254, 202, 202, 0.6)' : '1px solid #b91c1c',
             borderRadius: 4,
             cursor: 'pointer',
-            boxShadow: '0 1px 3px rgba(220, 38, 38, 0.25)',
+            boxShadow: isSimActive
+              ? '0 0 0 2px rgba(239, 68, 68, 0.35)'
+              : '0 1px 3px rgba(220, 38, 38, 0.2)',
             fontWeight: 800,
             fontSize: 11,
             letterSpacing: '0.04em',
             transition: 'all 0.15s ease',
             userSelect: 'none',
-            animation: pulse ? 'anomaly-pulse 1.5s ease-in-out 3' : 'none',
           }}
-          title="Open Anomaly Injection Simulator to test station resilience"
+          title={isSimActive ? 'Simulation Anomaly actively running — click to view or stop' : 'Open Anomaly Injection Simulator to test station resilience'}
         >
-          <span style={{ fontSize: 13 }}>⚠️</span>
-          <span>INJECT ANOMALY</span>
+          <span style={{ fontSize: 13 }}>
+            {isSimActive ? '🚨' : '⚠️'}
+          </span>
+          <span>{isSimActive ? 'ANOMALY ACTIVE' : 'INJECT ANOMALY'}</span>
           <span
             style={{
               fontSize: 7.5,
               fontWeight: 900,
-              background: 'rgba(255,255,255,0.25)',
+              background: isSimActive ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.25)',
+              color: '#ffffff',
               padding: '1px 4px',
               borderRadius: 2,
               letterSpacing: '0.06em',
             }}
           >
-            SIM
+            {isSimActive ? 'LIVE' : 'SIM'}
           </span>
         </button>
       ) : (

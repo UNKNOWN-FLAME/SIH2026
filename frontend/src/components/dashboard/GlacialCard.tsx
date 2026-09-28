@@ -1,13 +1,19 @@
 import { useState } from 'react'
 import { useLanguage } from '../../context/LanguageContext'
+import { useStation } from '../../context/StationContext'
+import { getCardAnomalyImpact } from '../../utils/anomalyImpact'
 
 interface Props {
   stationId?: string
 }
 
 export default function GlacialCard({ stationId = 'maitri' }: Props) {
+  const { lastAnomalyResult } = useStation()
   const { t } = useLanguage()
   const [viewMode, setViewMode] = useState<'gpr' | 'lss'>('lss')
+
+  const anomalyImpact = getCardAnomalyImpact('glacial', lastAnomalyResult, stationId)
+  const isInfected = Boolean(anomalyImpact?.isInfected)
 
   const isMaitri = stationId === 'maitri'
 
@@ -43,29 +49,40 @@ export default function GlacialCard({ stationId = 'maitri' }: Props) {
       style={{
         width: '100%',
         background: '#ffffff',
-        border: '1px solid #cbd5e1',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.06)',
+        border: isInfected ? '1.5px solid rgba(239, 68, 68, 0.45)' : '1px solid #cbd5e1',
+        boxShadow: isInfected
+          ? '0 0 10px rgba(239, 68, 68, 0.12)'
+          : '0 1px 3px 0 rgba(0, 0, 0, 0.06)',
         display: 'flex',
         flexDirection: 'column',
         minHeight: 185,
+        transition: 'all 0.25s ease',
       }}
     >
       {/* Official Government Header Strip */}
       <div
         style={{
           background: '#0b3b60',
-          borderBottom: '2px solid #ff9933',
+          borderBottom: isInfected ? '2px solid #ef4444' : '2px solid #ff9933',
           padding: '6px 10px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           gap: 8,
           overflow: 'hidden',
+          transition: 'all 0.25s ease',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
-          <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#ff9933', flexShrink: 0 }}>
-            {viewMode === 'gpr' ? 'radar' : 'water_drop'}
+          <span
+            className="material-symbols-outlined"
+            style={{
+              fontSize: 16,
+              color: isInfected ? '#f87171' : '#ff9933',
+              flexShrink: 0,
+            }}
+          >
+            {isInfected ? 'warning' : viewMode === 'gpr' ? 'radar' : 'water_drop'}
           </span>
           <span
             style={{
@@ -80,6 +97,23 @@ export default function GlacialCard({ stationId = 'maitri' }: Props) {
           >
             {viewMode === 'gpr' ? 'ICE RADAR SCAN' : t('lss.title')}
           </span>
+          {isInfected && anomalyImpact && (
+            <span
+              style={{
+                fontSize: 8.5,
+                fontWeight: 800,
+                background: 'rgba(239, 68, 68, 0.2)',
+                color: '#fecaca',
+                padding: '1px 5px',
+                borderRadius: 2,
+                border: '1px solid rgba(239, 68, 68, 0.35)',
+                letterSpacing: '0.03em',
+                flexShrink: 0,
+              }}
+            >
+              ● {anomalyImpact.tag}
+            </span>
+          )}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>

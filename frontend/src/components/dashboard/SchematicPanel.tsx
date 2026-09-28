@@ -35,6 +35,10 @@ function isPartAffectedByOpenAlerts(
   openAlerts: AlertOut[],
   activeAnomalyId?: string
 ): boolean {
+  if (activeAnomalyId && isPartAffectedByAnomaly(partId, activeAnomalyId)) {
+    return true
+  }
+
   if (!openAlerts || openAlerts.length === 0) return false
 
   const p = partId.toLowerCase()
@@ -1021,13 +1025,12 @@ export default function SchematicPanel({ stationId }: Props) {
   // mean the event is resolved. The anomaly must remain visible on Live Telemetry
   // until the operator explicitly clears it via the "Clear Simulation" button.
 
-  // Active anomaly is ONLY active if there is an actual OPEN alert in the database / cache!
+  // Active anomaly: checks lastAnomalyResult first (explicit injection), then fallback to open alerts
   const activeAnomalyId = useMemo(() => {
-    if (!hasOpenAlerts) return undefined
-
     if (lastAnomalyResult?.anomaly_id) {
       return lastAnomalyResult.anomaly_id
     }
+    if (!hasOpenAlerts) return undefined
 
     const firstAlert = openAlerts[0]
     const desc = (firstAlert?.description || '').toLowerCase()
@@ -1044,8 +1047,8 @@ export default function SchematicPanel({ stationId }: Props) {
   }, [hasOpenAlerts, lastAnomalyResult, openAlerts])
 
   const activeAnomalyName = useMemo(() => {
-    if (!hasOpenAlerts) return undefined
     if (lastAnomalyResult?.anomaly_name) return lastAnomalyResult.anomaly_name
+    if (!hasOpenAlerts) return undefined
     return openAlerts[0]?.description ?? 'Telemetry Alert'
   }, [hasOpenAlerts, lastAnomalyResult, openAlerts])
 
@@ -1259,6 +1262,7 @@ export default function SchematicPanel({ stationId }: Props) {
           const isHovered = hoveredPartId === part.id
           const isSelected = selectedPartId === part.id
           const isActive = isHovered || isSelected
+          const isAffected = isPartAffectedByOpenAlerts(part.id, openAlerts, activeAnomalyId)
 
           return (
             <div
@@ -1266,7 +1270,7 @@ export default function SchematicPanel({ stationId }: Props) {
               onMouseEnter={() => setHoveredPartId(part.id)}
               onMouseLeave={() => setHoveredPartId(null)}
               onClick={() => handleSelectPart(part.id)}
-              title={`Click to open full details of ${part.name}`}
+              title={isAffected ? `⚠ Active Anomaly Alert: Click to inspect ${part.name}` : `Click to open full details of ${part.name}`}
               style={{
                 position: 'absolute',
                 left: `${part.box.left}%`,
@@ -1274,7 +1278,7 @@ export default function SchematicPanel({ stationId }: Props) {
                 width: `${part.box.width}%`,
                 height: `${part.box.height}%`,
                 cursor: 'pointer',
-                zIndex: isActive ? 30 : 20,
+                zIndex: isAffected ? (isActive ? 35 : 25) : (isActive ? 30 : 20),
                 transition: 'all 0.15s ease',
               }}
             >
@@ -1282,29 +1286,49 @@ export default function SchematicPanel({ stationId }: Props) {
                 style={{
                   width: '100%',
                   height: '100%',
-                  border: isActive ? '2px solid #ff9933' : '1px dashed transparent',
-                  background: isActive ? 'rgba(11, 59, 96, 0.35)' : 'transparent',
-                  boxShadow: isActive ? '0 0 14px rgba(255, 153, 51, 0.7), inset 0 0 10px rgba(255, 153, 51, 0.25)' : 'none',
+                  border: isAffected
+                    ? (isActive ? '2px solid #ef4444' : '1.5px solid rgba(239, 68, 68, 0.75)')
+                    : (isActive ? '2px solid #ff9933' : '1px dashed transparent'),
+                  background: isAffected
+                    ? (isActive ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.08)')
+                    : (isActive ? 'rgba(11, 59, 96, 0.35)' : 'transparent'),
+                  boxShadow: isAffected
+                    ? (isActive
+                        ? '0 0 16px rgba(239, 68, 68, 0.75), inset 0 0 10px rgba(239, 68, 68, 0.25)'
+                        : '0 0 8px rgba(239, 68, 68, 0.4)')
+                    : (isActive
+                        ? '0 0 14px rgba(255, 153, 51, 0.7), inset 0 0 10px rgba(255, 153, 51, 0.25)'
+                        : 'none'),
                   position: 'relative',
                   borderRadius: 2,
+                  transition: 'border 0.2s ease, background 0.2s ease, box-shadow 0.2s ease',
                 }}
               >
-                {isActive && (
+                {(isActive || isAffected) && (
                   <div
                     style={{
                       position: 'absolute',
                       top: -18,
                       left: 0,
-                      background: '#0b3b60',
+                      background: isAffected ? '#991b1b' : '#0b3b60',
                       color: '#ffffff',
                       fontSize: 9.5,
                       fontWeight: 800,
                       padding: '1px 6px',
                       whiteSpace: 'nowrap',
-                      borderLeft: '2px solid #ff9933',
+                      borderLeft: isAffected ? '2px solid #ef4444' : '2px solid #ff9933',
+                      boxShadow: isAffected ? '0 2px 6px rgba(153, 27, 27, 0.5)' : 'none',
+                      borderRadius: '2px 2px 0 0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
                     }}
                   >
-                    {part.simpleTag} (Click for details)
+                    {isAffected && <span>⚠</span>}
+                    <span>{part.simpleTag}</span>
+                    <span style={{ opacity: 0.9, fontWeight: 600 }}>
+                      {isAffected ? '(Anomaly Active)' : '(Click for details)'}
+                    </span>
                   </div>
                 )}
               </div>
@@ -1420,7 +1444,7 @@ export default function SchematicPanel({ stationId }: Props) {
 
               {/* Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                <span style={{ fontSize: 9.5, fontWeight: 800, color: '#ff9933', textTransform: 'uppercase' }}>
+                <span style={{ fontSize: 9.5, fontWeight: 800, color: isHoveredPartAffected ? '#dc2626' : '#ff9933', textTransform: 'uppercase' }}>
                   {hoveredPart.simpleTag}
                 </span>
                 <span
@@ -1544,7 +1568,7 @@ export default function SchematicPanel({ stationId }: Props) {
             <div
               style={{
                 background: '#0b3b60',
-                borderBottom: '3px solid #ff9933',
+                borderBottom: isPartAffectedByOpenAlerts(selectedPart.id, openAlerts, activeAnomalyId) ? '3px solid #dc2626' : '3px solid #ff9933',
                 padding: '10px 14px',
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -1553,7 +1577,7 @@ export default function SchematicPanel({ stationId }: Props) {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#ff9933' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 20, color: isPartAffectedByOpenAlerts(selectedPart.id, openAlerts, activeAnomalyId) ? '#ef4444' : '#ff9933' }}>
                   domain
                 </span>
                 <div>

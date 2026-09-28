@@ -3,6 +3,7 @@ import { useLanguage } from '../../context/LanguageContext'
 import { useStation } from '../../context/StationContext'
 import GaugeCircle from '../ui/GaugeCircle'
 import type { SensorSummary } from '../../api/hq'
+import { getCardAnomalyImpact } from '../../utils/anomalyImpact'
 
 interface Props { stationId: string }
 
@@ -15,6 +16,9 @@ export default function EnergyCard({ stationId }: Props) {
   const { lastAnomalyResult } = useStation()
   const { data: sensors } = useSensors(stationId, 'energy')
   const { t } = useLanguage()
+
+  const anomalyImpact = getCardAnomalyImpact('energy', lastAnomalyResult, stationId)
+  const isInfected = Boolean(anomalyImpact?.isInfected)
 
   const aid = lastAnomalyResult?.anomaly_id
   const isGenAnomaly = aid === 'generator_failure'
@@ -67,39 +71,67 @@ export default function EnergyCard({ stationId }: Props) {
     <div
       style={{
         background: '#ffffff',
-        border: '1px solid #cbd5e1',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.06)',
+        border: isInfected ? '1.5px solid rgba(239, 68, 68, 0.45)' : '1px solid #cbd5e1',
+        boxShadow: isInfected
+          ? '0 0 10px rgba(239, 68, 68, 0.12)'
+          : '0 1px 3px 0 rgba(0, 0, 0, 0.06)',
         display: 'flex',
         flexDirection: 'column',
+        position: 'relative',
+        transition: 'all 0.25s ease',
       }}
     >
       {/* Official Card Header Strip */}
       <div
         style={{
           background: '#0b3b60',
-          borderBottom: '2px solid #ff9933',
+          borderBottom: isInfected ? '2px solid #ef4444' : '2px solid #ff9933',
           padding: '6px 12px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          transition: 'all 0.25s ease',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span className="material-symbols-outlined" style={{ fontSize: 15, color: '#ff9933' }}>
-            bolt
+          <span
+            className="material-symbols-outlined"
+            style={{
+              fontSize: 15,
+              color: isInfected ? '#f87171' : '#ff9933',
+            }}
+          >
+            {isInfected ? 'warning' : 'bolt'}
           </span>
           <span style={{ fontSize: 11.5, fontWeight: 800, color: '#ffffff', letterSpacing: '0.04em' }}>
             {t('energy.title')}
           </span>
+          {isInfected && anomalyImpact && (
+            <span
+              style={{
+                fontSize: 8.5,
+                fontWeight: 800,
+                background: 'rgba(239, 68, 68, 0.2)',
+                color: '#fecaca',
+                padding: '1px 5px',
+                borderRadius: 2,
+                border: '1px solid rgba(239, 68, 68, 0.35)',
+                letterSpacing: '0.03em',
+              }}
+            >
+              ● {anomalyImpact.tag}
+            </span>
+          )}
         </div>
         <span
           style={{
             fontSize: 8.5,
             fontWeight: 800,
-            color: statusColor,
+            color: isInfected ? '#dc2626' : statusColor,
             background: '#ffffff',
             padding: '1px 6px',
             borderRadius: 2,
+            boxShadow: isInfected ? '0 0 6px rgba(239, 68, 68, 0.4)' : 'none',
           }}
         >
           {status}

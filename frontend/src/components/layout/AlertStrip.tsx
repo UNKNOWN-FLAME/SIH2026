@@ -1,13 +1,18 @@
 import { useAlerts } from '../../hooks/useAlerts'
 import { useLanguage } from '../../context/LanguageContext'
+import { useStation } from '../../context/StationContext'
 
 export default function AlertStrip() {
   const { data, isError } = useAlerts({ ack_state: 'OPEN', page_size: 10 })
   const { t } = useLanguage()
+  const { lastAnomalyResult } = useStation()
 
   const alerts = data?.items ?? []
 
   const bulletins = [
+    ...(lastAnomalyResult
+      ? [`🚨 SIMULATION ANOMALY ACTIVE: [${lastAnomalyResult.severity}] ${lastAnomalyResult.anomaly_name} (${lastAnomalyResult.station_id?.toUpperCase()} BASE)`]
+      : []),
     t('marquee.notice1'),
     alerts.length > 0
       ? alerts.map(a => `[${a.severity}] ${a.station_id.toUpperCase()}: ${a.description}`).join(' • ')
