@@ -53,7 +53,7 @@ class SensorReading(Base):
     """
     __tablename__ = "sensor_readings"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     station_id = Column(String(32), nullable=False, index=True)
     sensor_id = Column(String(128), nullable=False, index=True)
     domain = Column(String(32), nullable=False)
@@ -249,7 +249,7 @@ class LinkStatusRecord(Base):
     """Time-series record of Edge-to-Cloud link state."""
     __tablename__ = "link_status_log"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     station_id = Column(String(32), nullable=False, index=True)
     link_state = Column(String(16), nullable=False)  # UP | DEGRADED | DOWN
     latency_ms = Column(Float, nullable=True)

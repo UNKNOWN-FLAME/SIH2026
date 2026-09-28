@@ -269,6 +269,99 @@ export async function downloadReportFile(
   return data
 }
 
+// ── 3-Hour RCA Station PDF Reports ───────────────────────────────────────────
+
+export interface StationReportMeta {
+  has_report: boolean
+  prediction_id: string | null
+  station_id: string
+  risk_level?: string
+  target_metric?: string
+  model_name?: string
+  generated_at?: string | null
+  predicted_for_date?: string | null
+  filename?: string | null
+  file_exists?: boolean
+  event_count?: number
+  download_url?: string | null
+  message?: string
+}
+
+export interface StationReportListItem {
+  prediction_id: string
+  station_id: string
+  risk_level: string
+  generated_at: string | null
+  predicted_for_date: string | null
+  filename: string | null
+  event_count: number
+  download_url: string
+}
+
+export async function getLatestReportMeta(stationId: string = 'bharati'): Promise<StationReportMeta> {
+  const { data } = await api.get<StationReportMeta>('/hq/reports/latest/metadata', {
+    params: { station_id: stationId },
+  })
+  return data
+}
+
+export async function downloadLatestPdfReport(stationId: string = 'bharati'): Promise<string> {
+  const response = await api.get('/hq/reports/latest/download', {
+    params: { station_id: stationId },
+    responseType: 'blob',
+  })
+
+  // Extract filename from Content-Disposition header if available
+  const cd = response.headers['content-disposition'] || ''
+  let filename = `NCPOR_Report_${stationId}.pdf`
+  const match = cd.match(/filename=["']?([^"';]+)["']?/)
+  if (match && match[1]) {
+    filename = match[1]
+  }
+
+  const blob = new Blob([response.data], { type: 'application/pdf' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  return filename
+}
+
+export async function downloadPdfReportById(predictionId: string, fallbackName?: string): Promise<string> {
+  const response = await api.get(`/hq/reports/${predictionId}/download`, {
+    responseType: 'blob',
+  })
+
+  const cd = response.headers['content-disposition'] || ''
+  let filename = fallbackName || `NCPOR_Report_${predictionId}.pdf`
+  const match = cd.match(/filename=["']?([^"';]+)["']?/)
+  if (match && match[1]) {
+    filename = match[1]
+  }
+
+  const blob = new Blob([response.data], { type: 'application/pdf' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  return filename
+}
+
+export async function listStationPdfReports(stationId: string = 'bharati', limit: number = 10): Promise<StationReportListItem[]> {
+  const { data } = await api.get<StationReportListItem[]>('/hq/reports/list', {
+    params: { station_id: stationId, limit },
+  })
+  return data
+}
+
 // ── Logistics Audit Summary ───────────────────────────────────────────────────
 
 export interface AuditItemDetail {
@@ -371,6 +464,17 @@ export async function getIoTSensors(
   return data
 }
 
+// ── AI Chat ───────────────────────────────────────────────────────────────────
+
+export interface ChatQueryOut {
+  response: string
+}
+
+export async function sendChatQuery(query: string): Promise<ChatQueryOut> {
+  const { data } = await api.post<ChatQueryOut>('/hq/chat', { query })
+  return data
+}
+
 // ── Telemetry & Black Box Rollup API ─────────────────────────────────────────
 
 export interface CompressionRollupResult {
@@ -401,3 +505,136 @@ export async function getTelemetryTimeline(stationId: string, hours = 168): Prom
   const { data } = await api.get<any>(`/hq/stations/${stationId}/telemetry/timeline`, { params: { hours } })
   return data
 }
+
+// ── Predictive AI & ML APIs ───────────────────────────────────────────────────
+
+export interface MicrogridHourlyPoint {
+  hour_offset: number
+  time_label: string
+  clock: string
+  load_kw: number
+  solar_kw: number
+  wind_kw: number
+  gen_kw: number
+  battery_soc_pct: number
+}
+
+export interface EnergyForecastOut {
+  station_id: string
+  generated_at: string
+  model_type: string
+  model_r2: number
+  current_load_kw: number
+  current_solar_kw: number
+  current_wind_kw: number
+  current_battery_soc: number
+  hourly_timeline: MicrogridHourlyPoint[]
+}
+
+export interface FuelHorizon {
+  label: string
+  val: string
+  icon: string
+}
+
+export interface FuelForecastOut {
+  station_id: string
+  remaining_litres: number
+  capacity_litres: number
+  fuel_pct: number
+  daily_burn_litres: number
+  days_of_autonomy: number
+  resupply_date: string
+  trend: string
+  burn_history_7d: number[]
+  burn_labels: string[]
+  model_confidence_pct: number
+  horizons: FuelHorizon[]
+}
+
+export interface AnomalyLogItem {
+  id: string
+  time: string
+  sensor: string
+  value: string
+  baseline: string
+  deviation: string
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'
+  status: 'MONITORING' | 'RESOLVED'
+  model: string
+}
+
+export interface EquipmentAnomaliesOut {
+  station_id: string
+  anomalies_today: number
+  model_accuracy_pct: number
+  false_positive_rate_pct: number
+  sensors_monitored: number
+  logs: AnomalyLogItem[]
+}
+
+export interface MaintenanceItem {
+  id: string
+  asset: string
+  task: string
+  due: string
+  urgency: 'HIGH' | 'MEDIUM' | 'LOW'
+  trigger: string
+  confidence: number
+}
+
+export interface PredictiveMaintenanceOut {
+  station_id: string
+  upcoming_7d: number
+  overdue: number
+  ai_recommendations: number
+  mtbf_dg1_hours: number
+  schedule: MaintenanceItem[]
+}
+
+export interface WeatherDayEnsemble {
+  name: string
+  offset: number
+  date: string
+  temp: number
+  gust: number
+  blizzard_prob_pct: number
+  solar_wm2: number
+  pressure_hpa: number
+  safety_status: 'OPTIMAL' | 'ADVISORY' | 'CAUTION' | 'NO-GO'
+  icon: string
+  synoptic: string
+}
+
+export interface WeatherEnsembleOut {
+  station_id: string
+  generated_at: string
+  model_ensemble: string
+  days: WeatherDayEnsemble[]
+}
+
+export async function getEnergyForecast(stationId: string): Promise<EnergyForecastOut> {
+  const { data } = await api.get<EnergyForecastOut>(`/hq/stations/${stationId}/analytics/energy-forecast`)
+  return data
+}
+
+export async function getFuelForecast(stationId: string): Promise<FuelForecastOut> {
+  const { data } = await api.get<FuelForecastOut>(`/hq/stations/${stationId}/analytics/fuel-forecast`)
+  return data
+}
+
+export async function getEquipmentAnomalies(stationId: string): Promise<EquipmentAnomaliesOut> {
+  const { data } = await api.get<EquipmentAnomaliesOut>(`/hq/stations/${stationId}/analytics/anomalies`)
+  return data
+}
+
+export async function getMaintenanceSchedule(stationId: string): Promise<PredictiveMaintenanceOut> {
+  const { data } = await api.get<PredictiveMaintenanceOut>(`/hq/stations/${stationId}/analytics/maintenance-schedule`)
+  return data
+}
+
+export async function getWeatherEnsemble(stationId: string): Promise<WeatherEnsembleOut> {
+  const { data } = await api.get<WeatherEnsembleOut>(`/hq/stations/${stationId}/analytics/weather-ensemble`)
+  return data
+}
+

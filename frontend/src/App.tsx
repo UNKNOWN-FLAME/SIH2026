@@ -12,6 +12,7 @@ import AnalyticsPage from './pages/AnalyticsPage'
 import ReportsPage from './pages/ReportsPage'
 import LiveTelemetryPage from './pages/LiveTelemetryPage'
 import BlackBoxPage from './pages/BlackBoxPage'
+import { ChatBot } from './components/ui/ChatBot'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token } = useAuth()
@@ -35,6 +36,7 @@ export default function App() {
           <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
           <Route path="/*" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         </Routes>
+        <ChatBot />
       </AuthProvider>
     </LanguageProvider>
   )

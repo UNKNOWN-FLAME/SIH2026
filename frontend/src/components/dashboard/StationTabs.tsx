@@ -1,5 +1,6 @@
 import { useStations } from '../../hooks/useStations'
 import { useLanguage } from '../../context/LanguageContext'
+import DownloadReportButton from './DownloadReportButton'
 
 interface Props {
   active: string
@@ -129,6 +130,10 @@ export default function StationTabs({ active, onSelect }: Props) {
         })}
       </div>
 
+      {/* Station Operations Quick Actions */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <DownloadReportButton stationId={active} />
+      </div>
     </div>
   )
 }

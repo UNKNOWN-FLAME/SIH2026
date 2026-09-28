@@ -77,3 +77,14 @@ package-lock.json
 # =============================================================================
 data/
 secrets/
+
+# Added as per user instructions for GitHub Push
+*.md
+frontend/src/components/DigitalTwin3D/
+frontend/public/models/
+frontend/src/pages/TwinPage.tsx
+*.glb
+*.gltf
+*.db
+bharati_dashboard/
+assets1/
