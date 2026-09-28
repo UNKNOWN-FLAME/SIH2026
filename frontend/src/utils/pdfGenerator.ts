@@ -1440,3 +1440,191 @@ export async function generateSitrepGazettePDF({
   const filename = `${refId.replace(/\//g, '_')}.pdf`
   savePdfFile(doc, filename)
 }
+
+export interface IncidentDamagePdfParams {
+  stationId: string
+  anomalyName: string
+  anomalyId: string
+  severity: string
+  referenceId: string
+  injectedAt?: string
+  losses: {
+    energyLossKwh: number
+    powerSpikeKw: number
+    normalPowerKw: number
+    anomalyPowerKw: number
+    fuelLossLitres: number
+    normalFuelBurnLh: number
+    anomalyFuelBurnLh: number
+    financialLossInr: number
+    carbonFootprintKg: number
+    dataLossMb: number
+    packetsDelayed: number
+    tempVarianceC: number
+    downtimeHours: number
+    subsystem: string
+  }
+  departments: {
+    dept: string
+    badge: string
+    summary: string
+    details: string
+  }[]
+  actionChecklist: {
+    step: string
+    desc: string
+    urgency: string
+  }[]
+  shipmentItems: {
+    name: string
+    sku: string
+    category: string
+    quantity: number
+    unit: string
+    priority: string
+    reason: string
+  }[]
+}
+
+export function generateIncidentDamageAssessmentPDF(params: IncidentDamagePdfParams): void {
+  const {
+    stationId,
+    anomalyName,
+    severity,
+    referenceId,
+    losses,
+    departments,
+    shipmentItems,
+  } = params
+
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+  const stationStr = stationId === 'maitri' ? 'Maitri Station (69°45\'S, 11°44\'E)' : 'Bharati Station (69°24\'S, 76°11\'E)'
+  const refId = `REF: NCPOR/INCIDENT-ASSESSMENT/${referenceId || Date.now().toString().slice(-6)}`
+
+  // 1. Draw Official Government Gazette Header
+  let y = drawGovtGazetteHeader(
+    doc,
+    'घटना क्षति, संसाधन हानि एवं पुनर्प्राप्ति प्रतिवेदन',
+    'POST-INCIDENT DAMAGE, RESOURCE LOSS & SHIPMENT REQUISITION REPORT'
+  )
+
+  // 2. Draw Metadata Grid
+  y = drawGovtMetadataGrid(doc, y, [
+    { label: 'POLAR STATION', value: stationStr },
+    { label: 'REPORT REF', value: refId },
+    { label: 'INCIDENT ANOMALY', value: anomalyName },
+    { label: 'SEVERITY LEVEL', value: `${severity} • RESOLVED & CLOSED` },
+    { label: 'PRIMARY SUBSYSTEM', value: losses.subsystem },
+    { label: 'TIME OF AUDIT', value: new Date().toUTCString() },
+  ])
+  y += 4
+
+  // 3. Section: Key Damage & Resource Loss Summary
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(8.5)
+  doc.setTextColor(MOES_NAVY[0], MOES_NAVY[1], MOES_NAVY[2])
+  doc.text('SECTION 1: RESOURCE LOSS & TELEMETRY VARIANCE SUMMARY', 14, y)
+  y += 2
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Resource / Metric', 'Nominal Baseline', 'During Anomaly', 'Variance / Net Loss', 'Financial & Carbon Impact']],
+    body: [
+      ['Electrical Energy Load', `${losses.normalPowerKw} kW`, `${losses.anomalyPowerKw} kW`, `+${(losses.anomalyPowerKw - losses.normalPowerKw).toFixed(1)} kW (Peak Spike)`, `${losses.energyLossKwh} kWh Excess Energy Wasted`],
+      ['Arctic Fuel Consumption', `${losses.normalFuelBurnLh} L/h`, `${losses.anomalyFuelBurnLh} L/h`, `+${(losses.anomalyFuelBurnLh - losses.normalFuelBurnLh).toFixed(1)} L/h Burn Rate`, `${losses.fuelLossLitres} L ATF-50 (Est. Rs. ${losses.financialLossInr.toLocaleString()})`],
+      ['Habitat Thermal Margin', '+21.0 °C (Safe)', `${(21.0 + losses.tempVarianceC).toFixed(1)} °C`, `${losses.tempVarianceC} °C Deficit`, `CO2 Eq Footprint: +${losses.carbonFootprintKg} kg`],
+      ['VajraX Edge Telemetry', '0 KB Backlog (Live)', `${losses.dataLossMb} MB Cached`, `${losses.packetsDelayed} Packets Queued`, 'Zero Data Loss (VajraX Protobuf Protected)'],
+      ['Operational Downtime', '100% Online', 'Degraded Grid', `~${losses.downtimeHours} Hours Impact`, 'Emergency Resupply Requisition Required'],
+    ],
+    theme: 'grid',
+    headStyles: { fillColor: [MOES_NAVY[0], MOES_NAVY[1], MOES_NAVY[2]], fontSize: 7.2, fontStyle: 'bold', cellPadding: 2.2 },
+    bodyStyles: { fontSize: 6.8, textColor: [30, 41, 59], cellPadding: 2.2 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    columnStyles: {
+      0: { cellWidth: 42, fontStyle: 'bold' },
+      1: { cellWidth: 32 },
+      2: { cellWidth: 32 },
+      3: { cellWidth: 38, fontStyle: 'bold', textColor: [185, 28, 28] },
+      4: { cellWidth: 'auto', fontStyle: 'bold' },
+    },
+    margin: { left: 14, right: 14 },
+  })
+  y = (doc as any).lastAutoTable.finalY + 6
+
+  // 4. Section: Departmental Impact Matrix
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(8.5)
+  doc.setTextColor(MOES_NAVY[0], MOES_NAVY[1], MOES_NAVY[2])
+  doc.text('SECTION 2: DEPARTMENTAL IMPACT & SYSTEMIC BREACH ASSESSMENT', 14, y)
+  y += 2
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Station Department', 'Breach Status', 'Key Impact Summary', 'Technical Assessment & Recovery Details']],
+    body: departments.map((d) => [
+      d.dept,
+      d.badge,
+      d.summary,
+      d.details,
+    ]),
+    theme: 'grid',
+    headStyles: { fillColor: [185, 28, 28], fontSize: 7.2, fontStyle: 'bold', cellPadding: 2.2 },
+    bodyStyles: { fontSize: 6.8, textColor: [30, 41, 59], cellPadding: 2.2 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    columnStyles: {
+      0: { cellWidth: 44, fontStyle: 'bold' },
+      1: { cellWidth: 28, fontStyle: 'bold', textColor: [185, 28, 28] },
+      2: { cellWidth: 48, fontStyle: 'bold' },
+      3: { cellWidth: 'auto' },
+    },
+    margin: { left: 14, right: 14 },
+  })
+  y = (doc as any).lastAutoTable.finalY + 6
+
+  // 5. Section: Next Voyage Shipment Cargo Requisition
+  if (y > 210) { doc.addPage(); y = 20 }
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(8.5)
+  doc.setTextColor(MOES_NAVY[0], MOES_NAVY[1], MOES_NAVY[2])
+  doc.text('SECTION 3: UPCOMING RESUPPLY SHIPMENT REQUISITION MANIFEST (VOYAGE #EXP-44)', 14, y)
+  y += 2
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Item Description', 'SKU / Part Code', 'Category', 'Qty Req.', 'Priority', 'Replenishment Justification']],
+    body: shipmentItems.map((item) => [
+      item.name,
+      item.sku,
+      item.category,
+      `${item.quantity} ${item.unit}`,
+      item.priority,
+      item.reason,
+    ]),
+    theme: 'grid',
+    headStyles: { fillColor: [MOES_NAVY[0], MOES_NAVY[1], MOES_NAVY[2]], fontSize: 7.2, fontStyle: 'bold', cellPadding: 2.2 },
+    bodyStyles: { fontSize: 6.8, textColor: [30, 41, 59], cellPadding: 2.2 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    columnStyles: {
+      0: { cellWidth: 50, fontStyle: 'bold' },
+      1: { cellWidth: 26, fontStyle: 'normal' },
+      2: { cellWidth: 28 },
+      3: { cellWidth: 22, fontStyle: 'bold', textColor: [11, 59, 96] },
+      4: { cellWidth: 22, fontStyle: 'bold', textColor: [185, 28, 28] },
+      5: { cellWidth: 'auto' },
+    },
+    margin: { left: 14, right: 14 },
+  })
+  y = (doc as any).lastAutoTable.finalY + 6
+
+  // 6. Section 4: Action Protocols & Sign-off Block
+  if (y > 225) { doc.addPage(); y = 20 }
+  y = drawSignOffBlock(doc, y, stationStr)
+
+  // 7. Watermark and Footers on all pages
+  drawWatermark(doc, 'NCPOR • INCIDENT ASSESSMENT')
+  addDocumentFooters(doc)
+
+  const filename = `INCIDENT_ASSESSMENT_${stationId.toUpperCase()}_${Date.now().toString().slice(-6)}.pdf`
+  savePdfFile(doc, filename)
+}
+

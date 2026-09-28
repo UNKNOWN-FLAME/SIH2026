@@ -14,6 +14,7 @@ import SeismicCard from '../components/dashboard/SeismicCard'
 import GroundLinkCard from '../components/dashboard/GroundLinkCard'
 import EmergencyWarningModal from '../components/dashboard/EmergencyWarningModal'
 import ActiveAnomalyBanner from '../components/dashboard/ActiveAnomalyBanner'
+import IncidentImpactModal from '../components/dashboard/IncidentImpactModal'
 import { useLanguage } from '../context/LanguageContext'
 import { useStation } from '../context/StationContext'
 
@@ -26,6 +27,8 @@ export default function DashboardPage() {
     flushEdgeBuffer,
     emergencyAlert,
     dismissEmergencyAlert,
+    isImpactModalOpen,
+    closeImpactModal,
   } = useStation()
   const [timeRange, setTimeRange] = useState<string>('1H')
   const { t } = useLanguage()
@@ -176,6 +179,7 @@ export default function DashboardPage() {
 
       <Footer />
       <EmergencyWarningModal alert={emergencyAlert} onClose={dismissEmergencyAlert} />
+      <IncidentImpactModal isOpen={isImpactModalOpen} onClose={closeImpactModal} />
     </div>
   )
 }

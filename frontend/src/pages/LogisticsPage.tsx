@@ -10,6 +10,12 @@ import { useInventory } from '../hooks/useInventory'
 import { useLogisticsAudit } from '../hooks/useLogisticsAudit'
 import type { AuditItemDetail, LogisticsCategoryData } from '../api/hq'
 import { generateLogisticsAuditPDF } from '../utils/pdfGenerator'
+import {
+  getShipmentRequisitions,
+  removeShipmentRequisition,
+  clearShipmentRequisitions,
+  type RequisitionItem,
+} from '../utils/shipmentRequisitions'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -512,6 +518,33 @@ export default function LogisticsPage() {
   const [reqPriority, setReqPriority] = useState('URGENT')
   const [notificationMsg, setNotificationMsg] = useState<string | null>(null)
 
+  const [queuedRequisitions, setQueuedRequisitions] = useState<RequisitionItem[]>(() =>
+    getShipmentRequisitions(activeStation)
+  )
+
+  useEffect(() => {
+    setQueuedRequisitions(getShipmentRequisitions(activeStation))
+    const handleUpdate = () => {
+      setQueuedRequisitions(getShipmentRequisitions(activeStation))
+    }
+    window.addEventListener('himantar_requisitions_updated', handleUpdate)
+    return () => window.removeEventListener('himantar_requisitions_updated', handleUpdate)
+  }, [activeStation])
+
+  function handleRemoveQueuedItem(id: string) {
+    const updated = removeShipmentRequisition(id)
+    setQueuedRequisitions(updated.filter((i) => i.stationId === activeStation))
+    setNotificationMsg(`[${new Date().toLocaleTimeString('en-GB')}] Item removed from shipment requisition manifest.`)
+    setTimeout(() => setNotificationMsg(null), 4000)
+  }
+
+  function handleTransmitManifest() {
+    setNotificationMsg(
+      `[${new Date().toLocaleTimeString('en-GB')}] 🚢 ${queuedRequisitions.length} Emergency Recovery line items officially transmitted to NCPOR Goa Logistics Officer for MV Vasiliy Golovnin!`
+    )
+    setTimeout(() => setNotificationMsg(null), 7000)
+  }
+
   // Live inventory from DB (used as fallback when audit API unavailable)
   const { data: rawInventory } = useInventory(activeStation)
 
@@ -703,6 +736,138 @@ export default function LogisticsPage() {
                 </div>
               </div>
             </div>
+
+            {/* ── Active Incident Recovery Requisitions Manifest ── */}
+            {queuedRequisitions.length > 0 && (
+              <div
+                style={{
+                  background: '#ffffff',
+                  border: '1.5px solid #ea580c',
+                  borderTop: '4px solid #b91c1c',
+                  borderRadius: 4,
+                  padding: '12px 16px',
+                  marginBottom: 12,
+                  boxShadow: '0 4px 12px rgba(234, 88, 12, 0.1)',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 10,
+                    marginBottom: 10,
+                    borderBottom: '1px solid #fed7aa',
+                    paddingBottom: 8,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 18 }}>📦</span>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 900, color: '#9a3412', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span>INCIDENT RECOVERY REQUISITION MANIFEST — VOYAGE #EXP-44</span>
+                        <span style={{ fontSize: 9.5, background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca', padding: '1px 6px', borderRadius: 2 }}>
+                          {queuedRequisitions.length} EMERGENCY LINE ITEMS QUEUED
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 10, color: '#7c2d12', marginTop: 2 }}>
+                        Cargo items added from recent Station Incident & Damage Assessments for upcoming Indian Antarctic Expedition resupply.
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button
+                      onClick={handleTransmitManifest}
+                      style={{
+                        background: '#16a34a',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '5px 12px',
+                        fontSize: 10.5,
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        borderRadius: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 5,
+                      }}
+                    >
+                      <span>🚢</span>
+                      <span>Transmit Manifest to NCPOR Goa</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        clearShipmentRequisitions(activeStation)
+                        setQueuedRequisitions([])
+                      }}
+                      style={{
+                        background: '#f1f5f9',
+                        color: '#64748b',
+                        border: '1px solid #cbd5e1',
+                        padding: '5px 10px',
+                        fontSize: 10,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        borderRadius: 3,
+                      }}
+                    >
+                      Clear Manifest
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 8 }}>
+                  {queuedRequisitions.map((req) => (
+                    <div
+                      key={req.id}
+                      style={{
+                        background: '#fffaf5',
+                        border: '1px solid #fed7aa',
+                        borderRadius: 3,
+                        padding: '8px 12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 10,
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 11, fontWeight: 800, color: '#0f172a' }}>{req.name}</span>
+                          <span style={{ fontSize: 8.5, background: '#e2e8f0', color: '#475569', padding: '1px 4px', borderRadius: 2, fontFamily: 'monospace' }}>
+                            {req.sku}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 9.5, color: '#9a3412', marginTop: 3 }}>
+                          Qty: <strong>{req.quantity} {req.unit}</strong> • {req.category} • Priority: <strong style={{ color: req.priority === 'CRITICAL' ? '#b91c1c' : '#c2410c' }}>{req.priority}</strong>
+                        </div>
+                        <div style={{ fontSize: 9, color: '#64748b', marginTop: 2 }}>
+                          Reason: {req.reason}
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handleRemoveQueuedItem(req.id)}
+                        title="Remove line item"
+                        style={{
+                          background: 'transparent',
+                          color: '#dc2626',
+                          border: 'none',
+                          fontSize: 14,
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          padding: '4px',
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Register Header + Search + Actions */}
             <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderTop: '3px solid #0b3b60', padding: '12px 16px', marginBottom: 12, boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>

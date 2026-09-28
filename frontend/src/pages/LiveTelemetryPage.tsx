@@ -23,6 +23,7 @@ import ArchivedGazetteModal from '../components/telemetry/ArchivedGazetteModal'
 import { useAlerts } from '../hooks/useAlerts'
 import AnomalyInjector from '../components/dashboard/AnomalyInjector'
 import EmergencyWarningModal from '../components/dashboard/EmergencyWarningModal'
+import IncidentImpactModal from '../components/dashboard/IncidentImpactModal'
 
 type StationId = 'maitri' | 'bharati'
 
@@ -233,6 +234,8 @@ export default function LiveTelemetryPage() {
     isOnline,
     edgeBufferCount,
     flushEdgeBuffer,
+    isImpactModalOpen,
+    closeImpactModal,
   } = useStation()
   const incident = INCIDENTS[activeStation]
 
@@ -1559,6 +1562,7 @@ export default function LiveTelemetryPage() {
       )}
 
       <EmergencyWarningModal alert={emergencyAlert} onClose={dismissEmergencyAlert} />
+      <IncidentImpactModal isOpen={isImpactModalOpen} onClose={closeImpactModal} />
       <Footer />
     </div>
   )

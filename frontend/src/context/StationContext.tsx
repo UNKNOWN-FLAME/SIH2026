@@ -31,6 +31,10 @@ interface StationContextType {
   isBlackBoxOpen: boolean
   openBlackBox: () => void
   closeBlackBox: () => void
+  isImpactModalOpen: boolean
+  openImpactModal: () => void
+  closeImpactModal: () => void
+  completedIncidentResult: AnomalyInjectionResult | null
 }
 
 const StationContext = createContext<StationContextType | undefined>(undefined)
@@ -51,8 +55,32 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
     }
   })
 
+  const [completedIncidentResult, setCompletedIncidentResult] = useState<AnomalyInjectionResult | null>(() => {
+    try {
+      const raw = localStorage.getItem('himantar_last_completed_incident')
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  })
+
+  const [isImpactModalOpen, setIsImpactModalOpen] = useState<boolean>(false)
+  const openImpactModal = useCallback(() => setIsImpactModalOpen(true), [])
+  const closeImpactModal = useCallback(() => setIsImpactModalOpen(false), [])
+
   const setLastAnomalyResult = useCallback((res: AnomalyInjectionResult | null) => {
-    setLastAnomalyResultState(res)
+    setLastAnomalyResultState((prev) => {
+      // When anomaly ends (transitions from active to null):
+      // Store completed incident and automatically open post-incident assessment report!
+      if (prev && res === null) {
+        setCompletedIncidentResult(prev)
+        try {
+          localStorage.setItem('himantar_last_completed_incident', JSON.stringify(prev))
+        } catch {}
+        setIsImpactModalOpen(true)
+      }
+      return res
+    })
     try {
       if (res) {
         localStorage.setItem('himantar_last_anomaly', JSON.stringify(res))
@@ -77,6 +105,7 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
   const [isBlackBoxOpen, setIsBlackBoxOpen] = useState<boolean>(false)
   const openBlackBox = useCallback(() => setIsBlackBoxOpen(true), [])
   const closeBlackBox = useCallback(() => setIsBlackBoxOpen(false), [])
+
   const queryClient = useQueryClient()
 
   const setStationId = useCallback((action: StationId | ((prev: StationId) => StationId)) => {
@@ -161,6 +190,10 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
         isBlackBoxOpen,
         openBlackBox,
         closeBlackBox,
+        isImpactModalOpen,
+        openImpactModal,
+        closeImpactModal,
+        completedIncidentResult,
       }}
     >
       {children}

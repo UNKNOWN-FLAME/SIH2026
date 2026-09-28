@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { AnomalyInjectionResult } from '../../api/hq'
 import { emergencyAudio } from '../../utils/emergencyAudio'
+import { useStation } from '../../context/StationContext'
 
 interface EmergencyWarningModalProps {
   alert: AnomalyInjectionResult | null
@@ -10,6 +11,7 @@ interface EmergencyWarningModalProps {
 
 export default function EmergencyWarningModal({ alert, onClose }: EmergencyWarningModalProps) {
   const navigate = useNavigate()
+  const { openImpactModal } = useStation()
   const [mutedAlertRef, setMutedAlertRef] = useState<string | null>(null)
   const isAudioMuted = Boolean(alert && mutedAlertRef === alert.report_reference)
 
@@ -293,6 +295,32 @@ export default function EmergencyWarningModal({ alert, onClose }: EmergencyWarni
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  emergencyAudio.stop()
+                  onClose()
+                  openImpactModal()
+                }}
+                style={{
+                  background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)',
+                  border: 'none',
+                  color: '#ffffff',
+                  fontSize: 11,
+                  fontWeight: 800,
+                  padding: '8px 16px',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  boxShadow: '0 2px 8px rgba(234, 88, 12, 0.4)',
+                }}
+              >
+                <span>📊</span>
+                <span>Loss & Shipment Report</span>
+              </button>
+
               <button
                 type="button"
                 onClick={handleViewBlackBox}

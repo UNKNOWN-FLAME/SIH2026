@@ -9,6 +9,7 @@ export default function ActiveAnomalyBanner() {
     stationId,
     refreshLinkState,
     openBlackBox,
+    openImpactModal,
   } = useStation()
 
   const queryClient = useQueryClient()
@@ -158,6 +159,32 @@ export default function ActiveAnomalyBanner() {
 
         {/* Right: Subdued Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button
+            type="button"
+            onClick={openImpactModal}
+            title="Open comprehensive damage, resource loss & next shipment requisition report"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              background: '#b91c1c',
+              color: '#ffffff',
+              border: 'none',
+              padding: '3px 10px',
+              borderRadius: 3,
+              fontSize: 10.5,
+              fontWeight: 800,
+              cursor: 'pointer',
+              boxShadow: '0 1px 3px rgba(185, 28, 28, 0.3)',
+              transition: 'background 0.15s',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#991b1b')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#b91c1c')}
+          >
+            <span style={{ fontSize: 12 }}>📊</span>
+            <span>Loss & Shipment Report</span>
+          </button>
+
           <button
             type="button"
             onClick={openBlackBox}
