@@ -65,81 +65,137 @@ function AnomalyCard({
       tabIndex={0}
       onKeyDown={(e) => e.key === 'Enter' && onClick()}
       style={{
-        border: selected ? `2px solid ${sev.badge}` : `1px solid ${sev.border}`,
+        border: selected ? `2px solid ${sev.badge}` : '1.5px solid #e2e8f0',
         background: selected ? sev.bg : '#ffffff',
-        padding: '12px 14px',
+        borderRadius: 10,
+        padding: '13px 15px',
         cursor: 'pointer',
-        transition: 'box-shadow 0.15s, border-color 0.15s',
-        boxShadow: selected ? `0 0 0 3px ${sev.badge}33` : 'none',
+        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        boxShadow: selected
+          ? `0 0 0 2px ${sev.badge}33, 0 6px 18px ${sev.badge}22`
+          : '0 1px 3px rgba(15, 23, 42, 0.04)',
         outline: 'none',
         position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        minHeight: 88,
       }}
       onMouseOver={(e) => {
-        if (!selected) (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
+        if (!selected) {
+          const el = e.currentTarget as HTMLElement
+          el.style.boxShadow = '0 6px 20px rgba(15, 23, 42, 0.09)'
+          el.style.borderColor = sev.badge + '80'
+          el.style.transform = 'translateY(-2px)'
+        }
       }}
       onMouseOut={(e) => {
-        if (!selected) (e.currentTarget as HTMLElement).style.boxShadow = 'none'
+        if (!selected) {
+          const el = e.currentTarget as HTMLElement
+          el.style.boxShadow = '0 1px 3px rgba(15, 23, 42, 0.04)'
+          el.style.borderColor = '#e2e8f0'
+          el.style.transform = 'none'
+        }
       }}
     >
-      {/* Severity badge */}
-      <div style={{ position: 'absolute', top: 8, right: 8 }}>
+      {/* Top Section: Icon, Anomaly Name, Category & Severity Badge */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 8,
+              background: selected ? '#ffffff' : sev.bg,
+              border: `1px solid ${selected ? sev.badge + '40' : sev.border}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 21,
+              flexShrink: 0,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+            }}
+          >
+            {anomaly.icon}
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div
+              style={{
+                fontSize: 13.5,
+                fontWeight: 800,
+                color: '#0f172a',
+                lineHeight: 1.25,
+                letterSpacing: '-0.01em',
+              }}
+              title={anomaly.name}
+            >
+              {anomaly.name}
+            </div>
+            <div
+              style={{
+                fontSize: 9.5,
+                fontWeight: 700,
+                color: sev.color,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginTop: 3,
+              }}
+            >
+              {anomaly.category}
+            </div>
+          </div>
+        </div>
+
+        {/* Severity Badge */}
         <span
           style={{
             fontSize: 8.5,
             fontWeight: 900,
-            padding: '1px 6px',
+            padding: '2.5px 8px',
             background: sev.badge,
             color: sev.badgeFg,
-            borderRadius: 2,
+            borderRadius: 12,
             letterSpacing: '0.04em',
+            flexShrink: 0,
+            boxShadow: `0 2px 4px ${sev.badge}25`,
           }}
         >
           {anomaly.severity}
         </span>
       </div>
 
-      {/* Icon + Name */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-        <span style={{ fontSize: 22, lineHeight: 1 }}>{anomaly.icon}</span>
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 800, color: '#0f172a', lineHeight: 1.3 }}>
-            {anomaly.name}
-          </div>
-          <div
-            style={{
-              fontSize: 9,
-              fontWeight: 700,
-              color: sev.color,
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em',
-            }}
-          >
-            {anomaly.category}
-          </div>
+      {/* Bottom Status Row */}
+      <div
+        style={{
+          marginTop: 10,
+          paddingTop: 8,
+          borderTop: `1px solid ${selected ? sev.badge + '20' : '#f1f5f9'}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontSize: 9.5,
+        }}
+      >
+        <div style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
+          <span>⏱️</span>
+          <span>~{anomaly.estimated_duration_s}s</span>
         </div>
-      </div>
-
-      {/* Description */}
-      <div style={{ fontSize: 10.5, color: '#475569', lineHeight: 1.5 }}>
-        {anomaly.description.length > 110
-          ? anomaly.description.slice(0, 110) + '…'
-          : anomaly.description}
-      </div>
-
-      {/* Footer hint */}
-      <div style={{ marginTop: 6, fontSize: 9, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
-        <span style={{ fontSize: 11 }}>🕐</span>
-        ~{anomaly.estimated_duration_s}s injection time
-        {selected && (
+        {selected ? (
           <span
             style={{
-              marginLeft: 'auto',
-              fontWeight: 800,
+              fontWeight: 900,
               color: sev.badge,
-              fontSize: 9.5,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 3,
+              fontSize: 10,
             }}
           >
             ✓ SELECTED
+          </span>
+        ) : (
+          <span style={{ color: '#94a3b8', fontSize: 9.5, fontWeight: 700 }}>
+            Click to select →
           </span>
         )}
       </div>
@@ -173,7 +229,7 @@ interface AnomalyInjectorModalProps {
 }
 
 function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalProps) {
-  const { setLastAnomalyResult, setActiveIncidentId, refreshLinkState } = useStation()
+  const { setLastAnomalyResult, triggerEmergencyAlert, setActiveIncidentId, refreshLinkState } = useStation()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 
@@ -244,6 +300,10 @@ function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalPr
       queryClient.invalidateQueries({ queryKey: ['iot-sensors'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       refreshLinkState()
+
+      // Trigger big emergency warning modal with alert voice on main dashboard
+      triggerEmergencyAlert(r)
+      onClose()
     } catch (err: unknown) {
       await new Promise<void>((res) => setTimeout(res, 800))
       setInjectionError(
@@ -287,13 +347,14 @@ function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalPr
         style={{
           background: '#ffffff',
           width: '100%',
-          maxWidth: phase === 'result' ? 700 : 860,
+          maxWidth: phase === 'result' ? 700 : 880,
           maxHeight: '92vh',
-          overflowY: 'auto',
+          borderRadius: 12,
+          overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
           borderTop: `5px solid ${sevColor}`,
-          boxShadow: '0 32px 64px -16px rgba(0,0,0,0.4)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -301,77 +362,116 @@ function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalPr
         {/* ── MODAL HEADER ── */}
         <div
           style={{
-            background: '#0b3b60',
+            background: 'linear-gradient(135deg, #0b2545 0%, #133a68 100%)',
             color: '#ffffff',
             padding: '14px 20px',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             flexShrink: 0,
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
           }}
         >
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 20 }}>⚠️</span>
-              <span style={{ fontSize: 15, fontWeight: 900, letterSpacing: '0.02em' }}>
-                ANOMALY INJECTION SIMULATOR
-              </span>
-              <span
-                style={{
-                  fontSize: 9,
-                  fontWeight: 800,
-                  background: '#dc2626',
-                  color: '#fff',
-                  padding: '2px 7px',
-                  borderRadius: 2,
-                  letterSpacing: '0.06em',
-                }}
-              >
-                SIMULATION ONLY
-              </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 8,
+                background: 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 18,
+                flexShrink: 0,
+              }}
+            >
+              ⚡
             </div>
-            <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 3 }}>
-              NCPOR Antarctic Operations — Stress Testing &amp; Resilience Validation •
-              Station: <strong style={{ color: '#ff9933' }}>{activeStation.toUpperCase()}</strong>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-0.01em', color: '#ffffff' }}>
+                  Anomaly Simulator
+                </span>
+                <span
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 800,
+                    background: 'rgba(239, 68, 68, 0.18)',
+                    color: '#fca5a5',
+                    border: '1px solid rgba(239, 68, 68, 0.35)',
+                    padding: '2px 8px',
+                    borderRadius: 12,
+                    letterSpacing: '0.05em',
+                  }}
+                >
+                  SIMULATION
+                </span>
+              </div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>
+                  Target Station:{' '}
+                  <strong style={{ color: '#38bdf8', letterSpacing: '0.04em' }}>
+                    {activeStation.toUpperCase()}
+                  </strong>
+                </span>
+                <span style={{ color: '#475569' }}>•</span>
+                <span style={{ color: '#cbd5e1' }}>Safe In-Memory Mode</span>
+              </div>
             </div>
           </div>
+
           <button
             onClick={onClose}
+            aria-label="Close"
             style={{
-              background: 'rgba(255,255,255,0.1)',
-              border: '1px solid rgba(255,255,255,0.2)',
-              color: '#fff',
-              width: 30, height: 30,
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              color: '#cbd5e1',
+              width: 32,
+              height: 32,
               cursor: 'pointer',
-              fontSize: 16,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              borderRadius: 3,
+              fontSize: 14,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 8,
+              transition: 'all 0.15s ease',
               flexShrink: 0,
+            }}
+            onMouseOver={(e) => {
+              const el = e.currentTarget
+              el.style.background = 'rgba(255, 255, 255, 0.18)'
+              el.style.color = '#ffffff'
+            }}
+            onMouseOut={(e) => {
+              const el = e.currentTarget
+              el.style.background = 'rgba(255, 255, 255, 0.08)'
+              el.style.color = '#cbd5e1'
             }}
           >
             ✕
           </button>
         </div>
 
-        {/* ── DISCLAIMER STRIP ── */}
+        {/* ── MINIMAL NOTICE STRIP ── */}
         <div
           style={{
-            background: '#fef3c7',
-            border: '1px solid #fde68a',
-            padding: '6px 20px',
-            fontSize: 10.5,
-            color: '#92400e',
+            background: '#f8fafc',
+            borderBottom: '1px solid #e2e8f0',
+            padding: '7px 20px',
+            fontSize: 11,
+            color: '#64748b',
             display: 'flex',
             alignItems: 'center',
             gap: 6,
             flexShrink: 0,
           }}
         >
-          <span>⚠️</span>
+          <span style={{ color: '#f59e0b', fontSize: 13 }}>ℹ️</span>
           <span>
-            <strong>SIMULATION DISCLAIMER:</strong> This module injects simulated anomaly data into the
-            digital twin for testing. <strong>No real station sensors, actuators, or hardware are affected.</strong>
-            All changes are in-memory only and reset on session end.
+            Test environment sandbox — station hardware is isolated and unaffected.
           </span>
         </div>
 
@@ -384,19 +484,22 @@ function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalPr
               <span style={{ fontSize: 11, fontWeight: 700, color: '#475569' }}>Filter by severity:</span>
               {['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map((s) => {
                 const st = s === 'ALL' ? null : getSevStyle(s)
+                const isSelected = filterSev === s
                 return (
                   <button
                     key={s}
                     onClick={() => setFilterSev(s)}
                     style={{
-                      background: filterSev === s ? (st?.badge ?? '#0b3b60') : '#f1f5f9',
-                      color: filterSev === s ? '#ffffff' : '#334155',
+                      background: isSelected ? (st?.badge ?? '#0b3b60') : '#f1f5f9',
+                      color: isSelected ? '#ffffff' : '#334155',
                       border: 'none',
-                      padding: '3px 10px',
-                      fontSize: 10,
+                      padding: '4px 12px',
+                      fontSize: 10.5,
                       fontWeight: 800,
                       cursor: 'pointer',
-                      borderRadius: 3,
+                      borderRadius: 16,
+                      boxShadow: isSelected ? '0 2px 6px rgba(0,0,0,0.15)' : 'none',
+                      transition: 'all 0.15s ease',
                     }}
                   >
                     {s} ({s === 'ALL' ? anomalies.length : anomalies.filter((a) => a.severity === s).length})
@@ -414,8 +517,8 @@ function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalPr
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-                  gap: 10,
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+                  gap: 12,
                 }}
               >
                 {filtered.map((a) => (
@@ -429,29 +532,6 @@ function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalPr
               </div>
             )}
 
-            {/* Selected detail preview */}
-            {selected && (
-              <div
-                style={{
-                  background: getSevStyle(selected.severity).bg,
-                  border: `1px solid ${getSevStyle(selected.severity).border}`,
-                  borderLeft: `4px solid ${getSevStyle(selected.severity).badge}`,
-                  padding: '12px 16px',
-                  marginTop: 4,
-                }}
-              >
-                <div style={{ fontSize: 11, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>
-                  {selected.icon} {selected.name} — Expected System Impacts:
-                </div>
-                <ul style={{ margin: 0, padding: '0 0 0 16px' }}>
-                  {selected.impacts.map((imp, i) => (
-                    <li key={i} style={{ fontSize: 10.5, color: '#334155', marginBottom: 3 }}>
-                      {imp}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
 
             {/* Action row */}
             <div

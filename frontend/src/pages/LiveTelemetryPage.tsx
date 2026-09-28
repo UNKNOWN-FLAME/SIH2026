@@ -22,6 +22,7 @@ import SubsystemBlueprintHUD from '../components/telemetry/SubsystemBlueprintHUD
 import ArchivedGazetteModal from '../components/telemetry/ArchivedGazetteModal'
 import { useAlerts } from '../hooks/useAlerts'
 import AnomalyInjector from '../components/dashboard/AnomalyInjector'
+import EmergencyWarningModal from '../components/dashboard/EmergencyWarningModal'
 
 type StationId = 'maitri' | 'bharati'
 
@@ -228,6 +229,8 @@ export default function LiveTelemetryPage() {
     setStationId: setActiveStation,
     lastAnomalyResult,
     setLastAnomalyResult,
+    emergencyAlert,
+    dismissEmergencyAlert,
     isOnline,
     edgeBufferCount,
     flushEdgeBuffer,
@@ -1573,6 +1576,7 @@ export default function LiveTelemetryPage() {
         />
       )}
 
+      <EmergencyWarningModal alert={emergencyAlert} onClose={dismissEmergencyAlert} />
       <Footer />
     </div>
   )

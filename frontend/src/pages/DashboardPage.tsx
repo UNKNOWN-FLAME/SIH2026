@@ -13,11 +13,20 @@ import GlacialCard from '../components/dashboard/GlacialCard'
 import SeismicCard from '../components/dashboard/SeismicCard'
 import GroundLinkCard from '../components/dashboard/GroundLinkCard'
 import AnomalyInjector from '../components/dashboard/AnomalyInjector'
+import EmergencyWarningModal from '../components/dashboard/EmergencyWarningModal'
 import { useLanguage } from '../context/LanguageContext'
 import { useStation } from '../context/StationContext'
 
 export default function DashboardPage() {
-  const { stationId: activeStation, setStationId: setActiveStation, isOnline, edgeBufferCount, flushEdgeBuffer } = useStation()
+  const {
+    stationId: activeStation,
+    setStationId: setActiveStation,
+    isOnline,
+    edgeBufferCount,
+    flushEdgeBuffer,
+    emergencyAlert,
+    dismissEmergencyAlert,
+  } = useStation()
   const [timeRange, setTimeRange] = useState<string>('1H')
   const { t } = useLanguage()
 
@@ -220,6 +229,7 @@ export default function DashboardPage() {
       </div>
 
       <Footer />
+      <EmergencyWarningModal alert={emergencyAlert} onClose={dismissEmergencyAlert} />
     </div>
   )
 }

@@ -22,6 +22,9 @@ interface StationContextType {
   flushEdgeBuffer: () => Promise<SyncBufferResponse | null>
   lastAnomalyResult: AnomalyInjectionResult | null
   setLastAnomalyResult: (res: AnomalyInjectionResult | null) => void
+  emergencyAlert: AnomalyInjectionResult | null
+  triggerEmergencyAlert: (res: AnomalyInjectionResult) => void
+  dismissEmergencyAlert: () => void
   activeIncidentId: string | null
   setActiveIncidentId: (id: string | null) => void
   refreshLinkState: () => Promise<void>
@@ -54,6 +57,17 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('himantar_last_anomaly')
       }
     } catch {}
+  }, [])
+
+  const [emergencyAlert, setEmergencyAlert] = useState<AnomalyInjectionResult | null>(null)
+
+  const triggerEmergencyAlert = useCallback((res: AnomalyInjectionResult) => {
+    setEmergencyAlert(res)
+    setLastAnomalyResult(res)
+  }, [setLastAnomalyResult])
+
+  const dismissEmergencyAlert = useCallback(() => {
+    setEmergencyAlert(null)
   }, [])
 
   const [activeIncidentId, setActiveIncidentId] = useState<string | null>(null)
@@ -132,6 +146,9 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
         flushEdgeBuffer,
         lastAnomalyResult,
         setLastAnomalyResult,
+        emergencyAlert,
+        triggerEmergencyAlert,
+        dismissEmergencyAlert,
         activeIncidentId,
         setActiveIncidentId,
         refreshLinkState,
