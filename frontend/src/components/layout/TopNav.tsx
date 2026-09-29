@@ -37,19 +37,23 @@ export default function TopNav() {
       <div className="tricolour-ribbon" />
 
       {/* ── Tier 1: Accessibility & Government of India National Bar (GIGW 3.0 Standard) ── */}
+      {/* ── Tier 1: Accessibility & Government of India National Bar (GIGW 3.0 Standard) ── */}
       <div
+        className="topbar-tier1"
         style={{
           background: '#f8fafc',
           borderBottom: '1px solid #e2e8f0',
-          padding: '3px 20px',
+          padding: '3px 12px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           fontSize: 11,
           color: '#334155',
+          flexWrap: 'wrap',
+          gap: '4px 8px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {/* Mini Indian Flag Emblem */}
           <div
             style={{
@@ -69,23 +73,23 @@ export default function TopNav() {
             <div style={{ flex: 1, background: '#138808' }} />
           </div>
 
-          <span style={{ fontWeight: 800, color: '#0f172a', letterSpacing: '0.02em' }}>
+          <span style={{ fontWeight: 800, color: '#0f172a', letterSpacing: '0.02em', fontSize: 10.5 }}>
             {t('gov.title')}
           </span>
-          <span style={{ color: '#94a3b8' }}>|</span>
-          <span style={{ color: '#1e293b', fontWeight: 600 }}>
+          <span style={{ color: '#94a3b8' }} className="hidden sm:inline">|</span>
+          <span style={{ color: '#1e293b', fontWeight: 600, fontSize: 10.5 }} className="hidden sm:inline">
             {t('gov.ministry')}
           </span>
-          <span style={{ color: '#94a3b8' }} className="hidden md:inline">•</span>
-          <span style={{ color: '#475569' }} className="hidden md:inline">
+          <span style={{ color: '#94a3b8' }} className="hidden lg:inline">•</span>
+          <span style={{ color: '#475569', fontSize: 10.5 }} className="hidden lg:inline">
             {t('gov.ncpor_short')}
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           {/* Dynamic Indian Standard Time */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#0b3b60', fontFamily: 'Inter', fontWeight: 700, fontSize: 10.5 }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#ea580c' }}>schedule</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#0b3b60', fontFamily: 'Inter', fontWeight: 700, fontSize: 10 }}>
+            <span className="material-symbols-outlined hidden sm:inline" style={{ fontSize: 13, color: '#ea580c' }}>schedule</span>
             <span>{timeStr || 'LIVE IST'}</span>
           </div>
 
@@ -108,8 +112,9 @@ export default function TopNav() {
                 }}
                 title="VSAT Telemetry stream is CONNECTED. Live alerts & sensors flow directly to HQ Digital Twin."
               >
-                <span className="pulse-dot" style={{ width: 7, height: 7, borderRadius: '50%', background: '#16a34a' }} />
-                <span>VSAT LINK LIVE (HQ DIRECT)</span>
+                <span className="pulse-dot" style={{ width: 7, height: 7, borderRadius: '50%', background: '#16a34a', flexShrink: 0 }} />
+                <span className="hidden sm:inline">VSAT LINK LIVE (HQ DIRECT)</span>
+                <span className="inline sm:hidden">VSAT LIVE</span>
                 <button
                   onClick={toggleLinkState}
                   style={{
@@ -125,7 +130,8 @@ export default function TopNav() {
                   }}
                   title="Simulate VSAT severed / blackout outage"
                 >
-                  SEVER LINK
+                  <span className="hidden sm:inline">SEVER LINK</span>
+                  <span className="inline sm:hidden">SEVER</span>
                 </button>
               </div>
             ) : (
@@ -146,8 +152,9 @@ export default function TopNav() {
                 }}
                 title="VSAT link is severed! Station running in Autonomous Edge Mode. Telemetry buffering in Black Box."
               >
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#dc2626', animation: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite' }} />
-                <span>VSAT SEVERED • EDGE BUFFER ({edgeBufferCount} FRAMES)</span>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#dc2626', animation: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite', flexShrink: 0 }} />
+                <span className="hidden sm:inline">VSAT SEVERED • EDGE BUFFER ({edgeBufferCount} FRAMES)</span>
+                <span className="inline sm:hidden">BUFFER ({edgeBufferCount})</span>
                 <button
                   onClick={flushEdgeBuffer}
                   style={{
@@ -163,7 +170,8 @@ export default function TopNav() {
                   }}
                   title="Restore link and flush Edge Black Box buffer to Cloud HQ"
                 >
-                  RESTORE & SYNC
+                  <span className="hidden sm:inline">RESTORE & SYNC</span>
+                  <span className="inline sm:hidden">SYNC</span>
                 </button>
               </div>
             )}
@@ -176,9 +184,9 @@ export default function TopNav() {
               background: '#0b3b60',
               border: '1px solid #082842',
               color: '#ffffff',
-              fontSize: 11,
+              fontSize: 10.5,
               fontWeight: 800,
-              padding: '2px 10px',
+              padding: '2px 8px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -189,20 +197,23 @@ export default function TopNav() {
             title={lang === 'hi' ? 'Switch portal to English' : 'पोर्टल को हिंदी में बदलें'}
           >
             <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#ff9933' }}>translate</span>
-            <span>{lang === 'hi' ? 'English' : 'हिन्दी'}</span>
+            <span>{lang === 'hi' ? 'EN' : 'हिन्दी'}</span>
           </button>
         </div>
       </div>
 
       {/* ── Tier 2: The Iconic Official White Government Masthead ── */}
       <div
+        className="topbar-tier2"
         style={{
           background: '#ffffff',
-          padding: '5px 16px',
+          padding: '5px 12px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           borderBottom: '2px solid #FF9933',
+          flexWrap: 'wrap',
+          gap: '6px 12px',
         }}
       >
         {/* Left: Ministry Hierarchy & Application Brand */}
@@ -215,16 +226,17 @@ export default function TopNav() {
           <img
             src="/ncpor_logo.png"
             alt="NCPOR Logo"
-            style={{ height: 46, width: 46, objectFit: 'contain', display: 'block', flexShrink: 0 }}
+            className="topbar-ncpor-logo"
+            style={{ height: 42, width: 42, objectFit: 'contain', display: 'block', flexShrink: 0 }}
           />
 
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             {/* Tier A: Organisation Name */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#0369a1', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 1 }}>
+              <span style={{ fontSize: 10.5, fontWeight: 800, color: '#0369a1', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                 {t('gov.ncpor')}
               </span>
-              <span style={{ fontSize: 9, fontWeight: 700, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '1px 6px', borderRadius: 3 }}>
+              <span className="hidden sm:inline" style={{ fontSize: 8.5, fontWeight: 700, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '1px 5px', borderRadius: 3 }}>
                 MoES
               </span>
             </div>
@@ -234,39 +246,39 @@ export default function TopNav() {
               <img
                 src="/himantar_logo.png"
                 alt="HIMANTAR"
-                style={{ height: 24, width: 'auto', objectFit: 'contain', display: 'block' }}
+                style={{ height: 22, width: 'auto', objectFit: 'contain', display: 'block' }}
               />
-              <span style={{ fontSize: 13.5, fontWeight: 800, color: '#0b3b60', letterSpacing: '-0.01em' }}>
+              <span style={{ fontSize: 13, fontWeight: 800, color: '#0b3b60', letterSpacing: '-0.01em' }}>
                 {t('app.title')}
               </span>
             </div>
 
             {/* Tier C: Subtitle */}
-            <div style={{ fontSize: 10, fontWeight: 500, color: '#64748b', marginTop: 2, letterSpacing: '0.01em' }}>
+            <div className="hidden md:block" style={{ fontSize: 9.5, fontWeight: 500, color: '#64748b', marginTop: 1, letterSpacing: '0.01em' }}>
               {t('app.subtitle')}
             </div>
           </div>
         </div>
 
         {/* Right: Digital India Badge + Officer Info */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* Officer Profile & Logout */}
           <div
+            className="topbar-officer-box"
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 10,
+              gap: 8,
               background: '#f8fafc',
               border: '1px solid #cbd5e1',
-              padding: '5px 12px',
+              padding: '4px 10px',
             }}
           >
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 12, fontWeight: 800, color: '#0b3b60', lineHeight: 1.1 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#0b3b60', lineHeight: 1.1 }}>
                 {user?.username ? user.username.toUpperCase() : 'OFFICER'}
               </div>
-              <div style={{ fontSize: 9, fontWeight: 700, color: '#ea580c', letterSpacing: '0.04em' }}>
+              <div className="hidden sm:block" style={{ fontSize: 8.5, fontWeight: 700, color: '#ea580c', letterSpacing: '0.04em' }}>
                 {t('header.hq')}
               </div>
             </div>

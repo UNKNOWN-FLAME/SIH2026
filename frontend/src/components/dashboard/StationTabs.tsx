@@ -1,6 +1,6 @@
 import { useStations } from '../../hooks/useStations'
 import { useLanguage } from '../../context/LanguageContext'
-import type { StationId } from '../../context/StationContext'
+import { useStation, type StationId } from '../../context/StationContext'
 import DownloadReportButton from './DownloadReportButton'
 
 interface Props {
@@ -12,16 +12,30 @@ interface Props {
 
 export default function StationTabs({ active, onSelect }: Props) {
   const { data: stations } = useStations()
+  const { linkState: currentLinkState, stationId: currentStationId } = useStation()
   const { t } = useLanguage()
 
   const maitri = stations?.find((s) => s.station_id === 'maitri')
   const bharati = stations?.find((s) => s.station_id === 'bharati')
 
-  const dotColor = (s: typeof maitri) =>
-    !s ? '#94a3b8' : s.link_state === 'UP' ? '#16a34a' : s.link_state === 'DEGRADED' ? '#d97706' : '#dc2626'
+  const getEffectiveLink = (id: StationId, s: typeof maitri): string => {
+    if (id === currentStationId) {
+      return currentLinkState
+    }
+    return s?.link_state ?? 'UP'
+  }
 
-  const stateText = (s: typeof maitri) =>
-    !s ? 'UNKNOWN' : s.link_state === 'UP' ? t('station.online') : s.link_state === 'DEGRADED' ? t('station.degraded') : t('station.offline')
+  const dotColor = (link: string) =>
+    link === 'UP' ? '#16a34a' : link === 'DEGRADED' ? '#d97706' : '#dc2626'
+
+  const stateText = (link: string) =>
+    link === 'UP' ? t('station.online') : link === 'DEGRADED' ? t('station.degraded') : t('station.offline')
+
+  const statusTextColor = (link: string, isSelected: boolean) => {
+    if (link === 'UP') return isSelected ? '#86efac' : '#16a34a'
+    if (link === 'DEGRADED') return isSelected ? '#fde047' : '#d97706'
+    return isSelected ? '#fca5a5' : '#dc2626'
+  }
 
   return (
     <div
@@ -61,6 +75,7 @@ export default function StationTabs({ active, onSelect }: Props) {
           },
         ].map(({ id, name, coords, status }) => {
           const isSelected = active === id
+          const link = getEffectiveLink(id, status)
           return (
             <button
               key={id}
@@ -87,8 +102,9 @@ export default function StationTabs({ active, onSelect }: Props) {
                     style={{
                       width: 8,
                       height: 8,
-                      background: dotColor(status),
+                      background: dotColor(link),
                       display: 'inline-block',
+                      boxShadow: link === 'DOWN' ? '0 0 6px rgba(220, 38, 38, 0.6)' : 'none',
                     }}
                   />
                   <span
@@ -107,9 +123,9 @@ export default function StationTabs({ active, onSelect }: Props) {
                     style={{
                       fontSize: 8.5,
                       fontWeight: 800,
-                      color: '#166534',
-                      background: '#dcfce7',
-                      border: '1px solid #86efac',
+                      color: link === 'DOWN' ? '#991b1b' : '#166534',
+                      background: link === 'DOWN' ? '#fee2e2' : '#dcfce7',
+                      border: `1px solid ${link === 'DOWN' ? '#fca5a5' : '#86efac'}`,
                       padding: '1px 6px',
                       borderRadius: 2,
                     }}
@@ -122,8 +138,8 @@ export default function StationTabs({ active, onSelect }: Props) {
               <div style={{ display: 'flex', gap: 8, marginTop: 3, fontSize: 10.5, color: isSelected ? '#cbd5e1' : '#64748b' }}>
                 <span>{coords}</span>
                 <span>•</span>
-                <span style={{ color: isSelected ? '#86efac' : '#16a34a', fontWeight: 700 }}>
-                  ● {stateText(status)}
+                <span style={{ color: statusTextColor(link, isSelected), fontWeight: 700 }}>
+                  ● {stateText(link)}
                 </span>
               </div>
             </button>

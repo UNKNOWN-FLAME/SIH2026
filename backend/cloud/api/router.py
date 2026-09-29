@@ -21,6 +21,7 @@ Endpoints:
 """
 from __future__ import annotations
 
+import copy
 import json
 import os
 from datetime import datetime, timedelta, timezone
@@ -148,7 +149,7 @@ async def get_dashboard(
             station_outs.append(StationConnectionOut(
                 station_id=sid,
                 display_name=_station_display(sid),
-                link_state=conn.link_state,
+                link_state=_STATION_LINK_STATE.get(sid, conn.link_state),
                 last_heartbeat_at=conn.last_heartbeat_at,
                 queue_depth_bytes=conn.queue_depth_bytes,
                 open_critical_alerts=conn.open_critical_alerts,
@@ -197,7 +198,7 @@ async def list_stations(
         out.append(StationConnectionOut(
             station_id=r.station_id,
             display_name=_station_display(r.station_id),
-            link_state=r.link_state,
+            link_state=_STATION_LINK_STATE.get(r.station_id, r.link_state),
             last_heartbeat_at=r.last_heartbeat_at,
             queue_depth_bytes=r.queue_depth_bytes,
             open_critical_alerts=r.open_critical_alerts,
@@ -226,7 +227,7 @@ async def get_station_status(
     return StationConnectionOut(
         station_id=row.station_id,
         display_name=_station_display(row.station_id),
-        link_state=row.link_state,
+        link_state=_STATION_LINK_STATE.get(row.station_id, row.link_state),
         last_heartbeat_at=row.last_heartbeat_at,
         queue_depth_bytes=row.queue_depth_bytes,
         open_critical_alerts=row.open_critical_alerts,
@@ -958,6 +959,8 @@ _IOT_SENSORS: dict = {
         },
     ],
 }
+
+_BASELINE_IOT_SENSORS = copy.deepcopy(_IOT_SENSORS)
 
 _IOT_CATEGORIES = [
     {"key": "temperature",     "label": "Temperature",           "icon": "thermostat"},
@@ -2355,6 +2358,7 @@ async def get_station_link_state(station_id: str) -> dict:
 async def set_station_link_state(
     station_id: str,
     link_state: str = Query(..., description="UP or DOWN"),
+    session: AsyncSession = Depends(get_db_session),
 ) -> dict:
     """Manually toggle or simulate VSAT link state (UP / DOWN)."""
     sid = station_id.lower()
@@ -2362,11 +2366,52 @@ async def set_station_link_state(
     if new_state not in ("UP", "DOWN", "DEGRADED"):
         raise HTTPException(400, "link_state must be UP, DOWN, or DEGRADED")
     _STATION_LINK_STATE[sid] = new_state
+    try:
+        conn = (await session.execute(
+            select(StationConnection).where(StationConnection.station_id == sid)
+        )).scalar_one_or_none()
+        if conn:
+            conn.link_state = new_state
+            await session.commit()
+    except Exception as e:
+        log.warning("failed_to_persist_link_state_in_db", error=str(e))
+
     return {
         "station_id": sid,
         "link_state": new_state,
         "edge_buffer_count": len(_EDGE_BLACKBOX_BUFFER.get(sid, [])),
         "is_online": new_state == "UP",
+    }
+
+
+@router.post("/anomaly/clear")
+async def clear_anomaly(
+    station_id: str = Query("maitri", description="Station to clear anomaly for"),
+    session: AsyncSession = Depends(get_db_session),
+) -> dict:
+    """Clear/terminate any active anomaly simulation and restore IoT sensors to baseline."""
+    sid = station_id.lower()
+    if sid in _BASELINE_IOT_SENSORS:
+        _IOT_SENSORS[sid] = copy.deepcopy(_BASELINE_IOT_SENSORS[sid])
+    
+    # Acknowledge open alerts created by anomaly
+    try:
+        open_alerts = (await session.execute(
+            select(Alert).where(
+                Alert.station_id == sid,
+                Alert.ack_state == "OPEN"
+            )
+        )).scalars().all()
+        for a in open_alerts:
+            a.ack_state = "ACKNOWLEDGED"
+        await session.commit()
+    except Exception as e:
+        log.warning("clear_anomaly_alert_ack_error", error=str(e))
+    
+    return {
+        "status": "cleared",
+        "station_id": sid,
+        "message": f"Anomaly cleared. All sensors and telemetry for {sid.title()} restored to nominal baseline.",
     }
 
 
@@ -2377,13 +2422,31 @@ async def sync_edge_buffer(
 ) -> dict:
     """Flush and sync stored Edge Black Box frames to Cloud DB once VSAT is restored."""
     sid = station_id.lower()
+
+    # 1. Unconditionally restore VSAT link state to UP both in-memory and in DB
+    _STATION_LINK_STATE[sid] = "UP"
+    try:
+        conn = (await session.execute(
+            select(StationConnection).where(StationConnection.station_id == sid)
+        )).scalar_one_or_none()
+        if conn:
+            conn.link_state = "UP"
+            conn.updated_at = datetime.now(timezone.utc)
+            await session.commit()
+    except Exception as e:
+        log.warning("sync_edge_buffer_conn_update_error", error=str(e))
+        await session.rollback()
+
     frames = _EDGE_BLACKBOX_BUFFER.get(sid, [])
     if not frames:
         return {
             "synced": True,
             "flushed_frames_count": 0,
             "chain_verified": True,
-            "message": f"Edge Black Box buffer is empty. All frames are already synchronized for {sid.title()}.",
+            "station_id": sid,
+            "link_state": "UP",
+            "is_online": True,
+            "message": f"Edge Black Box buffer is empty. All frames are already synchronized for {sid.title()}. VSAT link restored to NOMINAL.",
         }
 
     flushed_count = len(frames)
@@ -2450,6 +2513,8 @@ async def sync_edge_buffer(
         "chain_verified": True,
         "sha256_verification": "TAMPER-PROOF / ALL HASHES VALID",
         "station_id": sid,
+        "link_state": "UP",
+        "is_online": True,
         "incident_id": incident_id,
         "message": f"Successfully flushed and synchronized {flushed_count} Edge Black Box frames to Cloud DB. VSAT link restored to NOMINAL.",
     }

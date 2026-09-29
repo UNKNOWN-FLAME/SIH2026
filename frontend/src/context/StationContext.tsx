@@ -3,6 +3,7 @@ import {
   getStationLinkState,
   setStationLinkState,
   syncEdgeBuffer,
+  clearAnomaly,
   type AnomalyInjectionResult,
   type SyncBufferResponse,
 } from '../api/hq'
@@ -40,6 +41,8 @@ interface StationContextType {
 const StationContext = createContext<StationContextType | undefined>(undefined)
 
 export function StationProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient()
+
   const [stationId, setStationIdState] = useState<StationId>(() => {
     const raw = localStorage.getItem('himantar_active_station')
     return raw === 'bharati' ? 'bharati' : 'maitri'
@@ -73,9 +76,13 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
       // When anomaly ends (transitions from active to null):
       // Store completed incident and automatically open post-incident assessment report!
       if (prev && res === null) {
-        setCompletedIncidentResult(prev)
+        const completedWithEnd = {
+          ...prev,
+          ended_at: new Date().toISOString(),
+        }
+        setCompletedIncidentResult(completedWithEnd)
         try {
-          localStorage.setItem('himantar_last_completed_incident', JSON.stringify(prev))
+          localStorage.setItem('himantar_last_completed_incident', JSON.stringify(completedWithEnd))
         } catch {}
         setIsImpactModalOpen(true)
       }
@@ -86,9 +93,16 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('himantar_last_anomaly', JSON.stringify(res))
       } else {
         localStorage.removeItem('himantar_last_anomaly')
+        // Automatically restore IoT sensors and nominal baseline via backend
+        clearAnomaly(stationId).catch(() => {})
+        queryClient.invalidateQueries({ queryKey: ['iot-sensors'] })
+        queryClient.invalidateQueries({ queryKey: ['sensors'] })
+        queryClient.invalidateQueries({ queryKey: ['alerts'] })
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+        queryClient.invalidateQueries({ queryKey: ['stations'] })
       }
     } catch {}
-  }, [])
+  }, [stationId, queryClient])
 
   const [emergencyAlert, setEmergencyAlert] = useState<AnomalyInjectionResult | null>(null)
 
@@ -105,8 +119,6 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
   const [isBlackBoxOpen, setIsBlackBoxOpen] = useState<boolean>(false)
   const openBlackBox = useCallback(() => setIsBlackBoxOpen(true), [])
   const closeBlackBox = useCallback(() => setIsBlackBoxOpen(false), [])
-
-  const queryClient = useQueryClient()
 
   const setStationId = useCallback((action: StationId | ((prev: StationId) => StationId)) => {
     setStationIdState((prev) => {
@@ -144,10 +156,12 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
       setEdgeBufferCount(res.edge_buffer_count)
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['alerts'] })
+      queryClient.invalidateQueries({ queryKey: ['stations'] })
     } catch (e) {
       console.error('Failed to toggle link state:', e)
       // Optimistic update
       setLinkState(nextState)
+      queryClient.invalidateQueries({ queryKey: ['stations'] })
     }
   }, [stationId, linkState, queryClient])
 
@@ -156,13 +170,22 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
       const res = await syncEdgeBuffer(stationId)
       setLinkState('UP')
       setEdgeBufferCount(0)
+      await setStationLinkState(stationId, 'UP').catch(() => {})
       queryClient.invalidateQueries({ queryKey: ['alerts'] })
       queryClient.invalidateQueries({ queryKey: ['sensors'] })
       queryClient.invalidateQueries({ queryKey: ['iot-sensors'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['stations'] })
       return res
     } catch (e) {
       console.error('Failed to flush edge buffer:', e)
+      try {
+        await setStationLinkState(stationId, 'UP')
+      } catch {}
+      setLinkState('UP')
+      setEdgeBufferCount(0)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['stations'] })
       return null
     }
   }, [stationId, queryClient])

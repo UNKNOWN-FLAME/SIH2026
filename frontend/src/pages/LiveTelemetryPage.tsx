@@ -17,7 +17,7 @@ import {
   ReferenceArea,
 } from 'recharts'
 
-import { triggerCompressionRollup, type AnomalyInjectionResult } from '../api/hq'
+import { triggerCompressionRollup, clearAnomaly, type AnomalyInjectionResult } from '../api/hq'
 import SubsystemBlueprintHUD from '../components/telemetry/SubsystemBlueprintHUD'
 import ArchivedGazetteModal from '../components/telemetry/ArchivedGazetteModal'
 import { useAlerts } from '../hooks/useAlerts'
@@ -43,6 +43,8 @@ interface BlackBoxIncident {
   sensorDeltas: { sensor: string; before: string; atIncident: string; after: string }[]
 }
 
+export type TelemetryTimeRange = '15m' | '1h' | '24h' | '7d'
+
 interface TelemetryPoint {
   timeOffsetHours: number // e.g. -72 (72h ago) up to 0 (Now)
   timestamp: number // epoch ms
@@ -55,6 +57,7 @@ interface TelemetryPoint {
   smokeDensityObsM?: number
   coPpm?: number
   isBlackBox: boolean
+  isInjectedAnomaly?: boolean
 }
 
 // ── Incidents per station ─────────────────────────────────────────────────────
@@ -98,35 +101,117 @@ const INCIDENTS: Record<StationId, BlackBoxIncident> = {
   },
 }
 
-// ── Synthetic 7-Day Telemetry Generator ────────────────────────────────────────
+// ── Synthetic Multi-Range Telemetry Generator (15m, 1h, 24h, 7d) ────────────────────────
 
-function generate7DayTelemetry(
+function generateTelemetryData(
   stationId: StationId,
   incident: BlackBoxIncident,
-  lastAnomaly?: AnomalyInjectionResult | null,
+  timeRange: TelemetryTimeRange,
+  activeAnomaly?: AnomalyInjectionResult | null,
+  completedAnomaly?: AnomalyInjectionResult | null,
 ): TelemetryPoint[] {
   const points: TelemetryPoint[] = []
   const now = Date.now()
-  const sevenDaysHours = 7 * 24 // 168 hours total
-  const stepHours = 1 // 1 hour steps for normal timeline
 
+  // Determine duration and step size based on active timeRange
+  let totalDurationMs: number
+  let stepMs: number
+
+  switch (timeRange) {
+    case '15m':
+      totalDurationMs = 15 * 60 * 1000 // 15 minutes
+      stepMs = 15 * 1000 // 15 seconds per step = 61 points
+      break
+    case '1h':
+      totalDurationMs = 60 * 60 * 1000 // 1 hour
+      stepMs = 60 * 1000 // 1 minute per step = 61 points
+      break
+    case '24h':
+      totalDurationMs = 24 * 3600 * 1000 // 24 hours
+      stepMs = 15 * 60 * 1000 // 15 minutes per step = 97 points
+      break
+    case '7d':
+    default:
+      totalDurationMs = 7 * 24 * 3600 * 1000 // 7 days = 168 hours
+      stepMs = 3600 * 1000 // 1 hour per step = 169 points
+      break
+  }
+
+  const startTime = now - totalDurationMs
+
+  // Historical Black Box incident (usually 36 hours in past)
   const incTime = incident.incidentTimestamp
   const preStart = incTime - incident.preWindowMs
   const postEnd = incTime + incident.postWindowMs
-  const hasActiveAnomaly =
-    lastAnomaly &&
-    (lastAnomaly.station_id === stationId || !lastAnomaly.station_id)
 
-  for (let h = -sevenDaysHours; h <= 0; h += stepHours) {
-    const ptTime = now + h * 3600 * 1000
-    const inBlackBox = ptTime >= preStart && ptTime <= postEnd
-    const isAtOrAfterIncident = ptTime >= incTime && ptTime <= incTime + 4 * 3600 * 1000
+  // Check if active or completed anomaly matches station
+  const hasActiveAnomaly = Boolean(
+    activeAnomaly &&
+    (activeAnomaly.station_id === stationId || !activeAnomaly.station_id)
+  )
 
-    // Date formatting
+  const hasCompletedAnomaly = Boolean(
+    !hasActiveAnomaly &&
+    completedAnomaly &&
+    (completedAnomaly.station_id === stationId || !completedAnomaly.station_id)
+  )
+
+  // Real-time anomaly timestamps
+  const rawAnomalyStart = activeAnomaly?.injected_at
+    ? new Date(activeAnomaly.injected_at).getTime()
+    : completedAnomaly?.injected_at
+    ? new Date(completedAnomaly.injected_at).getTime()
+    : null
+
+  const rawAnomalyEnd = activeAnomaly
+    ? now
+    : completedAnomaly?.ended_at
+    ? new Date(completedAnomaly.ended_at).getTime()
+    : null
+
+  // Calculate precise window in milliseconds for this timeRange
+  let anomalyStartMs: number | null = null
+  let anomalyEndMs: number | null = null
+
+  if (hasActiveAnomaly) {
+    anomalyStartMs = rawAnomalyStart && (now - rawAnomalyStart < totalDurationMs)
+      ? rawAnomalyStart
+      : now - Math.min(2 * 60 * 1000, totalDurationMs * 0.25)
+    anomalyEndMs = now
+  } else if (hasCompletedAnomaly) {
+    if (rawAnomalyStart && rawAnomalyEnd && rawAnomalyEnd >= startTime) {
+      anomalyStartMs = rawAnomalyStart
+      anomalyEndMs = rawAnomalyEnd
+    } else {
+      // In case timestamps were older or simulation just reset, place a clean recent 2-min window
+      const duration = rawAnomalyStart && rawAnomalyEnd
+        ? Math.max(30 * 1000, rawAnomalyEnd - rawAnomalyStart)
+        : 2 * 60 * 1000 // 2 minutes
+      anomalyEndMs = now - Math.min(45 * 1000, totalDurationMs * 0.08)
+      anomalyStartMs = anomalyEndMs - Math.min(duration, totalDurationMs * 0.25)
+    }
+  }
+
+  const aid = activeAnomaly?.anomaly_id || completedAnomaly?.anomaly_id
+
+  let stepIdx = 0
+  for (let ptTime = startTime; ptTime <= now; ptTime += stepMs) {
     const d = new Date(ptTime)
-    const timeLabel = `${d.getDate()} ${d.toLocaleString('en-US', { month: 'short' })} ${d.getHours().toString().padStart(2, '0')}:00`
+    let timeLabel = ''
 
-    // Physics curve
+    if (timeRange === '15m') {
+      timeLabel = d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    } else if (timeRange === '1h') {
+      timeLabel = d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' })
+    } else if (timeRange === '24h') {
+      timeLabel = `${d.getDate()} ${d.toLocaleString('en-US', { month: 'short' })} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
+    } else {
+      timeLabel = `${d.getDate()} ${d.toLocaleString('en-US', { month: 'short' })} ${d.getHours().toString().padStart(2, '0')}:00`
+    }
+
+    const timeOffsetHours = Number(((ptTime - now) / (3600 * 1000)).toFixed(2))
+
+    // Baseline nominal values
     let powerKw = stationId === 'maitri' ? 84 : 96
     let fuelPressure = 4.2
     let coolantTemp = 86
@@ -135,77 +220,110 @@ function generate7DayTelemetry(
     let smokeDensity = 0.02
     let coPpm = 2.0
 
-    if (inBlackBox) {
-      if (isAtOrAfterIncident) {
-        // Active failure zone
-        powerKw = 22 // emergency minimum
-        fuelPressure = 0.5
-        coolantTemp = 98.4
-        habitatTemp = 16.8
-        vibration = 6.8
-      } else if (ptTime >= incTime - 2 * 3600 * 1000) {
-        // Pre-incident warning degradation (2 hours before)
-        fuelPressure = 3.1
-        coolantTemp = 91.2
-        vibration = 3.6
-      }
-    } else if (hasActiveAnomaly && h >= -3) {
-      // Dynamically injected anomaly active in current live telemetry window
-      const aid = lastAnomaly.anomaly_id
-      if (aid === 'fire_alarm') {
-        habitatTemp = 78.4
-        coolantTemp = 96.2
-        powerKw = 34.0
-        vibration = 3.8
-        smokeDensity = 0.88
-        coPpm = 48.5
-      } else if (aid === 'generator_failure') {
-        powerKw = 0.0
-        fuelPressure = 0.22
-        coolantTemp = 108.5
-        vibration = 6.4
-        habitatTemp = 16.2
-      } else if (aid === 'pressure_pipe_failure') {
-        fuelPressure = 0.12
-        habitatTemp = 8.5
-        vibration = 4.2
-      } else if (aid === 'fuel_critical_low') {
-        fuelPressure = 1.05
-        powerKw = 42.0
-      } else if (aid === 'earthquake' || aid === 'earthquake_swarm') {
-        vibration = 14.8
-        powerKw = 42.0
-        fuelPressure = 2.4
-      } else if (aid === 'blizzard' || aid === 'severe_blizzard') {
-        habitatTemp = 4.2
-        vibration = 7.4
-        powerKw = 98.0
-      } else if (aid === 'hvac_failure') {
-        habitatTemp = 3.8
-        coolantTemp = 94.0
-        powerKw = 62.0
-      } else if (aid === 'thunderstorm') {
-        vibration = 8.2
-        powerKw = 48.0
-        fuelPressure = 3.2
-      } else if (aid === 'wildlife_intrusion') {
-        vibration = 3.9
+    // Gentle micro-ripple for natural telemetry dynamics
+    const ripple = Math.sin(stepIdx / 4) * (timeRange === '15m' ? 0.7 : 2.2)
+
+    // Check if within Historical Black Box
+    const inBlackBox = ptTime >= preStart && ptTime <= postEnd
+
+    // Check if within Injected Anomaly Window
+    const inInjectedAnomaly = Boolean(
+      anomalyStartMs !== null &&
+      anomalyEndMs !== null &&
+      ptTime >= anomalyStartMs &&
+      ptTime <= anomalyEndMs
+    )
+
+    if (inInjectedAnomaly) {
+      // 🚨 DYNAMIC INJECTED ANOMALY DIP (EXACT DURATION)
+      const totalSpan = Math.max(1000, anomalyEndMs! - anomalyStartMs!)
+      const progress = (ptTime - anomalyStartMs!) / totalSpan // 0.0 to 1.0
+
+      // Smooth entry (first 20%) and smooth exit (last 20% if completed)
+      let severityFactor = 1.0
+      if (progress < 0.2) {
+        severityFactor = progress / 0.2
+      } else if (hasCompletedAnomaly && progress > 0.8) {
+        severityFactor = (1.0 - progress) / 0.2
       } else {
-        // General anomaly disturbance
-        powerKw *= 0.6
-        coolantTemp += 12.0
-        vibration = 4.8
+        severityFactor = 1.0
+      }
+
+      const flutter = Math.sin(stepIdx * 1.8) * 1.5
+
+      if (aid === 'generator_failure') {
+        const targetKw = 24.0 + flutter
+        powerKw = Number((powerKw - severityFactor * (powerKw - targetKw)).toFixed(1))
+        fuelPressure = Number((4.2 - severityFactor * 3.55).toFixed(2))
+        coolantTemp += severityFactor * 18.5
+        vibration += severityFactor * 5.2
+      } else if (aid === 'fuel_critical_low') {
+        const targetKw = 34.0 + flutter
+        powerKw = Number((powerKw - severityFactor * (powerKw - targetKw)).toFixed(1))
+        fuelPressure = Number((4.2 - severityFactor * 3.7).toFixed(2))
+        coolantTemp += severityFactor * 6.0
+      } else if (aid === 'fire_alarm') {
+        const targetKw = 30.0 + flutter
+        powerKw = Number((powerKw - severityFactor * (powerKw - targetKw)).toFixed(1))
+        habitatTemp += severityFactor * 56.0
+        coolantTemp += severityFactor * 10.0
+        smokeDensity = Number((0.02 + severityFactor * 0.86).toFixed(2))
+        coPpm = Number((2.0 + severityFactor * 46.5).toFixed(1))
+        vibration += severityFactor * 2.6
+      } else if (aid === 'pressure_pipe_failure') {
+        const targetKw = 38.0 + flutter
+        powerKw = Number((powerKw - severityFactor * (powerKw - targetKw)).toFixed(1))
+        fuelPressure = Number((4.2 - severityFactor * 4.0).toFixed(2))
+        vibration += severityFactor * 3.0
+      } else if (aid === 'blizzard' || aid === 'severe_blizzard') {
+        const targetKw = 40.0 + flutter
+        powerKw = Number((powerKw - severityFactor * (powerKw - targetKw)).toFixed(1))
+        habitatTemp = Number((habitatTemp - severityFactor * 17.2).toFixed(1))
+        vibration += severityFactor * 6.2
+      } else {
+        const targetKw = Math.round(powerKw * 0.45) + flutter
+        powerKw = Number((powerKw - severityFactor * (powerKw - targetKw)).toFixed(1))
+        coolantTemp += severityFactor * 14.0
+        vibration += severityFactor * 3.6
+      }
+    } else if (inBlackBox && (timeRange === '7d' || timeRange === '24h')) {
+      // Historical Black Box incident curve (in 24h and 7d views)
+      const deltaHours = (ptTime - incTime) / (3600 * 1000)
+      if (deltaHours >= -2 && deltaHours < 0) {
+        const t = (deltaHours + 2) / 2
+        powerKw = Math.round(powerKw * (1 - 0.22 * t))
+        fuelPressure = Number((4.2 - t * 1.3).toFixed(2))
+        coolantTemp += t * 5.2
+        vibration += t * 2.2
+      } else if (deltaHours >= 0 && deltaHours <= 2.5) {
+        const flutter = Math.sin(stepIdx * 2.3) * 2.1
+        powerKw = Number((24.0 + flutter).toFixed(1))
+        fuelPressure = Number((0.65 + Math.cos(stepIdx) * 0.08).toFixed(2))
+        coolantTemp = 98.4 + Math.sin(stepIdx) * 1.4
+        habitatTemp = 16.8
+        vibration = 6.8 + Math.cos(stepIdx) * 0.5
+      } else if (deltaHours > 2.5 && deltaHours <= 4.5) {
+        const t = (deltaHours - 2.5) / 2.0
+        const targetKw = stationId === 'maitri' ? 84 : 96
+        powerKw = Math.round(24 + t * (targetKw - 24))
+        fuelPressure = Number((0.65 + t * 3.55).toFixed(2))
+        coolantTemp = Number((98.4 - t * 11.5).toFixed(1))
+        habitatTemp = Number((16.8 + t * 4.4).toFixed(1))
+        vibration = Number((6.8 - t * 5.4).toFixed(2))
+      } else {
+        powerKw += ripple
+        coolantTemp += ripple * 0.4
+        habitatTemp += ripple * 0.1
       }
     } else {
-      // Normal minor sinusoidal daily ripple
-      const ripple = Math.sin(h / 6) * 3
+      // Nominal constant rate
       powerKw += ripple
-      coolantTemp += ripple * 0.4
-      habitatTemp += ripple * 0.1
+      coolantTemp += ripple * 0.3
+      habitatTemp += ripple * 0.05
     }
 
     points.push({
-      timeOffsetHours: h,
+      timeOffsetHours,
       timestamp: ptTime,
       timeLabel,
       powerKw: Number(powerKw.toFixed(1)),
@@ -216,7 +334,10 @@ function generate7DayTelemetry(
       smokeDensityObsM: smokeDensity,
       coPpm,
       isBlackBox: inBlackBox,
+      isInjectedAnomaly: inInjectedAnomaly,
     })
+
+    stepIdx++
   }
 
   return points
@@ -229,6 +350,8 @@ export default function LiveTelemetryPage() {
     stationId: activeStation,
     setStationId: setActiveStation,
     lastAnomalyResult,
+    setLastAnomalyResult,
+    completedIncidentResult,
     emergencyAlert,
     dismissEmergencyAlert,
     isOnline,
@@ -242,84 +365,71 @@ export default function LiveTelemetryPage() {
   // Live query: fetch ALL alerts (open + acknowledged) so anomaly persists after ACK
   const { data: allAlertsData } = useAlerts({ station_id: activeStation, page_size: 25 })
   const allAlerts = useMemo(() => allAlertsData?.items ?? [], [allAlertsData?.items])
-  const openAlerts = useMemo(() => allAlerts.filter(a => a.ack_state === 'OPEN'), [allAlerts])
-  const hasOpenAlerts = openAlerts.length > 0
-  // Check if the anomaly alert has already been acknowledged (but event still happened)
-  const isAnomalyAcknowledged = useMemo(() => {
-    if (!lastAnomalyResult) return false
-    const matchingAlert = allAlerts.find(
-      (a) => a.alert_id === lastAnomalyResult.alert_id ||
-             a.alert_id === lastAnomalyResult.report_reference
-    )
-    return matchingAlert ? matchingAlert.ack_state === 'ACKNOWLEDGED' : !hasOpenAlerts && allAlerts.length > 0
-  }, [lastAnomalyResult, allAlerts, hasOpenAlerts])
-
-  // Active anomaly: persists from lastAnomalyResult (localStorage) even after ACK.
-  // Falls back to synthesizing from any alert (open OR acknowledged) in DB.
+  // Active anomaly: strictly driven by active simulation in lastAnomalyResult
   const activeAnomaly = useMemo(() => {
-    // 1. If explicit lastAnomalyResult matches current station — always show it
     if (
       lastAnomalyResult &&
       (lastAnomalyResult.station_id === activeStation || !lastAnomalyResult.station_id)
     ) {
       return lastAnomalyResult
     }
+    return null
+  }, [lastAnomalyResult, activeStation])
 
-    // 2. Fallback: synthesize from any alert (open or acknowledged) in DB for this station
-    const firstAlert = openAlerts[0] ?? allAlerts[0]
-    if (!firstAlert) return null
-
-    const desc = (firstAlert.description || '').toLowerCase()
-    const domain = (firstAlert.domain || '').toLowerCase()
-
-    let anomId = 'general_alert'
-    let anomName = firstAlert.description.slice(0, 40)
-    if (desc.includes('fire') || domain.includes('fire') || desc.includes('smoke')) {
-      anomId = 'fire_alarm'; anomName = 'Fire / Smoke Detection'
-    } else if (desc.includes('generator') || desc.includes('diesel') || domain.includes('power')) {
-      anomId = 'generator_failure'; anomName = 'Primary Generator Failure'
-    } else if (desc.includes('pipe') || desc.includes('water') || desc.includes('pressure')) {
-      anomId = 'pressure_pipe_failure'; anomName = 'Pressure Pipe Failure'
-    } else if (desc.includes('fuel') || desc.includes('tank')) {
-      anomId = 'fuel_critical_low'; anomName = 'Critical Fuel Low'
-    } else if (desc.includes('blizzard') || desc.includes('wind') || domain.includes('weather')) {
-      anomId = 'blizzard'; anomName = 'Polar Blizzard Event'
-    } else if (desc.includes('seismic') || desc.includes('quake') || domain.includes('seismic')) {
-      anomId = 'earthquake'; anomName = 'Seismic Ice-Quake'
-    } else if (desc.includes('hvac') || desc.includes('temp')) {
-      anomId = 'hvac_failure'; anomName = 'HVAC Thermal Loss'
-    } else if (desc.includes('vsat') || desc.includes('satellite') || desc.includes('comm')) {
-      anomId = 'vsat_link_loss'; anomName = 'VSAT Satellite Link Loss'
+  // Completed anomaly (historical resolved dip on the timeline)
+  const completedAnomaly = useMemo(() => {
+    if (
+      completedIncidentResult &&
+      (completedIncidentResult.station_id === activeStation || !completedIncidentResult.station_id)
+    ) {
+      return completedIncidentResult
     }
+    return null
+  }, [completedIncidentResult, activeStation])
 
-    return {
-      status: 'injected_alert',
-      anomaly_id: anomId,
-      anomaly_name: anomName,
-      station_id: activeStation,
-      severity: firstAlert.severity,
-      category: firstAlert.domain,
-      description: firstAlert.description,
-      impacts: [],
-      recovery_steps: [],
-      injected_at: firstAlert.triggered_at,
-      report_reference: firstAlert.alert_id,
-      pdf_download_ready: false,
-      pdf_download_url: '',
-      simulation_note: 'Synthesized from live DB alert',
-      affected_subsystems: [firstAlert.domain],
-      link_state: 'UP',
-    } as AnomalyInjectionResult
-  }, [lastAnomalyResult, activeStation, openAlerts, allAlerts])
+  const hasCompletedAnomaly = Boolean(!activeAnomaly && completedAnomaly)
 
-  // Telemetry data stream incorporating active anomaly
+  // Check if the anomaly alert has already been acknowledged (but event still happened)
+  const isAnomalyAcknowledged = useMemo(() => {
+    if (!activeAnomaly) return false
+    const matchingAlert = allAlerts.find(
+      (a) => a.alert_id === activeAnomaly.alert_id ||
+             a.alert_id === activeAnomaly.report_reference
+    )
+    return matchingAlert ? matchingAlert.ack_state === 'ACKNOWLEDGED' : false
+  }, [activeAnomaly, allAlerts])
+
+  // Active Time Range: 15m (Real-time Live • High-Freq), 1h, 24h, 7d (Black Box Archive)
+  const [timeRange, setTimeRange] = useState<TelemetryTimeRange>('15m')
+
+  // Telemetry data stream incorporating active timeRange, active anomaly and completed anomaly dip
   const telemetryData = useMemo(
-    () => generate7DayTelemetry(activeStation, incident, activeAnomaly),
-    [activeStation, incident, activeAnomaly],
+    () => generateTelemetryData(activeStation, incident, timeRange, activeAnomaly, completedAnomaly),
+    [activeStation, incident, timeRange, activeAnomaly, completedAnomaly],
   )
+
+  // Injected anomaly points within current time range
+  const injectedAnomalyPoints = useMemo(() => {
+    return telemetryData.filter((p) => p.isInjectedAnomaly)
+  }, [telemetryData])
+
+  const injectedAnomalyArea = useMemo(() => {
+    if (injectedAnomalyPoints.length === 0) return null
+    return {
+      x1: injectedAnomalyPoints[0].timeLabel,
+      x2: injectedAnomalyPoints[injectedAnomalyPoints.length - 1].timeLabel,
+      count: injectedAnomalyPoints.length,
+    }
+  }, [injectedAnomalyPoints])
 
   // Scrubber index (0 to telemetryData.length - 1). Last index = LIVE.
   const [scrubberIndex, setScrubberIndex] = useState<number>(telemetryData.length - 1)
+
+  // Whenever timeRange changes or data length changes, auto-align scrubber
+  useEffect(() => {
+    setScrubberIndex(telemetryData.length - 1)
+  }, [timeRange, telemetryData.length])
+
   const [isPlaying, setIsPlaying] = useState<boolean>(false)
   const [playSpeed, setPlaySpeed] = useState<1 | 10 | 60>(1)
 
@@ -329,6 +439,19 @@ export default function LiveTelemetryPage() {
   const [downloadSuccessMsg, setDownloadSuccessMsg] = useState<string | null>(null)
   const [syncNotification, setSyncNotification] = useState<string | null>(null)
   const [isFlushing, setIsFlushing] = useState<boolean>(false)
+  const [isTerminatingAnomaly, setIsTerminatingAnomaly] = useState<boolean>(false)
+
+  async function handleTerminateAnomaly() {
+    setIsTerminatingAnomaly(true)
+    try {
+      setLastAnomalyResult(null)
+      await clearAnomaly(activeStation).catch(() => {})
+      setSyncNotification('✅ Anomaly terminated. All station telemetry restored to nominal baseline.')
+      setTimeout(() => setSyncNotification(null), 5000)
+    } finally {
+      setIsTerminatingAnomaly(false)
+    }
+  }
 
   async function handleFlushBuffer() {
     setIsFlushing(true)
@@ -347,7 +470,7 @@ export default function LiveTelemetryPage() {
   // Current interpolated point
   const currentPoint = telemetryData[scrubberIndex] ?? telemetryData[telemetryData.length - 1]
   const isLive = scrubberIndex >= telemetryData.length - 1
-  const isInBlackBoxZone = currentPoint?.isBlackBox ?? false
+  const isInBlackBoxZone = (currentPoint?.isBlackBox || currentPoint?.isInjectedAnomaly) ?? false
 
   // Live micro-ticking when in isLive mode
   const [liveJitter, setLiveJitter] = useState({ power: 0, fuel: 0, coolant: 0, habitat: 0, vibration: 0 })
@@ -404,15 +527,40 @@ export default function LiveTelemetryPage() {
     setScrubberIndex(telemetryData.length - 1)
   }
 
-  // Jump directly to the Black Box incident
+  // Jump directly to the Black Box incident (auto-switches to 7d archive if needed)
   function jumpToIncident() {
-    const incIdx = telemetryData.findIndex(
-      (p) => Math.abs(p.timestamp - incident.incidentTimestamp) < 3600 * 1000
-    )
-    if (incIdx !== -1) {
-      setScrubberIndex(incIdx)
-      setIsPlaying(false)
+    if (timeRange !== '7d' && timeRange !== '24h') {
+      setTimeRange('7d')
     }
+    setTimeout(() => {
+      const incIdx = telemetryData.findIndex(
+        (p) => Math.abs(p.timestamp - incident.incidentTimestamp) < 3600 * 1000
+      )
+      if (incIdx !== -1) {
+        setScrubberIndex(incIdx)
+        setIsPlaying(false)
+      }
+    }, 60)
+  }
+
+  // Jump directly to the Injected Anomaly Dip
+  function jumpToInjectedDip() {
+    if (injectedAnomalyPoints.length > 0) {
+      const dipIdx = telemetryData.indexOf(injectedAnomalyPoints[0])
+      if (dipIdx !== -1) {
+        setScrubberIndex(dipIdx)
+        setIsPlaying(false)
+        return
+      }
+    }
+    // Switch to 15m view where real-time anomaly is clearest
+    if (timeRange !== '15m') {
+      setTimeRange('15m')
+    }
+    setTimeout(() => {
+      setScrubberIndex(Math.max(0, telemetryData.length - 4))
+      setIsPlaying(false)
+    }, 60)
   }
 
 
@@ -742,7 +890,30 @@ export default function LiveTelemetryPage() {
                     </div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={handleTerminateAnomaly}
+                    disabled={isTerminatingAnomaly}
+                    style={{
+                      background: '#dc2626',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '4px 10px',
+                      fontSize: 10,
+                      fontWeight: 800,
+                      cursor: isTerminatingAnomaly ? 'wait' : 'pointer',
+                      borderRadius: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      boxShadow: '0 1px 3px rgba(220, 38, 38, 0.4)',
+                    }}
+                    title="Stop simulation and restore nominal telemetry"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 13 }}>stop_circle</span>
+                    <span>{isTerminatingAnomaly ? 'RESTORING...' : 'TERMINATE ANOMALY'}</span>
+                  </button>
                   {!isAnomalyAcknowledged && (
                     <button
                       type="button"
@@ -960,6 +1131,34 @@ export default function LiveTelemetryPage() {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {/* Jump directly to Injected Anomaly Dip if available */}
+                  {(hasCompletedAnomaly || activeAnomaly) && (
+                    <button
+                      type="button"
+                      onClick={jumpToInjectedDip}
+                      style={{
+                        background: '#fef2f2',
+                        border: '1.5px solid #ef4444',
+                        color: '#b91c1c',
+                        fontSize: 10,
+                        fontWeight: 900,
+                        padding: '5px 9px',
+                        borderRadius: 2,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        boxShadow: '0 0 8px rgba(239, 68, 68, 0.2)',
+                      }}
+                      title="Jump scrubber directly to the injected anomaly dip window"
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#dc2626' }}>
+                        crisis_alert
+                      </span>
+                      <span>{hasCompletedAnomaly ? 'View Injected Dip 📉' : 'View Live Dip 🚨'}</span>
+                    </button>
+                  )}
+
                   {/* Jump to Incident Quick Button */}
                   <button
                     type="button"
@@ -1057,13 +1256,36 @@ export default function LiveTelemetryPage() {
                   </button>
 
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    <span>D-7 (168h ago)</span>
-                    <span>D-6</span>
-                    <span>D-5</span>
-                    <span>D-4</span>
-                    <span>D-3</span>
-                    <span>D-2</span>
-                    <span>Yesterday</span>
+                    {timeRange === '15m' ? (
+                      <>
+                        <span>-15 min</span>
+                        <span>-12 min</span>
+                        <span>-9 min</span>
+                        <span>-6 min</span>
+                        <span>-3 min</span>
+                      </>
+                    ) : timeRange === '1h' ? (
+                      <>
+                        <span>-60 min</span>
+                        <span>-45 min</span>
+                        <span>-30 min</span>
+                        <span>-15 min</span>
+                      </>
+                    ) : timeRange === '24h' ? (
+                      <>
+                        <span>-24h</span>
+                        <span>-18h</span>
+                        <span>-12h</span>
+                        <span>-6h</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>D-7 (168h ago)</span>
+                        <span>D-5</span>
+                        <span>D-3</span>
+                        <span>Yesterday</span>
+                      </>
+                    )}
                     {activeAnomaly ? (
                       <span style={{ color: '#dc2626', fontWeight: 900, animation: 'pulse 1.5s infinite' }}>
                         NOW (⚠️ ANOMALY LIVE) 🔴
@@ -1318,28 +1540,86 @@ export default function LiveTelemetryPage() {
                 boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 10 }}>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: '#0b3b60' }}>
-                    7-DAY SYNCHRONIZED TELEMETRY TIME-SERIES
+                  <div style={{ fontSize: 12, fontWeight: 900, color: '#0b3b60', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>
+                      {timeRange === '15m'
+                        ? '🔴 REAL-TIME SYNCHRONIZED TELEMETRY (LAST 15 MIN • HIGH-FREQ)'
+                        : timeRange === '1h'
+                        ? '1-HOUR CONTINUOUS TELEMETRY MONITOR (60-SEC RESOLUTION)'
+                        : timeRange === '24h'
+                        ? '24-HOUR DIURNAL TELEMETRY CYCLE (15-MIN DECIMATED)'
+                        : '7-DAY SYNCHRONIZED BLACK-BOX FLIGHT RECORDER (168H)'}
+                    </span>
+                    {activeAnomaly && (
+                      <span style={{ fontSize: 9.5, background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', padding: '1px 6px', borderRadius: 2, fontWeight: 900, animation: 'pulse 1.5s infinite' }}>
+                        LIVE FAULT ACTIVE
+                      </span>
+                    )}
                   </div>
-                  <div style={{ fontSize: 9.5, color: '#64748b' }}>
-                    Power Load (kW) • Fuel Line Pressure (Bar) • Highlighted Red Box = 10-Hour Locked Black-Box Window
+                  <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 1 }}>
+                    Power Load (kW) • Fuel Line Pressure (Bar) • Granularity: {timeRange === '15m' ? '15s' : timeRange === '1h' ? '1m' : timeRange === '24h' ? '15m' : '1h'} • Status: {isOnline ? 'Active Sync' : 'Edge Buffered'}
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <div style={{ width: 10, height: 3, background: '#0284c7' }} />
-                    <span style={{ color: '#475569', fontWeight: 700 }}>Power (kW)</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  {/* ── TIME RANGE SELECTOR PILLS (OPTION 2) ── */}
+                  <div style={{ display: 'flex', border: '1px solid #cbd5e1', borderRadius: 3, overflow: 'hidden', background: '#f8fafc', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+                    {[
+                      { id: '15m', label: '🔴 15 Min', title: 'Live 15-Minute High-Frequency Stream (15-second intervals)' },
+                      { id: '1h', label: '1 Hour', title: 'Last 1 Hour Stream (1-minute intervals)' },
+                      { id: '24h', label: '24 Hours', title: 'Last 24 Hours Overview (15-minute intervals)' },
+                      { id: '7d', label: '📦 7 Days', title: 'Full 7-Day Black Box Archive (168 hours)' },
+                    ].map((btn) => (
+                      <button
+                        key={btn.id}
+                        type="button"
+                        onClick={() => {
+                          setTimeRange(btn.id as TelemetryTimeRange)
+                          setIsPlaying(false)
+                        }}
+                        style={{
+                          background: timeRange === btn.id ? '#0b3b60' : 'transparent',
+                          color: timeRange === btn.id ? '#ffffff' : '#475569',
+                          border: 'none',
+                          padding: '4px 10px',
+                          fontSize: 10,
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                        }}
+                        title={btn.title}
+                      >
+                        {btn.label}
+                      </button>
+                    ))}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <div style={{ width: 10, height: 3, background: '#ea580c' }} />
-                    <span style={{ color: '#475569', fontWeight: 700 }}>Fuel Press. (Bar)</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <div style={{ width: 10, height: 10, background: 'rgba(239, 68, 68, 0.25)', border: '1px solid #f87171' }} />
-                    <span style={{ color: '#b91c1c', fontWeight: 800 }}>Black Box (-5h/+5h)</span>
+
+                  {/* Legend badges */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <div style={{ width: 10, height: 3, background: '#0284c7' }} />
+                      <span style={{ color: '#475569', fontWeight: 700 }}>Power (kW)</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <div style={{ width: 10, height: 3, background: '#ea580c' }} />
+                      <span style={{ color: '#475569', fontWeight: 700 }}>Fuel Press. (Bar)</span>
+                    </div>
+                    {injectedAnomalyArea && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <div style={{ width: 10, height: 10, background: 'rgba(239, 68, 68, 0.25)', border: '1.5px dashed #dc2626' }} />
+                        <span style={{ color: '#dc2626', fontWeight: 800 }}>
+                          {activeAnomaly ? 'Active Anomaly Dip 🚨' : 'Injected Dip (Exact Duration) 📉'}
+                        </span>
+                      </div>
+                    )}
+                    {incidentPoint && (timeRange === '7d' || timeRange === '24h') && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <div style={{ width: 10, height: 10, background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #f87171' }} />
+                        <span style={{ color: '#991b1b', fontWeight: 700 }}>Black Box (-5h/+5h)</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1359,39 +1639,43 @@ export default function LiveTelemetryPage() {
                       </linearGradient>
                     </defs>
 
-                    <XAxis dataKey="timeLabel" tick={{ fontSize: 9, fill: '#64748b' }} interval={24} />
+                    <XAxis
+                      dataKey="timeLabel"
+                      tick={{ fontSize: 9, fill: '#64748b' }}
+                      interval={timeRange === '15m' ? 8 : timeRange === '1h' ? 8 : timeRange === '24h' ? 12 : 24}
+                    />
                     <YAxis tick={{ fontSize: 9, fill: '#64748b' }} />
                     <Tooltip
                       contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 2, fontSize: 11, color: '#ffffff' }}
                       formatter={(val: any, name: any) => [val, name === 'powerKw' ? 'Grid Power (kW)' : 'Fuel Press. (Bar)']}
                     />
 
-                    {/* Live Injected Anomaly Window highlight */}
-                    {activeAnomaly && (
+                    {/* Exact Injected Anomaly Window Highlight (Active or Resolved) */}
+                    {injectedAnomalyArea && (
                       <ReferenceArea
-                        x1={telemetryData[Math.max(0, telemetryData.length - 4)]?.timeLabel}
-                        x2={telemetryData[telemetryData.length - 1]?.timeLabel}
+                        x1={injectedAnomalyArea.x1}
+                        x2={injectedAnomalyArea.x2}
                         fill="#fee2e2"
-                        fillOpacity={0.65}
+                        fillOpacity={activeAnomaly ? 0.65 : 0.4}
                         stroke="#dc2626"
-                        strokeDasharray="2 2"
+                        strokeDasharray={activeAnomaly ? '2 2' : '3 3'}
                       />
                     )}
 
-                    {/* Black Box Incident highlight area */}
-                    {incidentPoint && (
+                    {/* Historical Black Box Incident highlight area (Visible in 7d or 24h) */}
+                    {incidentPoint && (timeRange === '7d' || timeRange === '24h') && (
                       <ReferenceArea
                         x1={telemetryData[Math.max(0, telemetryData.indexOf(incidentPoint) - 5)]?.timeLabel}
                         x2={telemetryData[Math.min(telemetryData.length - 1, telemetryData.indexOf(incidentPoint) + 5)]?.timeLabel}
                         fill="#fee2e2"
-                        fillOpacity={0.5}
+                        fillOpacity={0.35}
                         stroke="#f87171"
                         strokeDasharray="3 3"
                       />
                     )}
 
                     {/* Scrubber Vertical Needle */}
-                    <ReferenceLine x={currentPoint.timeLabel} stroke="#dc2626" strokeWidth={2} label={{ value: 'SCRUBBER', fill: '#dc2626', fontSize: 9 }} />
+                    <ReferenceLine x={currentPoint.timeLabel} stroke="#dc2626" strokeWidth={2} label={{ value: 'SCRUBBER', fill: '#dc2626', fontSize: 9, position: 'insideTopRight' }} />
 
                     <Area type="monotone" dataKey="powerKw" stroke="#0284c7" strokeWidth={2} fillOpacity={1} fill="url(#powerGrad)" />
                     <Area type="monotone" dataKey="fuelPressureBar" stroke="#ea580c" strokeWidth={2} fillOpacity={1} fill="url(#fuelGrad)" />

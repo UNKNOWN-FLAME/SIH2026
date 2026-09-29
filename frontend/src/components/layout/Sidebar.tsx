@@ -20,7 +20,6 @@ export default function Sidebar({
   const navItems = [
     { icon: 'dashboard', label: t('nav.dashboard'), sub: t('nav.dashboard_sub'), path: '/' },
     { icon: 'sensors', label: t('nav.telemetry'), sub: t('nav.telemetry_sub'), path: '/telemetry' },
-    { icon: 'hub', label: t('nav.stations'), sub: t('nav.stations_sub'), path: '/stations' },
     { icon: 'bolt', label: t('nav.energy'), sub: t('nav.energy_sub'), path: '/energy' },
     { icon: 'local_shipping', label: t('nav.logistics'), sub: t('nav.logistics_sub'), path: '/logistics' },
     { icon: 'eco', label: t('nav.environment'), sub: t('nav.environment_sub'), path: '/environment' },
@@ -31,11 +30,10 @@ export default function Sidebar({
 
   return (
     <aside
+      className="app-sidebar"
       style={{
         background: '#ffffff',
         borderRight: '1px solid #cbd5e1',
-        width: 195,
-        minWidth: 195,
         display: 'flex',
         flexDirection: 'column',
         position: 'sticky',
@@ -56,7 +54,7 @@ export default function Sidebar({
           flexShrink: 0,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="sidebar-emblem-inner" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div
             style={{
               width: 26,
@@ -77,7 +75,7 @@ export default function Sidebar({
               style={{ width: '100%', height: '100%', objectFit: 'contain' }}
             />
           </div>
-          <div>
+          <div className="sidebar-emblem-text">
             <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '0.06em', color: '#ff9933' }}>
               {t('nav.wing_title')}
             </div>
@@ -108,6 +106,8 @@ export default function Sidebar({
             <a
               key={item.path}
               href="#"
+              className="sidebar-nav-item"
+              title={`${item.label} (${item.sub})`}
               onClick={(e) => {
                 e.preventDefault()
                 navigate(item.path)
@@ -154,13 +154,14 @@ export default function Sidebar({
         })}
 
         {/* Anomaly Injector button just below Official Reports */}
-        <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid #e2e8f0' }}>
+        <div className="sidebar-anomaly-wrapper" style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid #e2e8f0' }}>
           <AnomalyInjector activeStation={currentStation} variant="sidebar" />
         </div>
       </nav>
 
       {/* ── PINNED AT END OF SIDEBAR: SQUARE BLACK BOX BUTTON ── */}
       <div
+        className="sidebar-blackbox-container"
         style={{
           padding: '8px 10px 10px 10px',
           borderTop: '1px solid #cbd5e1',
@@ -175,6 +176,7 @@ export default function Sidebar({
       >
         <button
           type="button"
+          className="sidebar-blackbox-btn"
           onClick={openBlackBox}
           title="Open Polar Black Box — Mission Telemetry & Flight Data Recorder"
           style={{
@@ -240,24 +242,26 @@ export default function Sidebar({
           </span>
 
           {/* Main Title */}
-          <span
-            style={{
-              fontSize: 9.5,
-              fontWeight: 900,
-              letterSpacing: '0.07em',
-              fontFamily: 'monospace',
-              color: '#ffffff',
-              lineHeight: 1.1,
-              textAlign: 'center',
-            }}
-          >
-            BLACK BOX
-          </span>
+          <div className="sidebar-blackbox-text" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <span
+              style={{
+                fontSize: 9.5,
+                fontWeight: 900,
+                letterSpacing: '0.07em',
+                fontFamily: 'monospace',
+                color: '#ffffff',
+                lineHeight: 1.1,
+                textAlign: 'center',
+              }}
+            >
+              BLACK BOX
+            </span>
 
-          {/* Subtitle */}
-          <span style={{ fontSize: 7, color: '#94a3b8', fontWeight: 600, letterSpacing: '0.03em' }}>
-            DVR LOGS
-          </span>
+            {/* Subtitle */}
+            <span style={{ fontSize: 7, color: '#94a3b8', fontWeight: 600, letterSpacing: '0.03em' }}>
+              DVR LOGS
+            </span>
+          </div>
         </button>
       </div>
     </aside>

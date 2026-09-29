@@ -42,12 +42,21 @@ export default function GroundLinkCard({ stationId }: Props) {
       // Reconnect and flush edge buffer
       setIsSyncing(true)
       setSyncProgress(25)
-      setTimeout(() => setSyncProgress(65), 500)
-      setTimeout(async () => {
-        setSyncProgress(100)
+      try {
+        setSyncProgress(60)
         await flushEdgeBuffer()
-        setIsSyncing(false)
-      }, 1100)
+        setSyncProgress(100)
+      } catch (err) {
+        console.error('Reconnect and sync error:', err)
+        try {
+          await toggleLinkState()
+        } catch {}
+      } finally {
+        setTimeout(() => {
+          setIsSyncing(false)
+          setSyncProgress(0)
+        }, 400)
+      }
     }
   }
 

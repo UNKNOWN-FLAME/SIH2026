@@ -158,18 +158,24 @@ export default function DashboardPage() {
               <div className="bento-side-stack">
                 <GroundLinkCard stationId={activeStation} />
                 <WeatherCard stationId={activeStation} />
-                <EnergyCard stationId={activeStation} />
-                <ActiveAlerts key={activeStation} stationId={activeStation} />
               </div>
 
-              {/* ── Bottom Row ── */}
+              {/* ── Operational Grid: Row 2 (3-col balanced cards) ── */}
+              <div className="bento-bottom-card">
+                <EnergyCard stationId={activeStation} />
+              </div>
+              <div className="bento-bottom-card">
+                <ActiveAlerts key={activeStation} stationId={activeStation} />
+              </div>
               <div className="bento-bottom-card">
                 <MetMastCard stationId={activeStation} />
               </div>
-              <div className="bento-bottom-card">
+
+              {/* ── Scientific & Sensor Grid: Row 3 (2-col wide cards) ── */}
+              <div className="bento-bottom-card-half">
                 <GlacialCard stationId={activeStation} />
               </div>
-              <div className="bento-bottom-card">
+              <div className="bento-bottom-card-half">
                 <SeismicCard stationId={activeStation} />
               </div>
             </div>

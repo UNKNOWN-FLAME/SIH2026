@@ -1,0 +1,128 @@
+================================================================================
+HIMANTAR (VAJRAX) — 5-DAY POLAR OUTAGE & 10-HOUR BLACK BOX FORENSIC SYSTEM
+Architecture, Implementation Blueprint & Demo Guide for NCPOR / SIH 2026
+================================================================================
+
+1. CORE CONCEPT & PROBLEM STATEMENT
+--------------------------------------------------------------------------------
+Scenario:
+- Antarctica research stations (Maitri / Bharati) me severe polar blizzard ya 
+  geomagnetic storm ki wajah se ISRO GSAT-30 VSAT ground link 5 din (120 ghante) 
+  ke liye disconnect / dead ho jaata hai.
+- Is 5 din ke disconnected mode me station completely autonomously run karta hai.
+- Day 3 ko dopahar theek 12:00 baje (T0) ek critical anomaly aati hai 
+  (Jaise: DG-1 Fuel Line Freeze & Generator Blackout Trip).
+
+Requirement:
+1. The 10-Hour Uncompressed Forensic Window (T0 - 5h to T0 + 5h):
+   - Day 3, 07:00 AM se 05:00 PM tak ka data 100% RAW uncompressed hona chahiye (1Hz).
+   - T0 se 5 ghante pehle (07:00 AM - 12:00 PM): Root Cause Analysis (RCA) ke liye — 
+     fuel line pressure drop (4.2 -> 0.3 bar), bearing vibration creep, etc.
+   - T0 se 5 ghante baad (12:00 PM - 05:00 PM): Impact Analysis ke liye — 
+     battery bank backup endurance, habitat cooling rate, secondary diesel switch.
+2. The Remaining Non-Incident Periods (Day 1, 2, 4, 5):
+   - Baki 110 ghante ka data 15-minute average summary (Min, Max, Avg) me compress hoga.
+   - Kyunki 120 ghante ka raw data 450 MB hota hai jo 64kbps satellite link ko choke 
+     kar dega. Hamara adaptive system isko sirf 36 MB me pack karta hai (91.8% Bandwidth Saved).
+
+
+================================================================================
+2. DATABASE ARCHITECTURE (NEON POSTGRESQL & EDGE DB)
+================================================================================
+Data do tables me perfectly map hota hai:
+
+A. Table: `sensor_readings`
+   - Normal Outage Hours (110 hours):
+     * `is_aggregate = True`
+     * 15-minute time buckets (4 points per hour * 110 hours = 440 rows per metric).
+     * Value represents the averaged sensor reading with min/max deadband.
+   - Incident Hours (10 hours):
+     * `is_aggregate = False`
+     * High-frequency telemetry points with full sensor deltas.
+
+B. Table: `black_box_frames`
+   - Only for the 10-Hour Incident Window (T0 - 5h to T0 + 5h).
+   - Tamper-evident append-only ledger.
+   - Har frame me:
+     * `phase`: 'PRE_EVENT' (-5h to T0) | 'ACTIVE' | 'POST_RESOLUTION' (T0 to +5h)
+     * `prev_hash`: SHA-256 hash of previous frame
+     * `frame_hash`: SHA-256 hash of current sensor readings
+     * `synced_to_cloud`: True/False
+
+
+================================================================================
+3. PYTHON SCRIPT SPECIFICATION (`backend/scripts/generate_5day_blackbox.py`)
+================================================================================
+Command to run:
+  python backend/scripts/generate_5day_blackbox.py --station maitri --anomaly generator_failure
+
+Script Execution Flow:
+1. Calculates timestamps for the past 5 days (120 hours) ending at current time.
+2. Identifies Day 3, 12:00 UTC as Event Zero (T0).
+3. Inserts 110 hours of 15m compressed aggregates into `sensor_readings` (is_aggregate=True).
+4. Inserts the 10-Hour Uncompressed Window (T0 - 5h to T0 + 5h):
+   - 07:00 AM to 12:00 PM: Pre-cursor degradation curve (fuel pressure drops, vibration rises).
+   - 12:00 PM: Critical blackout alarm event inserted in `alerts` table.
+   - 12:00 PM to 05:00 PM: Impact propagation & auxiliary recovery curves.
+   - Inserts hash-chained frames into `black_box_frames` table.
+5. Sets station link state to "DOWN" with 1 incident queued in Edge Buffer.
+6. Prints the bandwidth calculation summary and SQL verification query.
+
+
+================================================================================
+4. FRONTEND SCRUBBER & UI BEHAVIOR (`/live-telemetry` & `/blackbox`)
+================================================================================
+1. Time Range Selector:
+   - User clicks `7d` (7 Days Range).
+   - Timeline displays all 5 days of data.
+2. Visual Zone Partitioning:
+   - Day 1 & Day 2: Light blue line labelled: [COMPRESSED EDGE ARCHIVE • 15m AVG]
+   - Day 3 (07:00 to 17:00 UTC): Glowing Amber / Red Highlighted Zone labelled:
+     [BLACK BOX RAW STREAM • 1Hz UNCOMPRESSED FORENSIC REPLAY (10-HOUR WINDOW)]
+   - Day 4 & Day 5: Compressed baseline.
+3. Dual-Mode Scrubber & Cyber HUD:
+   - When Scrubber cursor is on Day 1, 2, 4, 5:
+     HUD shows: "STREAM MODE: 15-MINUTE COMPRESSED ARCHIVE"
+   - When Scrubber enters the 10-Hour Amber Zone:
+     HUD blinks amber/red: "STREAM MODE: BLACK BOX RAW STREAM (1Hz UNCOMPRESSED)"
+     Displays micro-second vibration spikes and exact fuel bar readings.
+4. Interactive Replay Controls:
+   - Play/Pause with 1x, 10x, 60x playback speed.
+
+
+================================================================================
+5. STEP-BY-STEP LIVE DEMO GUIDE FOR JUDGES (5-MINUTE PITCH)
+================================================================================
+Step 1: Terminal Proof (Technical Validation)
+  Run in terminal:
+    python backend/scripts/generate_5day_blackbox.py --station maitri --anomaly generator_failure
+  Show output:
+    - 5-Day Outage Created
+    - 110 Hours Compressed (15m buckets)
+    - 10 Hours Raw Black Box Window (-5h to +5h)
+    - SHA-256 Merkle Hash Chain Verified
+    - Bandwidth Savings: 91.8% (450 MB -> 36.2 MB)
+
+Step 2: Database Query Proof (If judges ask "Is this real?")
+  Run SQL query:
+    SELECT is_aggregate, count(*) FROM sensor_readings GROUP BY is_aggregate;
+  Show that rows actually exist in Neon PostgreSQL DB.
+
+Step 3: UI Live Scrubber Walkthrough
+  - Open browser at http://localhost:5173/live-telemetry
+  - Select '7d' time range.
+  - Drag Scrubber over Day 1 & 2: Show compressed archive mode.
+  - Drag Scrubber into Day 3 (10-Hour Amber Zone):
+    * Point out T-5h (07:00 AM): "Notice fuel pressure was 4.2 bar here."
+    * Point out T-2h (10:00 AM): "See the gradual drop to 2.1 bar? This is why it failed (RCA)."
+    * Point out T0 (12:00 PM): "Trip event occurred."
+    * Point out T+5h (05:00 PM): "Auxiliary backup restored."
+
+Step 4: Reconnect & Sync
+  - Go to Dashboard Satellite Link card.
+  - Click "Reconnect & Sync".
+  - Show the sync animation restoring link state to UP and clearing edge buffer.
+
+================================================================================
+Document created for pair programming review.
+================================================================================

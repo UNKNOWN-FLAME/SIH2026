@@ -4,7 +4,6 @@ import { LanguageProvider } from './context/LanguageContext'
 import { StationProvider } from './context/StationContext'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
-import StationsPage from './pages/StationsPage'
 import EnergyPage from './pages/EnergyPage'
 import LogisticsPage from './pages/LogisticsPage'
 import EnvironmentPage from './pages/EnvironmentPage'
@@ -15,6 +14,7 @@ import LiveTelemetryPage from './pages/LiveTelemetryPage'
 import BlackBoxPage from './pages/BlackBoxPage'
 import BlackBoxModal from './components/blackbox/BlackBoxModal'
 import { ChatBot } from './components/ui/ChatBot'
+import MobileBottomNav from './components/layout/MobileBottomNav'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token } = useAuth()
@@ -30,7 +30,7 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/blackbox" element={<ProtectedRoute><BlackBoxPage /></ProtectedRoute>} />
             <Route path="/telemetry" element={<ProtectedRoute><LiveTelemetryPage /></ProtectedRoute>} />
-            <Route path="/stations" element={<ProtectedRoute><StationsPage /></ProtectedRoute>} />
+            <Route path="/stations" element={<Navigate to="/" replace />} />
             <Route path="/energy" element={<ProtectedRoute><EnergyPage /></ProtectedRoute>} />
             <Route path="/logistics" element={<ProtectedRoute><LogisticsPage /></ProtectedRoute>} />
             <Route path="/environment" element={<ProtectedRoute><EnvironmentPage /></ProtectedRoute>} />
@@ -41,6 +41,7 @@ export default function App() {
           </Routes>
           <ChatBot />
           <BlackBoxModal />
+          <MobileBottomNav />
         </StationProvider>
       </AuthProvider>
     </LanguageProvider>

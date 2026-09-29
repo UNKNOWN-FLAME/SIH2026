@@ -154,6 +154,7 @@ body {
 .bento-schematic {
   grid-column: span 8;
   min-width: 0;
+  align-self: start;
 }
 
 .bento-side-stack {
@@ -174,27 +175,215 @@ body {
   min-width: 0;
 }
 
-@media (max-width: 1080px) {
+.bento-bottom-card-half {
+  grid-column: span 6;
+  min-width: 0;
+}
+
+/* Screen <= 1180px: Laptops with display scaling, iPads & Tablets */
+@media (max-width: 1180px) {
   .bento-schematic {
     grid-column: span 12;
   }
   .bento-side-stack {
     grid-column: span 12;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    grid-template-columns: 1fr 1fr;
     gap: 10px;
   }
   .bento-bottom-card {
     grid-column: span 6;
   }
+  .bento-bottom-card-half {
+    grid-column: span 6;
+  }
 }
 
-@media (max-width: 720px) {
+/* Screen <= 768px: Mobile Phones & Portrait Tablets */
+@media (max-width: 768px) {
+  .bento-schematic {
+    grid-column: span 12;
+  }
   .bento-side-stack {
-    grid-template-columns: 1fr;
+    grid-column: span 12;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
   }
   .bento-bottom-card {
     grid-column: span 12;
+  }
+  .bento-bottom-card-half {
+    grid-column: span 12;
+  }
+}
+
+/* App Sidebar Responsive Styles */
+.app-sidebar {
+  width: 195px;
+  min-width: 195px;
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Mobile Bottom Nav is hidden by default on desktop/laptop */
+.mobile-bottom-nav {
+  display: none !important;
+}
+
+/* Laptop Compact & Tablet Landscape Rail (769px to 1180px) */
+@media (max-width: 1180px) and (min-width: 769px) {
+  .app-sidebar {
+    width: 58px !important;
+    min-width: 58px !important;
+  }
+  .sidebar-label {
+    display: none !important;
+  }
+  .sidebar-emblem-text {
+    display: none !important;
+  }
+  .sidebar-emblem {
+    padding: 8px 4px !important;
+    justify-content: center !important;
+  }
+  .sidebar-emblem-inner {
+    justify-content: center !important;
+  }
+  .sidebar-nav-item {
+    justify-content: center !important;
+    padding: 8px 0 !important;
+  }
+  .sidebar-blackbox-container {
+    padding: 6px 4px !important;
+  }
+  .sidebar-blackbox-btn {
+    width: 44px !important;
+    height: 48px !important;
+    padding: 4px !important;
+  }
+  .sidebar-blackbox-text {
+    display: none !important;
+  }
+  .sidebar-anomaly-wrapper {
+    display: flex !important;
+    justify-content: center !important;
+  }
+  .anomaly-btn-sidebar {
+    padding: 6px 4px !important;
+    justify-content: center !important;
+  }
+  .anomaly-btn-sidebar span:not(:first-child) {
+    display: none !important;
+  }
+}
+
+/* Mobile Devices (<= 768px) */
+@media (max-width: 768px) {
+  .app-sidebar {
+    display: none !important;
+  }
+  .mobile-bottom-nav {
+    display: flex !important;
+  }
+  #main-content {
+    padding-bottom: 74px !important;
+  }
+  .chatbot-container {
+    bottom: 68px !important;
+    right: 12px !important;
+  }
+}
+
+/* Universal Responsive Grid Layout Utilities for inner pages */
+.responsive-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 768px) {
+  .responsive-2col {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.responsive-split-320 {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 12px;
+}
+@media (max-width: 960px) {
+  .responsive-split-320 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.responsive-split-340 {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 14px;
+}
+@media (max-width: 960px) {
+  .responsive-split-340 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.responsive-split-380 {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 14px;
+}
+@media (max-width: 960px) {
+  .responsive-split-380 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.responsive-3col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+@media (max-width: 1024px) {
+  .responsive-3col {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+@media (max-width: 640px) {
+  .responsive-3col {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.responsive-4col {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+@media (max-width: 1180px) {
+  .responsive-4col {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+@media (max-width: 640px) {
+  .responsive-4col {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.responsive-6col {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+@media (max-width: 1180px) {
+  .responsive-6col {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+@media (max-width: 640px) {
+  .responsive-6col {
+    grid-template-columns: repeat(2, 1fr) !important;
   }
 }
 
@@ -279,13 +468,6 @@ body {
 
 main {
   overflow-y: visible;
-}
-
-/* Sidebar collapse on smaller screens */
-@media (max-width: 1200px) {
-  .sidebar-label { display: none; }
-  .sidebar-emblem { display: none; }
-  .sidebar-bottom { display: none; }
 }
 
 /* Radar beam scan animation */

@@ -1109,8 +1109,7 @@ export default function SchematicPanel({ stationId }: Props) {
         position: 'relative',
         display: 'flex',
         flexDirection: 'column',
-        height: '100%',
-        minHeight: 380,
+        height: isFullscreen ? '100vh' : 'auto',
         overflow: 'hidden',
         ...(isFullscreen
           ? {
@@ -1236,12 +1235,15 @@ export default function SchematicPanel({ stationId }: Props) {
       {/* ── Aerial Image Canvas ── */}
       <div
         style={{
-          flex: 1,
+          width: '100%',
+          aspectRatio: isFullscreen ? undefined : '16 / 9.1',
           position: 'relative',
           background: '#0f172a',
           overflow: 'hidden',
-          minHeight: 320,
           display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          ...(isFullscreen ? { flex: 1, minHeight: 'calc(100vh - 45px)' } : {}),
         }}
       >
         <img
@@ -1253,6 +1255,7 @@ export default function SchematicPanel({ stationId }: Props) {
             objectFit: 'cover',
             objectPosition: 'center 42%',
             display: 'block',
+            pointerEvents: 'none',
           }}
           loading="eager"
         />

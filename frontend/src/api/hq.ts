@@ -669,6 +669,7 @@ export interface AnomalyInjectionResult {
   impacts: string[]
   recovery_steps: string[]
   injected_at: string
+  ended_at?: string
   report_reference: string
   incident_id?: string
   alert_id?: string | null
@@ -730,6 +731,17 @@ export async function injectAnomaly(
   const { data } = await api.post<AnomalyInjectionResult>('/hq/anomaly/inject', null, {
     params: { anomaly_id: anomalyId, station_id: stationId },
   })
+  return data
+}
+
+export async function clearAnomaly(
+  stationId: string,
+): Promise<{ status: string; station_id: string; message: string }> {
+  const { data } = await api.post<{ status: string; station_id: string; message: string }>(
+    '/hq/anomaly/clear',
+    null,
+    { params: { station_id: stationId } },
+  )
   return data
 }
 
