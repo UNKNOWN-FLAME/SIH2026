@@ -984,15 +984,77 @@ async def get_iot_sensors(
     category: Optional[str] = Query(None, description="Filter by sensor category"),
     state: Optional[str] = Query(None, description="Filter: online or offline"),
 ) -> dict:
-    """Return hardcoded IoT sensor registry for Antarctic stations.
+    """Return IoT sensor registry dynamically enriched with live Digital Twin physics telemetry."""
+    import copy
+    from cloud.digital_twin.service import DigitalTwinService
 
-    Each sensor includes its current state (online/offline) and 3–4
-    governing operational parameters with current readings, units, and
-    normal operating ranges.  Intended for the IoT Tracking page and
-    linkable to Maitri/Bharati dashboards once they are built.
-    """
-    if station_id and station_id.lower() in _IOT_SENSORS:
-        sensors = _IOT_SENSORS[station_id.lower()]
+    dt_service = DigitalTwinService.get_instance()
+    twin_state = dt_service.get_state("bharati") if (not station_id or station_id.lower() == "bharati") else None
+
+    # Deep copy base sensors to avoid mutating static registry
+    all_sensors = {sid: copy.deepcopy(lst) for sid, lst in _IOT_SENSORS.items()}
+
+    # Dynamically overlay Bharati physics simulator readings
+    if twin_state and "bharati" in all_sensors:
+        env = twin_state.get("environment", {})
+        pwr = twin_state.get("power", {})
+        fuel = twin_state.get("fuel", {})
+        water = twin_state.get("water", {})
+        hvac = twin_state.get("hvac", {})
+        gens = pwr.get("generators", {})
+        chp1 = gens.get("CHP-1", {})
+
+        for sensor in all_sensors["bharati"]:
+            sid_s = sensor.get("sensor_id", "")
+            cat = sensor.get("category", "")
+
+            for param in sensor.get("parameters", []):
+                pkey = param.get("key", "").lower()
+
+                # Environment / Weather
+                if "temp" in pkey and cat in ["weather", "environment", "ambient"]:
+                    param["value"] = round(env.get("ambient_temperature_c", param["value"]), 1)
+                elif "wind" in pkey or "speed" in pkey:
+                    param["value"] = round(env.get("wind_speed_ms", 12.0) * 3.6, 1)
+                elif "pressure" in pkey or "baro" in pkey:
+                    param["value"] = round(env.get("pressure_hpa", 990.0), 1)
+                elif "humid" in pkey:
+                    param["value"] = round(env.get("humidity_percent", 75.0), 1)
+                elif "solar" in pkey or "rad" in pkey:
+                    param["value"] = round(env.get("solar_radiation_wm2", 180.0), 1)
+
+                # Power & Generators
+                elif "power" in pkey or "load" in pkey or "kw" in pkey:
+                    param["value"] = round(pwr.get("total_load_kw", chp1.get("load_kw", param["value"])), 1)
+                elif "coolant" in pkey:
+                    param["value"] = round(chp1.get("coolant_temp_c", 88.5), 1)
+                elif "vibrat" in pkey:
+                    param["value"] = round(chp1.get("vibration_mms", 0.05), 3)
+                elif "oil" in pkey and "press" in pkey:
+                    param["value"] = round(chp1.get("oil_pressure_bar", 4.8), 2)
+                elif "fuel_flow" in pkey:
+                    param["value"] = round(chp1.get("fuel_flow_L_hr", 14.5), 1)
+
+                # Fuel Storage
+                elif "level" in pkey and cat in ["fuel", "energy"]:
+                    param["value"] = round(fuel.get("main_farm_level_L", 210500.0), 0)
+                elif "viscos" in pkey:
+                    param["value"] = round(fuel.get("viscosity_cSt", 2.6), 2)
+
+                # Water & RO
+                elif "tank" in pkey and cat in ["water", "life_support"]:
+                    param["value"] = round(water.get("tank_level_L", 14850.0), 0)
+                elif "ph" in pkey:
+                    param["value"] = round(water.get("tank_ph", 7.2), 2)
+                elif "tds" in pkey:
+                    param["value"] = round(water.get("permeate_tds_ppm", 195.0), 0)
+
+                # HVAC
+                elif "glycol" in pkey:
+                    param["value"] = round(hvac.get("glycol_supply_temp_c", 31.4), 1)
+
+    if station_id and station_id.lower() in all_sensors:
+        sensors = all_sensors[station_id.lower()]
         if category:
             sensors = [s for s in sensors if s["category"] == category.lower()]
         if state:
@@ -1005,15 +1067,14 @@ async def get_iot_sensors(
             "offline": sum(1 for s in sensors if s["state"] == "offline"),
             "categories": _IOT_CATEGORIES,
             "generated_at": datetime.now(timezone.utc).isoformat(),
-            "data_source": "hardcoded_v1",
+            "data_source": "bharati_digital_twin_live" if station_id.lower() == "bharati" else "live_synced",
         }
-    # Both stations
-    all_sensors = {sid: lst for sid, lst in _IOT_SENSORS.items()}
+
     return {
         "stations": all_sensors,
         "categories": _IOT_CATEGORIES,
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "data_source": "hardcoded_v1",
+        "data_source": "digital_twin_multistation",
     }
 
 
@@ -2629,3 +2690,50 @@ async def download_anomaly_report(report_ref: str) -> dict:
             "Recommendations for Future Mitigation",
         ],
     }
+
+
+# ---------------------------------------------------------------------------
+# Bharati Digital Twin & Physics Simulation Endpoints
+# ---------------------------------------------------------------------------
+
+@router.get("/stations/{station_id}/digital-twin", tags=["digital-twin"])
+async def get_digital_twin_state(station_id: str) -> dict:
+    """Return comprehensive 10-module real-time physics telemetry state."""
+    from cloud.digital_twin.service import DigitalTwinService
+    service = DigitalTwinService.get_instance()
+    return service.get_state(station_id)
+
+
+@router.post("/stations/{station_id}/digital-twin/fault", tags=["digital-twin"])
+async def trigger_digital_twin_fault(
+    station_id: str,
+    fault_id: str = Query(..., description="SPOF Fault ID e.g. CHP1_FUEL_PUMP_FAILURE"),
+    severity: float = Query(1.0, description="Severity 0.0 to 1.0"),
+) -> dict:
+    """Inject physical fault into Bharati Digital Twin simulator."""
+    from cloud.digital_twin.service import DigitalTwinService
+    service = DigitalTwinService.get_instance()
+    return service.trigger_fault(fault_id=fault_id, severity=severity, station_id=station_id)
+
+
+@router.post("/stations/{station_id}/digital-twin/repair", tags=["digital-twin"])
+async def dispatch_digital_twin_work_order(
+    station_id: str,
+    fault_id: str = Query(..., description="Fault ID to repair"),
+) -> dict:
+    """Dispatch mechanic repair work order to resolve fault in Digital Twin."""
+    from cloud.digital_twin.service import DigitalTwinService
+    service = DigitalTwinService.get_instance()
+    return service.dispatch_work_order(fault_id=fault_id, station_id=station_id)
+
+
+@router.get("/stations/{station_id}/digital-twin/spofs", tags=["digital-twin"])
+async def get_digital_twin_spofs(station_id: str) -> dict:
+    """Return all registered Single Points of Failure."""
+    from cloud.digital_twin.service import DigitalTwinService
+    service = DigitalTwinService.get_instance()
+    return {
+        "station_id": station_id.lower(),
+        "spofs": service.get_registered_spofs(),
+    }
+

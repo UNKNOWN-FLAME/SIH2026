@@ -791,3 +791,147 @@ export async function getPredictionsV2(stationId: string): Promise<PredictionsV2
   const { data } = await api.get<PredictionsV2Out>(`/hq/stations/${stationId}/analytics/predictions-v2`)
   return data
 }
+
+// ── Bharati Digital Twin & Physics Telemetry ─────────────────────────────────
+
+export interface DigitalTwinStateOut {
+  station: string
+  timestamp: string
+  status?: string
+  environment: {
+    state?: string
+    katabatic_active?: boolean
+    ambient_temperature_c: number
+    wind_chill_c: number
+    wind_speed_ms: number
+    pressure_hpa: number
+    humidity_percent: number
+    solar_radiation_wm2: number
+  }
+  power: {
+    grid_status: string
+    grid_voltage: number
+    grid_frequency: number
+    total_load_kw: number
+    total_thermal_supplied_kw: number
+    total_fuel_consumption_L_hr?: number
+    generators: Record<string, {
+      state: string
+      load_kw: number
+      rpm?: number
+      voltage?: number
+      oil_pressure_bar?: number
+      oil_viscosity_pct?: number
+      coolant_temp_c?: number
+      fuel_flow_L_hr?: number
+      fuel_rail_pressure_bar?: number
+      exhaust_gas_temp_c?: number
+      vibration_mms?: number
+      thermal_output_kw?: number
+      operating_hours?: number
+    }>
+  }
+  fuel: {
+    main_farm_level_L: number
+    day_tank_level_L: number
+    autonomy_days: number
+    fuel_temp_c?: number
+    viscosity_cSt?: number
+    pumps?: Record<string, any>
+    electrical_demand_kw?: number
+  }
+  water: {
+    tank_level_L: number
+    is_running?: boolean
+    intake_pipe_temp_c?: number
+    intake_blocked?: boolean
+    permeate_tds_ppm?: number
+    tank_tds_ppm?: number
+    tank_ph?: number
+    electrical_demand_kw?: number
+  }
+  wastewater?: {
+    greywater_tank_L?: number
+    technical_water_tank_L?: number
+    blackwater_tank_L?: number
+    mbr_tank_L?: number
+    bacteria_health_pct?: number
+    pathogen_alarm?: boolean
+    discharge_frozen?: boolean
+  }
+  hvac?: {
+    total_heat_demand_kw?: number
+    total_electrical_demand_kw?: number
+    glycol_supply_temp_c?: number
+    glycol_return_temp_c?: number
+    glycol_pressure_bar?: number
+    dhw_tank_temp_c?: number
+    zones?: Record<string, {
+      temp_c: number
+      perceived_temp_c?: number
+      heat_demand_kw?: number
+      ahu?: Record<string, any>
+    }>
+  }
+  human?: {
+    occupancy: number
+    pmv?: number
+    fatigue_index?: number
+    hrp?: number
+    co2_l_s?: number
+  }
+  vehicles?: {
+    fleet: Record<string, {
+      state: string
+      speed_kmh?: number
+      fuel_level_L?: number
+      engine_block_temp_c?: number
+      battery_temp_c?: number
+      cabin_temp_c?: number
+    }>
+  }
+  communication?: {
+    status?: string
+    geo_link_status?: string
+    geo_bandwidth_mbps?: number
+    leo_pass_active?: boolean
+    leo_timer_s?: number
+    san_used_gb?: number
+    san_capacity_gb?: number
+    san_utilization_pct?: number
+  }
+  inventory?: {
+    food_stock_kg?: number
+    pharma?: Record<string, any>
+    spares?: Record<string, any>
+    active_repairs?: any[]
+  }
+  faults?: Record<string, any>
+}
+
+export async function getDigitalTwinState(stationId: string): Promise<DigitalTwinStateOut> {
+  const { data } = await api.get<DigitalTwinStateOut>(`/hq/stations/${stationId}/digital-twin`)
+  return data
+}
+
+export async function triggerDigitalTwinFault(
+  stationId: string,
+  faultId: string,
+  severity = 1.0,
+): Promise<{ status: string; message: string }> {
+  const { data } = await api.post(`/hq/stations/${stationId}/digital-twin/fault`, null, {
+    params: { fault_id: faultId, severity },
+  })
+  return data
+}
+
+export async function dispatchDigitalTwinWorkOrder(
+  stationId: string,
+  faultId: string,
+): Promise<{ status: string; message: string }> {
+  const { data } = await api.post(`/hq/stations/${stationId}/digital-twin/repair`, null, {
+    params: { fault_id: faultId },
+  })
+  return data
+}
+
