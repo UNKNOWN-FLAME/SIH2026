@@ -5,6 +5,7 @@ import {
   getEquipmentAnomalies,
   getMaintenanceSchedule,
   getWeatherEnsemble,
+  getPredictionsV2,
 } from '../api/hq'
 
 export function useEnergyForecast(stationId: string) {
@@ -48,6 +49,15 @@ export function useWeatherEnsemble(stationId: string) {
     queryKey: ['weather-ensemble', stationId],
     queryFn: () => getWeatherEnsemble(stationId),
     refetchInterval: 45_000,
+    enabled: Boolean(stationId),
+  })
+}
+
+export function usePredictionsV2(stationId: string) {
+  return useQuery({
+    queryKey: ['predictions-v2', stationId],
+    queryFn: () => getPredictionsV2(stationId),
+    refetchInterval: 30_000,
     enabled: Boolean(stationId),
   })
 }

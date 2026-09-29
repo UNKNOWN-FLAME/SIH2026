@@ -772,3 +772,22 @@ export async function getBlackBoxIncidents(stationId?: string): Promise<BlackBox
   return data
 }
 
+
+export interface PredictionV2 {
+  model_name: string
+  metric: string
+  val: number
+  risk: 'NOMINAL' | 'WARNING' | 'CRITICAL' | 'DEFICIT'
+  data: any
+}
+
+export interface PredictionsV2Out {
+  station_id: string
+  generated_at: string
+  predictions: PredictionV2[]
+}
+
+export async function getPredictionsV2(stationId: string): Promise<PredictionsV2Out> {
+  const { data } = await api.get<PredictionsV2Out>(`/hq/stations/${stationId}/analytics/predictions-v2`)
+  return data
+}

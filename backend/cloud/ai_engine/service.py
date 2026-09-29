@@ -19,6 +19,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 import httpx
 
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from shared.db.models.cloud import AIPrediction
+import json
+
+
 log = structlog.get_logger(__name__)
 
 MODELS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "models"))
@@ -428,3 +434,164 @@ class PredictiveAIService:
             "days": days,
         }
 
+
+    async def predict_algorithmic_v2(self, station_id: str, db: AsyncSession) -> dict:
+        sid = station_id.lower()
+        now = datetime.now(timezone.utc)
+        coords = STATION_COORDS.get(sid, STATION_COORDS["bharati"])
+        crew = coords["crew"]
+        fuel_remaining = coords["fuel_rem"]
+        capacity = coords["fuel_cap"]
+
+        # 1. Fuel Depletion Forecast
+        burnHistory = [1210, 1280, 1190, 1320, 1260, 1240, 1250]
+        slope = (burnHistory[6] - burnHistory[0]) / 6
+        forecastedBurnDay7 = burnHistory[6] + slope * 7
+        daysToEmpty = fuel_remaining / max(1, forecastedBurnDay7)
+        daysToCritical = (fuel_remaining - capacity * 0.30) / max(1, forecastedBurnDay7)
+        resupplyUrgencyScore = (1 - daysToEmpty/120) * 100
+
+        fuel_risk = "NOMINAL"
+        if daysToCritical < 60:
+            fuel_risk = "CRITICAL"
+        elif daysToCritical < 90:
+            fuel_risk = "WARNING"
+
+        fuel_data = {
+            "daysToEmpty": round(daysToEmpty, 1),
+            "daysToCritical": round(daysToCritical, 1),
+            "resupplyUrgencyScore": round(resupplyUrgencyScore, 1),
+            "forecastedBurnDay7": round(forecastedBurnDay7, 1)
+        }
+
+        # 2. Energy Load Prediction
+        T_ambient = -22.0 if sid == "maitri" else -17.0
+        wind_kmh = 35.0
+        HDD = max(0, 18 - T_ambient)
+        load_kw = 120 + 2.8 * HDD + 1.5 * crew + 0.3 * wind_kmh
+        capacity_kw = 250.0 # assumption
+        deficit = load_kw - capacity_kw
+        energy_risk = "NOMINAL"
+        if deficit > 20:
+            energy_risk = "DEFICIT" # wait, instruction says CRITICAL? "Energy DEFICIT (> 20kW over capacity)" so WARNING or CRITICAL? Let's say WARNING or CRITICAL based on 20kW.
+            energy_risk = "CRITICAL"
+
+        energy_data = {
+            "load_kw": round(load_kw, 1),
+            "deficit": round(deficit, 1)
+        }
+
+        # 3. Generator Health Score (RUL)
+        beta = 2.2
+        eta = 4500
+        reliability_target = 0.90
+        RUL_hours_total = eta * ((-math.log(reliability_target)) ** (1/beta))
+        hours_used = 2180
+        remaining = RUL_hours_total - hours_used
+        
+        gen_risk = "NOMINAL"
+        if remaining < 500:
+            gen_risk = "CRITICAL"
+        elif remaining < 800:
+            gen_risk = "WARNING"
+            
+        gen_data = {
+            "RUL_hours": round(remaining, 1)
+        }
+
+        # 4. Blizzard Probability
+        dP_dt = 1.2
+        humidity = 65
+        z = 0.042 * wind_kmh + 0.18 * abs(dP_dt) + 0.015 * humidity - 3.2
+        P_blizzard = 1 / (1 + math.exp(-z))
+        blizz_prob = P_blizzard * 100
+        
+        blizz_risk = "NOMINAL"
+        if blizz_prob > 75:
+            blizz_risk = "CRITICAL"
+        elif blizz_prob > 50:
+            blizz_risk = "WARNING"
+            
+        blizz_data = {
+            "blizzard_prob_pct": round(blizz_prob, 1)
+        }
+
+        # 5. Water Supply Sustainability
+        currentVolume = 15000
+        snowmeltRate = max(0, (T_ambient + 10) * 0.8)
+        usage = crew * 25
+        netDailyChange = snowmeltRate - usage
+        daysToRefillNeeded = currentVolume / max(1, abs(netDailyChange))
+        
+        water_risk = "NOMINAL"
+        if daysToRefillNeeded < 30:
+            water_risk = "CRITICAL"
+        elif daysToRefillNeeded < 45:
+            water_risk = "WARNING"
+            
+        water_data = {
+            "daysToRefillNeeded": round(daysToRefillNeeded, 1),
+            "netDailyChange": round(netDailyChange, 1)
+        }
+
+        # 6. Structural Stress Prediction
+        snowDensity = 300
+        snowDepth = 1.5
+        snowLoad_kPa = snowDensity * snowDepth * 9.81 / 1000
+        wind_ms = wind_kmh / 3.6
+        windPressure_kPa = 0.5 * 1.293 * (wind_ms**2) * 1.3 / 1000
+        totalLoad = snowLoad_kPa + windPressure_kPa
+        safeThreshold = 6.0
+        stressPercent = (totalLoad / safeThreshold) * 100
+        
+        struct_risk = "NOMINAL"
+        if stressPercent > 85:
+            struct_risk = "CRITICAL"
+        elif stressPercent > 70:
+            struct_risk = "WARNING"
+            
+        struct_data = {
+            "stressPercent": round(stressPercent, 1),
+            "totalLoad": round(totalLoad, 2)
+        }
+
+        predictions = [
+            {"model_name": "FuelDepletion", "metric": "daysToCritical", "val": daysToCritical, "risk": fuel_risk, "data": fuel_data},
+            {"model_name": "EnergyLoad", "metric": "load_kw", "val": load_kw, "risk": energy_risk, "data": energy_data},
+            {"model_name": "GeneratorRUL", "metric": "RUL_hours", "val": remaining, "risk": gen_risk, "data": gen_data},
+            {"model_name": "BlizzardProb", "metric": "blizzard_prob_pct", "val": blizz_prob, "risk": blizz_risk, "data": blizz_data},
+            {"model_name": "WaterSustainability", "metric": "daysToRefillNeeded", "val": daysToRefillNeeded, "risk": water_risk, "data": water_data},
+            {"model_name": "StructuralStress", "metric": "stressPercent", "val": stressPercent, "risk": struct_risk, "data": struct_data}
+        ]
+
+        # DB Write
+        for p in predictions:
+            pred_id = f"{sid}-{p['model_name']}"
+            stmt = select(AIPrediction).where(AIPrediction.prediction_id == pred_id)
+            result = await db.execute(stmt)
+            existing = result.scalar_one_or_none()
+            if existing:
+                existing.predicted_value = p['val']
+                existing.risk_level = p['risk']
+                existing.predicted_json = p['data']
+                existing.generated_at = now
+            else:
+                new_pred = AIPrediction(
+                    prediction_id=pred_id,
+                    station_id=sid,
+                    model_name=p['model_name'],
+                    target_metric=p['metric'],
+                    predicted_for_date=now.date(),
+                    predicted_value=p['val'],
+                    risk_level=p['risk'],
+                    predicted_json=p['data'],
+                    generated_at=now
+                )
+                db.add(new_pred)
+        await db.commit()
+
+        return {
+            "station_id": sid,
+            "generated_at": now.isoformat(),
+            "predictions": predictions
+        }

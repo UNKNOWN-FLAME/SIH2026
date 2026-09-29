@@ -1715,19 +1715,71 @@ async def chat_with_ai(
 # ---------------------------------------------------------------------------
 
 @router.get("/stations/{station_id}/analytics/energy-forecast", tags=["predictive-ai"])
-async def get_energy_forecast(station_id: str) -> dict:
+async def get_energy_forecast(station_id: str, db: AsyncSession = Depends(get_db_session)) -> dict:
     """Return 48-hour microgrid load and renewable generation forecast using ML."""
     from cloud.ai_engine.service import PredictiveAIService
     service = PredictiveAIService.get_instance()
-    return await service.predict_48h_energy_balance(station_id)
+    res = await service.predict_48h_energy_balance(station_id)
+    
+    # Write to DB
+    pred_id = f"{station_id}-EnergyForecastOld"
+    stmt = select(AIPrediction).where(AIPrediction.prediction_id == pred_id)
+    result = await db.execute(stmt)
+    existing = result.scalar_one_or_none()
+    now = datetime.now(timezone.utc)
+    if existing:
+        existing.predicted_value = res.get("current_load_kw", 0.0)
+        existing.predicted_json = res
+        existing.generated_at = now
+    else:
+        new_pred = AIPrediction(
+            prediction_id=pred_id,
+            station_id=station_id,
+            model_name="EnergyForecastOld",
+            target_metric="load_kw",
+            predicted_for_date=now.date(),
+            predicted_value=res.get("current_load_kw", 0.0),
+            risk_level="NOMINAL",
+            predicted_json=res,
+            generated_at=now
+        )
+        db.add(new_pred)
+    await db.commit()
+    return res
 
 
 @router.get("/stations/{station_id}/analytics/fuel-forecast", tags=["predictive-ai"])
-async def get_fuel_forecast(station_id: str) -> dict:
+async def get_fuel_forecast(station_id: str, db: AsyncSession = Depends(get_db_session)) -> dict:
     """Return fuel consumption and autonomy depletion prediction using ML."""
     from cloud.ai_engine.service import PredictiveAIService
     service = PredictiveAIService.get_instance()
-    return await service.predict_fuel_autonomy(station_id)
+    res = await service.predict_fuel_autonomy(station_id)
+    
+    # Write to DB
+    pred_id = f"{station_id}-FuelForecastOld"
+    stmt = select(AIPrediction).where(AIPrediction.prediction_id == pred_id)
+    result = await db.execute(stmt)
+    existing = result.scalar_one_or_none()
+    now = datetime.now(timezone.utc)
+    if existing:
+        existing.predicted_value = res.get("days_of_autonomy", 0.0)
+        existing.predicted_json = res
+        existing.generated_at = now
+    else:
+        new_pred = AIPrediction(
+            prediction_id=pred_id,
+            station_id=station_id,
+            model_name="FuelForecastOld",
+            target_metric="days_of_autonomy",
+            predicted_for_date=now.date(),
+            predicted_value=res.get("days_of_autonomy", 0.0),
+            risk_level="NOMINAL",
+            predicted_json=res,
+            generated_at=now
+        )
+        db.add(new_pred)
+    await db.commit()
+    return res
 
 
 @router.get("/stations/{station_id}/analytics/anomalies", tags=["predictive-ai"])
@@ -1753,6 +1805,14 @@ async def get_weather_ensemble(station_id: str) -> dict:
     service = PredictiveAIService.get_instance()
     return await service.predict_weather_ensemble(station_id)
 
+
+
+@router.get("/stations/{station_id}/analytics/predictions-v2", tags=["predictive-ai"])
+async def get_predictions_v2(station_id: str, db: AsyncSession = Depends(get_db_session)) -> dict:
+    """Return 6 deterministic algorithmic predictions (V2) and write to DB."""
+    from cloud.ai_engine.service import PredictiveAIService
+    service = PredictiveAIService.get_instance()
+    return await service.predict_algorithmic_v2(station_id, db)
 
 # ---------------------------------------------------------------------------
 # Anomaly Injection Engine  (simulation — hardcoded, no DB writes)
