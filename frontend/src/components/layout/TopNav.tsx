@@ -37,7 +37,6 @@ export default function TopNav() {
       <div className="tricolour-ribbon" />
 
       {/* ── Tier 1: Accessibility & Government of India National Bar (GIGW 3.0 Standard) ── */}
-      {/* ── Tier 1: Accessibility & Government of India National Bar (GIGW 3.0 Standard) ── */}
       <div
         className="topbar-tier1"
         style={{
@@ -62,6 +61,7 @@ export default function TopNav() {
               display: 'flex',
               flexDirection: 'column',
               border: '1px solid #cbd5e1',
+              borderRadius: 1,
               overflow: 'hidden',
               flexShrink: 0,
             }}
@@ -86,96 +86,118 @@ export default function TopNav() {
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {/* Dynamic Indian Standard Time */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#0b3b60', fontFamily: 'Inter', fontWeight: 700, fontSize: 10 }}>
             <span className="material-symbols-outlined hidden sm:inline" style={{ fontSize: 13, color: '#ea580c' }}>schedule</span>
             <span>{timeStr || 'LIVE IST'}</span>
           </div>
 
-          {/* VSAT Link Status & Edge Buffer Pill */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {isOnline ? (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  background: '#f0fdf4',
-                  border: '1px solid #86efac',
-                  color: '#15803d',
-                  padding: '2px 8px',
-                  borderRadius: 3,
-                  fontSize: 10,
-                  fontWeight: 800,
-                  letterSpacing: '0.02em',
-                }}
-                title="VSAT Telemetry stream is CONNECTED. Live alerts & sensors flow directly to HQ Digital Twin."
-              >
-                <span className="pulse-dot" style={{ width: 7, height: 7, borderRadius: '50%', background: '#16a34a', flexShrink: 0 }} />
-                <span className="hidden sm:inline">VSAT LINK LIVE (HQ DIRECT)</span>
-                <span className="inline sm:hidden">VSAT LIVE</span>
-                <button
-                  onClick={toggleLinkState}
-                  style={{
-                    background: '#e2e8f0',
-                    border: '1px solid #cbd5e1',
-                    color: '#475569',
-                    fontSize: 9,
-                    fontWeight: 700,
-                    padding: '1px 5px',
-                    borderRadius: 2,
-                    cursor: 'pointer',
-                    marginLeft: 4,
-                  }}
-                  title="Simulate VSAT severed / blackout outage"
-                >
-                  <span className="hidden sm:inline">SEVER LINK</span>
-                  <span className="inline sm:hidden">SEVER</span>
-                </button>
-              </div>
-            ) : (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  background: '#fef2f2',
-                  border: '1px solid #f87171',
-                  color: '#b91c1c',
-                  padding: '2px 8px',
-                  borderRadius: 3,
-                  fontSize: 10,
-                  fontWeight: 900,
-                  letterSpacing: '0.02em',
-                  boxShadow: '0 0 8px rgba(220, 38, 38, 0.3)',
-                }}
-                title="VSAT link is severed! Station running in Autonomous Edge Mode. Telemetry buffering in Black Box."
-              >
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#dc2626', animation: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite', flexShrink: 0 }} />
-                <span className="hidden sm:inline">VSAT SEVERED • EDGE BUFFER ({edgeBufferCount} FRAMES)</span>
-                <span className="inline sm:hidden">BUFFER ({edgeBufferCount})</span>
-                <button
-                  onClick={flushEdgeBuffer}
-                  style={{
-                    background: '#dc2626',
-                    border: '1px solid #991b1b',
-                    color: '#ffffff',
-                    fontSize: 9,
-                    fontWeight: 800,
-                    padding: '1px 6px',
-                    borderRadius: 2,
-                    cursor: 'pointer',
-                    marginLeft: 4,
-                  }}
-                  title="Restore link and flush Edge Black Box buffer to Cloud HQ"
-                >
-                  <span className="hidden sm:inline">RESTORE & SYNC</span>
-                  <span className="inline sm:hidden">SYNC</span>
-                </button>
-              </div>
-            )}
-          </div>
+          {/* VSAT Link Status Badge */}
+          {isOnline ? (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                background: '#f0fdf4',
+                border: '1px solid #86efac',
+                color: '#15803d',
+                padding: '2px 8px',
+                borderRadius: 3,
+                fontSize: 10,
+                fontWeight: 800,
+                letterSpacing: '0.02em',
+              }}
+              title="VSAT Telemetry stream is CONNECTED. Live alerts & sensors flow directly to HQ Digital Twin."
+            >
+              <span className="pulse-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a', flexShrink: 0 }} />
+              <span className="hidden sm:inline">VSAT LINK LIVE (HQ DIRECT)</span>
+              <span className="inline sm:hidden">VSAT LIVE</span>
+            </div>
+          ) : (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                background: '#fef2f2',
+                border: '1px solid #f87171',
+                color: '#b91c1c',
+                padding: '2px 8px',
+                borderRadius: 3,
+                fontSize: 10,
+                fontWeight: 900,
+                letterSpacing: '0.02em',
+                boxShadow: '0 0 8px rgba(220, 38, 38, 0.3)',
+              }}
+              title="VSAT link is severed! Station running in Autonomous Edge Mode. Telemetry buffering in Black Box."
+            >
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#dc2626', animation: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite', flexShrink: 0 }} />
+              <span className="hidden sm:inline">VSAT SEVERED • EDGE BUFFER ({edgeBufferCount})</span>
+              <span className="inline sm:hidden">BUFFER ({edgeBufferCount})</span>
+            </div>
+          )}
+
+          {/* Simulation Link Toggle Button */}
+          {isOnline ? (
+            <button
+              onClick={toggleLinkState}
+              style={{
+                background: '#ffffff',
+                border: '1px solid #cbd5e1',
+                color: '#475569',
+                fontSize: 9,
+                fontWeight: 700,
+                padding: '2px 6px',
+                borderRadius: 3,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 3,
+                transition: 'all 0.15s ease',
+              }}
+              title="Simulate VSAT severed / blackout outage drill"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#fef2f2'
+                e.currentTarget.style.borderColor = '#fca5a5'
+                e.currentTarget.style.color = '#dc2626'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#ffffff'
+                e.currentTarget.style.borderColor = '#cbd5e1'
+                e.currentTarget.style.color = '#475569'
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 11 }}>sensors_off</span>
+              <span className="hidden sm:inline">SIM LINK DROP</span>
+              <span className="inline sm:hidden">DROP</span>
+            </button>
+          ) : (
+            <button
+              onClick={flushEdgeBuffer}
+              style={{
+                background: '#16a34a',
+                border: 'none',
+                color: '#ffffff',
+                fontSize: 9,
+                fontWeight: 800,
+                padding: '2px 7px',
+                borderRadius: 3,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 3,
+                boxShadow: '0 1px 3px rgba(22, 163, 74, 0.3)',
+                transition: 'background 0.15s',
+              }}
+              title="Restore link and flush Edge Black Box buffer to Cloud HQ"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 11 }}>sync</span>
+              <span className="hidden sm:inline">RESTORE & SYNC</span>
+              <span className="inline sm:hidden">SYNC</span>
+            </button>
+          )}
 
           {/* Language Switch Button */}
           <button
@@ -184,9 +206,10 @@ export default function TopNav() {
               background: '#0b3b60',
               border: '1px solid #082842',
               color: '#ffffff',
-              fontSize: 10.5,
+              fontSize: 10,
               fontWeight: 800,
               padding: '2px 8px',
+              borderRadius: 3,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -196,7 +219,7 @@ export default function TopNav() {
             }}
             title={lang === 'hi' ? 'Switch portal to English' : 'पोर्टल को हिंदी में बदलें'}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#ff9933' }}>translate</span>
+            <span className="material-symbols-outlined" style={{ fontSize: 12, color: '#ff9933' }}>translate</span>
             <span>{lang === 'hi' ? 'EN' : 'हिन्दी'}</span>
           </button>
         </div>
@@ -211,7 +234,7 @@ export default function TopNav() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          borderBottom: '2px solid #FF9933',
+          borderBottom: '1.5px solid #f97316',
           flexWrap: 'wrap',
           gap: '6px 12px',
         }}
@@ -260,47 +283,80 @@ export default function TopNav() {
           </div>
         </div>
 
-        {/* Right: Digital India Badge + Officer Info */}
+        {/* Right: Officer Profile & Logout */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* Officer Profile & Logout */}
           <div
             className="topbar-officer-box"
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              background: '#f8fafc',
-              border: '1px solid #cbd5e1',
-              padding: '4px 10px',
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: 4,
+              padding: '3px 8px',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
             }}
           >
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: '#0b3b60', lineHeight: 1.1 }}>
-                {user?.username ? user.username.toUpperCase() : 'OFFICER'}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div
+                style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: '50%',
+                  background: '#f1f5f9',
+                  border: '1px solid #cbd5e1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#0b3b60',
+                  fontWeight: 800,
+                  fontSize: 10,
+                }}
+              >
+                {user?.username ? user.username.substring(0, 2).toUpperCase() : 'HQ'}
               </div>
-              <div className="hidden sm:block" style={{ fontSize: 8.5, fontWeight: 700, color: '#ea580c', letterSpacing: '0.04em' }}>
-                {t('header.hq')}
+              <div style={{ lineHeight: 1.15 }}>
+                <div style={{ fontSize: 10.5, fontWeight: 800, color: '#0f172a' }}>
+                  {user?.username ? user.username.toUpperCase() : 'OFFICER'}
+                </div>
+                <div className="hidden sm:block" style={{ fontSize: 8, fontWeight: 600, color: '#64748b' }}>
+                  {t('header.hq')}
+                </div>
               </div>
             </div>
+
+            <div style={{ width: 1, height: 18, background: '#e2e8f0', margin: '0 2px' }} />
 
             <button
               onClick={logout}
               style={{
-                background: '#dc2626',
-                border: 'none',
-                color: '#ffffff',
-                padding: '4px 8px',
+                background: 'transparent',
+                border: '1px solid #e2e8f0',
+                color: '#64748b',
+                borderRadius: 3,
+                padding: '2px 7px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 4,
-                fontSize: 10,
-                fontWeight: 800,
-                boxShadow: '0 1px 2px rgba(220, 38, 38, 0.2)',
+                gap: 3,
+                fontSize: 9.5,
+                fontWeight: 700,
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#fef2f2'
+                e.currentTarget.style.borderColor = '#fca5a5'
+                e.currentTarget.style.color = '#dc2626'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.borderColor = '#e2e8f0'
+                e.currentTarget.style.color = '#64748b'
               }}
               title={t('header.logout')}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: 13 }}>logout</span>
+              <span className="material-symbols-outlined" style={{ fontSize: 12 }}>logout</span>
               <span className="hidden sm:inline">{t('header.logout')}</span>
             </button>
           </div>

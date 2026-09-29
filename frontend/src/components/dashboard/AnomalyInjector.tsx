@@ -1165,40 +1165,44 @@ export default function AnomalyInjector({
           onClick={() => setOpen(true)}
           style={{
             width: '100%',
+            height: 32,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
+            justifyContent: 'space-between',
             gap: 6,
-            padding: '7px 8px',
-            background: isSimActive ? '#dc2626' : '#dc2626',
+            padding: '0 8px',
+            background: isSimActive ? '#dc2626' : '#b91c1c',
             color: '#ffffff',
-            border: isSimActive ? '1px solid rgba(254, 202, 202, 0.6)' : '1px solid #b91c1c',
+            border: 'none',
             borderRadius: 4,
             cursor: 'pointer',
             boxShadow: isSimActive
-              ? '0 0 0 2px rgba(239, 68, 68, 0.35)'
-              : '0 1px 3px rgba(220, 38, 38, 0.2)',
+              ? '0 0 10px rgba(220, 38, 38, 0.4)'
+              : '0 1px 3px rgba(185, 28, 28, 0.25)',
             fontWeight: 800,
-            fontSize: 11,
-            letterSpacing: '0.04em',
+            fontSize: 10.5,
+            letterSpacing: '0.03em',
             transition: 'all 0.15s ease',
             userSelect: 'none',
           }}
           title={isSimActive ? 'Simulation Anomaly actively running — click to view or stop' : 'Open Anomaly Injection Simulator to test station resilience'}
         >
-          <span style={{ fontSize: 13 }}>
-            {isSimActive ? '🚨' : '⚠️'}
-          </span>
-          <span>{isSimActive ? 'ANOMALY ACTIVE' : 'INJECT ANOMALY'}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 15, color: isSimActive ? '#ffffff' : '#fef08a' }}>
+              {isSimActive ? 'crisis_alert' : 'warning'}
+            </span>
+            <span style={{ whiteSpace: 'nowrap' }}>{isSimActive ? 'FAULT ACTIVE' : 'INJECT ANOMALY'}</span>
+          </div>
           <span
             style={{
               fontSize: 7.5,
               fontWeight: 900,
-              background: isSimActive ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.25)',
+              background: isSimActive ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.22)',
               color: '#ffffff',
-              padding: '1px 4px',
+              padding: '1.5px 5px',
               borderRadius: 2,
               letterSpacing: '0.06em',
+              flexShrink: 0,
             }}
           >
             {isSimActive ? 'LIVE' : 'SIM'}
@@ -1209,37 +1213,40 @@ export default function AnomalyInjector({
           className="anomaly-btn"
           onClick={() => setOpen(true)}
           style={{
-            background: '#dc2626',
+            height: 28,
+            background: isSimActive ? '#dc2626' : '#b91c1c',
             color: '#ffffff',
-            border: '2px solid #b91c1c',
-            padding: '10px 22px',
-            fontWeight: 900,
-            fontSize: 13,
+            border: 'none',
+            padding: '0 10px',
+            fontWeight: 800,
+            fontSize: 10.5,
             cursor: 'pointer',
-            borderRadius: 4,
-            display: 'flex',
+            borderRadius: 3,
+            display: 'inline-flex',
             alignItems: 'center',
-            gap: 8,
-            letterSpacing: '0.04em',
+            gap: 6,
+            letterSpacing: '0.03em',
             transition: 'background 0.15s, transform 0.1s, box-shadow 0.2s',
             animation: pulse ? 'anomaly-pulse 1.5s ease-in-out 3' : 'none',
             userSelect: 'none',
           }}
           title="Open the Anomaly Injection Simulator to stress-test station resilience"
         >
-          <span style={{ fontSize: 18 }}>⚠️</span>
-          INJECT ANOMALY
+          <span className="material-symbols-outlined" style={{ fontSize: 14, color: isSimActive ? '#ffffff' : '#fef08a' }}>
+            {isSimActive ? 'crisis_alert' : 'warning'}
+          </span>
+          <span>{isSimActive ? 'ANOMALY ACTIVE' : 'INJECT ANOMALY'}</span>
           <span
             style={{
-              fontSize: 8.5,
-              fontWeight: 800,
-              background: 'rgba(255,255,255,0.2)',
-              padding: '2px 6px',
-              borderRadius: 3,
-              letterSpacing: '0.06em',
+              fontSize: 8,
+              fontWeight: 900,
+              background: 'rgba(255,255,255,0.22)',
+              padding: '1px 5px',
+              borderRadius: 2,
+              letterSpacing: '0.05em',
             }}
           >
-            SIM
+            {isSimActive ? 'LIVE' : 'SIM'}
           </span>
         </button>
       )}

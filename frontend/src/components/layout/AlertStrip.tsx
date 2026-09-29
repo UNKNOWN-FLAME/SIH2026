@@ -3,7 +3,7 @@ import { useLanguage } from '../../context/LanguageContext'
 import { useStation } from '../../context/StationContext'
 
 export default function AlertStrip() {
-  const { data, isError } = useAlerts({ ack_state: 'OPEN', page_size: 10 })
+  const { data } = useAlerts({ ack_state: 'OPEN', page_size: 10 })
   const { t } = useLanguage()
   const { lastAnomalyResult } = useStation()
 
@@ -11,7 +11,7 @@ export default function AlertStrip() {
 
   const bulletins = [
     ...(lastAnomalyResult
-      ? [`🚨 SIMULATION ANOMALY ACTIVE: [${lastAnomalyResult.severity}] ${lastAnomalyResult.anomaly_name} (${lastAnomalyResult.station_id?.toUpperCase()} BASE)`]
+      ? [`[FAULT INJECTION DRILL] [${lastAnomalyResult.severity}] ${lastAnomalyResult.anomaly_name} (${lastAnomalyResult.station_id?.toUpperCase()} BASE)`]
       : []),
     t('marquee.notice1'),
     alerts.length > 0
@@ -23,10 +23,10 @@ export default function AlertStrip() {
 
   // Render a block of bulletins
   const renderBulletinBlock = () => (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 24, paddingRight: 24 }}>
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 20, paddingRight: 20 }}>
       {bulletins.map((item, idx) => (
-        <span key={idx} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 600, color: '#1e293b' }}>
-          <span style={{ color: '#ea580c', fontWeight: 900 }}>★</span>
+        <span key={idx} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 10.5, fontWeight: 600, color: '#1e293b' }}>
+          <span style={{ color: '#0284c7', fontSize: 8 }}>◆</span>
           <span>{item}</span>
         </span>
       ))}
@@ -38,13 +38,13 @@ export default function AlertStrip() {
       style={{
         background: '#ffffff',
         borderBottom: '1px solid #cbd5e1',
-        padding: '3px 16px',
+        padding: '3px 12px',
         display: 'flex',
         alignItems: 'center',
-        gap: 12,
-        minHeight: 34,
+        gap: 10,
+        minHeight: 32,
         flexShrink: 0,
-        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
         overflow: 'hidden',
       }}
     >
@@ -53,18 +53,20 @@ export default function AlertStrip() {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 6,
-          background: '#dc2626',
-          padding: '3px 10px',
+          gap: 5,
+          background: '#0b3b60',
+          borderLeft: '3px solid #f97316',
+          borderRadius: 3,
+          padding: '2.5px 8px',
           flexShrink: 0,
-          boxShadow: '0 1px 2px rgba(220,38,38,0.25)',
+          boxShadow: '0 1px 2px rgba(11, 59, 96, 0.2)',
           zIndex: 5,
         }}
       >
-        <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#ffffff' }}>
+        <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#f97316' }}>
           campaign
         </span>
-        <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.06em', color: '#ffffff', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.05em', color: '#ffffff', whiteSpace: 'nowrap' }}>
           {t('marquee.label')}
         </span>
       </div>
@@ -78,6 +80,8 @@ export default function AlertStrip() {
           position: 'relative',
           display: 'flex',
           alignItems: 'center',
+          maskImage: 'linear-gradient(to right, transparent, black 12px, black 98%, transparent)',
+          WebkitMaskImage: 'linear-gradient(to right, transparent, black 12px, black 98%, transparent)',
         }}
         title="Hover to pause ticker / स्क्रॉल रोकने के लिए कर्सर ऊपर लाएं"
       >
@@ -85,34 +89,6 @@ export default function AlertStrip() {
           {renderBulletinBlock()}
           {renderBulletinBlock()}
         </div>
-      </div>
-
-      {/* Live sync pulse */}
-      <div
-        style={{
-          marginLeft: 'auto',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          flexShrink: 0,
-          background: '#f8fafc',
-          border: '1px solid #e2e8f0',
-          padding: '2px 8px',
-          zIndex: 5,
-        }}
-      >
-        <span
-          className="pulse-dot rounded-full"
-          style={{
-            width: 7,
-            height: 7,
-            background: isError ? '#dc2626' : '#16a34a',
-            display: 'inline-block',
-          }}
-        />
-        <span style={{ fontSize: 10, fontWeight: 800, color: isError ? '#dc2626' : '#166534', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
-          {isError ? 'LINK OFFLINE' : t('advisory.live')}
-        </span>
       </div>
     </div>
   )

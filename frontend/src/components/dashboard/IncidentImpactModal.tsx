@@ -745,7 +745,7 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
               animation: 'fadeIn 0.2s ease',
             }}
           >
-            <span>✅</span>
+            <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#6ee7b7' }}>check_circle</span>
             <span>{toastMessage}</span>
           </div>
         )}
@@ -753,93 +753,90 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
         {/* Modal Top Header */}
         <div
           style={{
-            background: 'linear-gradient(90deg, #991b1b 0%, #b91c1c 50%, #7f1d1d 100%)',
+            background: isResolved
+              ? 'linear-gradient(90deg, #0b1f36 0%, #0d2847 100%)'
+              : 'linear-gradient(90deg, #1f0b0f 0%, #2e0e14 100%)',
             color: '#ffffff',
-            padding: '12px 18px',
+            padding: '12px 20px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            borderBottom: '2px solid #ef4444',
+            borderBottom: isResolved ? '1px solid #1e3a5f' : '1px solid #7f1d1d',
+            gap: 16,
+            flexWrap: 'wrap',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div
               style={{
-                background: 'rgba(255,255,255,0.2)',
-                borderRadius: '50%',
-                width: 32,
-                height: 32,
+                width: 36,
+                height: 36,
+                borderRadius: 6,
+                background: isResolved ? 'rgba(56, 189, 248, 0.12)' : 'rgba(239, 68, 68, 0.18)',
+                border: `1px solid ${isResolved ? 'rgba(56, 189, 248, 0.35)' : 'rgba(239, 68, 68, 0.35)'}`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: 16,
+                flexShrink: 0,
               }}
             >
-              📊
-            </span>
+              <span
+                className="material-symbols-outlined"
+                style={{ fontSize: 20, color: isResolved ? '#38bdf8' : '#f87171' }}
+              >
+                {isResolved ? 'verified' : 'crisis_alert'}
+              </span>
+            </div>
+
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: '0.03em' }}>
-                  INCIDENT DAMAGE, RESOURCE LOSS & SHIPMENT REQUISITION REPORT
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
+                <h2 style={{ margin: 0, fontSize: 13.5, fontWeight: 800, letterSpacing: '0.03em', color: '#ffffff' }}>
+                  INCIDENT DAMAGE, RESOURCE LOSS & SHIPMENT REPORT
+                </h2>
                 <span
                   style={{
-                    background: isResolved ? '#15803d' : '#dc2626',
-                    fontSize: 9,
-                    fontWeight: 900,
-                    padding: '2px 7px',
-                    borderRadius: 3,
-                    border: `1px solid ${isResolved ? '#86efac' : '#fca5a5'}`,
-                    letterSpacing: '0.04em',
-                    display: 'flex',
+                    background: isResolved ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.18)',
+                    color: isResolved ? '#4ade80' : '#fca5a5',
+                    border: `1px solid ${isResolved ? 'rgba(74, 222, 128, 0.35)' : 'rgba(252, 165, 165, 0.35)'}`,
+                    fontSize: 9.5,
+                    fontWeight: 800,
+                    padding: '2px 8px',
+                    borderRadius: 12,
+                    letterSpacing: '0.03em',
+                    display: 'inline-flex',
                     alignItems: 'center',
                     gap: 4,
                   }}
                 >
-                  <span>{isResolved ? '✓' : '⚠️'}</span>
-                  <span>{isResolved ? 'ANOMALY RESOLVED & CLOSED' : model.severity}</span>
+                  <span className="material-symbols-outlined" style={{ fontSize: 12.5, color: isResolved ? '#4ade80' : '#fca5a5' }}>
+                    {isResolved ? 'check_circle' : 'warning'}
+                  </span>
+                  <span>{isResolved ? 'RESOLVED & AUDITED' : model.severity}</span>
                 </span>
               </div>
-              <div style={{ fontSize: 10.5, color: '#fecaca', marginTop: 2 }}>
-                Station: <strong>{stationId.toUpperCase()}</strong> • Subsystem: <strong>{model.subsystem}</strong> • Event: <strong>{incidentData.anomaly_name || model.title}</strong>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 10.5, color: '#94a3b8', marginTop: 3, flexWrap: 'wrap' }}>
+                <span>Station: <strong style={{ color: '#38bdf8' }}>{stationId.toUpperCase()}</strong></span>
+                <span style={{ color: '#475569' }}>•</span>
+                <span>Subsystem: <strong style={{ color: '#cbd5e1' }}>{model.subsystem}</strong></span>
+                <span style={{ color: '#475569' }}>•</span>
+                <span>Event: <strong style={{ color: '#f1f5f9' }}>{incidentData.anomaly_name || model.title}</strong></span>
               </div>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button
-              onClick={handleDownloadPdf}
-              style={{
-                background: 'linear-gradient(135deg, #15803d 0%, #166534 100%)',
-                color: '#ffffff',
-                border: '1px solid #86efac',
-                padding: '5px 12px',
-                borderRadius: 4,
-                fontSize: 10.5,
-                fontWeight: 800,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-                boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
-              }}
-              title="Export official Government Incident & Shipment Manifest PDF"
-            >
-              <span>📄</span>
-              <span>Download PDF Report</span>
-            </button>
-
             {!isResolved && (
               <button
                 onClick={handleTerminateAnomaly}
                 style={{
-                  background: 'rgba(255,255,255,0.15)',
+                  background: '#dc2626',
                   color: '#ffffff',
-                  border: '1px solid rgba(255,255,255,0.3)',
-                  padding: '4px 10px',
+                  border: 'none',
+                  padding: '5px 11px',
                   borderRadius: 4,
-                  fontSize: 10,
-                  fontWeight: 800,
+                  fontSize: 10.5,
+                  fontWeight: 700,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
@@ -847,28 +844,37 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                 }}
                 title="End and resolve this active anomaly"
               >
-                <span>⏹</span>
+                <span className="material-symbols-outlined" style={{ fontSize: 13 }}>stop_circle</span>
                 <span>End Anomaly</span>
               </button>
             )}
+
             <button
               onClick={onClose}
               style={{
-                background: 'transparent',
-                color: '#ffffff',
+                background: 'rgba(255, 255, 255, 0.08)',
+                color: '#cbd5e1',
                 border: 'none',
-                fontSize: 18,
-                fontWeight: 900,
                 cursor: 'pointer',
-                padding: '2px 8px',
+                width: 28,
+                height: 28,
                 borderRadius: 4,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                transition: 'all 0.15s ease',
               }}
-              title="Close window (Anomaly remains active)"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = '#ffffff'
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.18)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = '#cbd5e1'
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'
+              }}
+              title="Close window"
             >
-              ✕
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>close</span>
             </button>
           </div>
         </div>
@@ -878,7 +884,7 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
           style={{
             background: '#f8fafc',
             borderBottom: '1px solid #e2e8f0',
-            padding: '4px 16px',
+            padding: '6px 20px 0 20px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -886,25 +892,26 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
             flexWrap: 'wrap',
           }}
         >
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 4 }}>
             <button
               onClick={() => setActiveTab('losses')}
               style={{
                 background: activeTab === 'losses' ? '#ffffff' : 'transparent',
-                color: activeTab === 'losses' ? '#b91c1c' : '#475569',
+                color: activeTab === 'losses' ? '#0b3b60' : '#64748b',
                 border: activeTab === 'losses' ? '1px solid #cbd5e1' : '1px solid transparent',
-                borderBottom: activeTab === 'losses' ? '2px solid #b91c1c' : 'none',
-                padding: '6px 12px',
+                borderBottom: activeTab === 'losses' ? '2px solid #0284c7' : 'none',
+                padding: '7px 14px',
                 fontSize: 11,
-                fontWeight: 800,
+                fontWeight: activeTab === 'losses' ? 800 : 600,
                 borderRadius: '4px 4px 0 0',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 5,
+                gap: 6,
+                transition: 'all 0.15s ease',
               }}
             >
-              <span>⚡</span>
+              <span className="material-symbols-outlined" style={{ fontSize: 14, color: activeTab === 'losses' ? '#0284c7' : '#94a3b8' }}>bolt</span>
               <span>Loss & Energy Compare</span>
             </button>
 
@@ -912,20 +919,21 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
               onClick={() => setActiveTab('departments')}
               style={{
                 background: activeTab === 'departments' ? '#ffffff' : 'transparent',
-                color: activeTab === 'departments' ? '#b91c1c' : '#475569',
+                color: activeTab === 'departments' ? '#0b3b60' : '#64748b',
                 border: activeTab === 'departments' ? '1px solid #cbd5e1' : '1px solid transparent',
-                borderBottom: activeTab === 'departments' ? '2px solid #b91c1c' : 'none',
-                padding: '6px 12px',
+                borderBottom: activeTab === 'departments' ? '2px solid #0284c7' : 'none',
+                padding: '7px 14px',
                 fontSize: 11,
-                fontWeight: 800,
+                fontWeight: activeTab === 'departments' ? 800 : 600,
                 borderRadius: '4px 4px 0 0',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 5,
+                gap: 6,
+                transition: 'all 0.15s ease',
               }}
             >
-              <span>🏢</span>
+              <span className="material-symbols-outlined" style={{ fontSize: 14, color: activeTab === 'departments' ? '#0284c7' : '#94a3b8' }}>corporate_fare</span>
               <span>Departmental Impact</span>
             </button>
 
@@ -933,63 +941,80 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
               onClick={() => setActiveTab('actions')}
               style={{
                 background: activeTab === 'actions' ? '#ffffff' : 'transparent',
-                color: activeTab === 'actions' ? '#b91c1c' : '#475569',
+                color: activeTab === 'actions' ? '#0b3b60' : '#64748b',
                 border: activeTab === 'actions' ? '1px solid #cbd5e1' : '1px solid transparent',
-                borderBottom: activeTab === 'actions' ? '2px solid #b91c1c' : 'none',
-                padding: '6px 12px',
+                borderBottom: activeTab === 'actions' ? '2px solid #0284c7' : 'none',
+                padding: '7px 14px',
                 fontSize: 11,
-                fontWeight: 800,
+                fontWeight: activeTab === 'actions' ? 800 : 600,
                 borderRadius: '4px 4px 0 0',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 5,
+                gap: 6,
+                transition: 'all 0.15s ease',
               }}
             >
-              <span>🛠️</span>
+              <span className="material-symbols-outlined" style={{ fontSize: 14, color: activeTab === 'actions' ? '#0284c7' : '#94a3b8' }}>rule</span>
               <span>Action Protocol</span>
             </button>
 
             <button
               onClick={() => setActiveTab('shipment')}
               style={{
-                background: activeTab === 'shipment' ? '#ffffff' : '#fef2f2',
-                color: activeTab === 'shipment' ? '#b91c1c' : '#dc2626',
-                border: activeTab === 'shipment' ? '1px solid #cbd5e1' : '1px solid #fecaca',
-                borderBottom: activeTab === 'shipment' ? '2px solid #b91c1c' : 'none',
-                padding: '6px 12px',
+                background: activeTab === 'shipment' ? '#ffffff' : 'transparent',
+                color: activeTab === 'shipment' ? '#0b3b60' : '#64748b',
+                border: activeTab === 'shipment' ? '1px solid #cbd5e1' : '1px solid transparent',
+                borderBottom: activeTab === 'shipment' ? '2px solid #0284c7' : 'none',
+                padding: '7px 14px',
                 fontSize: 11,
-                fontWeight: 900,
+                fontWeight: activeTab === 'shipment' ? 800 : 600,
                 borderRadius: '4px 4px 0 0',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 5,
+                gap: 6,
+                transition: 'all 0.15s ease',
               }}
             >
-              <span>📦</span>
-              <span>Next Shipment Cargo ({model.shipmentRecommendations.length})</span>
+              <span className="material-symbols-outlined" style={{ fontSize: 14, color: activeTab === 'shipment' ? '#0284c7' : '#94a3b8' }}>inventory_2</span>
+              <span>Next Shipment Cargo</span>
+              <span
+                style={{
+                  background: activeTab === 'shipment' ? '#e0f2fe' : '#e2e8f0',
+                  color: activeTab === 'shipment' ? '#0369a1' : '#475569',
+                  fontSize: 9.5,
+                  fontWeight: 800,
+                  padding: '1px 6px',
+                  borderRadius: 10,
+                }}
+              >
+                {model.shipmentRecommendations.length}
+              </span>
             </button>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 6 }}>
             <button
               onClick={handleNavigateToLogistics}
               style={{
                 background: '#0b3b60',
                 color: '#ffffff',
                 border: 'none',
-                padding: '4px 10px',
+                padding: '5px 12px',
                 borderRadius: 4,
-                fontSize: 10,
+                fontSize: 10.5,
                 fontWeight: 800,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 4,
+                gap: 5,
+                transition: 'background 0.15s ease',
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#082f4d' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#0b3b60' }}
             >
-              <span>📋</span>
+              <span className="material-symbols-outlined" style={{ fontSize: 13 }}>open_in_new</span>
               <span>Open Logistics Hub</span>
             </button>
           </div>
@@ -1007,26 +1032,28 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                   className="loss-card-hover"
                   style={{
                     background: '#ffffff',
-                    border: '1px solid #cbd5e1',
-                    borderLeft: '4px solid #ea580c',
-                    borderRadius: 4,
-                    padding: '10px 14px',
-                    transition: 'all 0.15s ease',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 6,
+                    padding: '12px 14px',
+                    transition: 'border-color 0.15s ease',
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 9.5, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>
-                      ⚡ Energy Wasted
-                    </span>
-                    <span style={{ fontSize: 8.5, fontWeight: 900, color: '#c2410c', background: '#fff7ed', padding: '1px 5px', borderRadius: 2 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#64748b' }}>bolt</span>
+                      <span style={{ fontSize: 9.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Energy Loss
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 8.5, fontWeight: 700, color: '#c2410c', background: '#fff7ed', border: '1px solid #fed7aa', padding: '1px 5px', borderRadius: 3 }}>
                       +{Math.round(((model.anomalyPowerKw - model.normalPowerKw) / model.normalPowerKw) * 100)}% Surge
                     </span>
                   </div>
-                  <div style={{ fontSize: 20, fontWeight: 900, color: '#c2410c', marginTop: 4 }}>
-                    {model.energyLossKwh} <span style={{ fontSize: 11, fontWeight: 600 }}>kWh</span>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.02em', marginTop: 4 }}>
+                    {model.energyLossKwh} <span style={{ fontSize: 11.5, fontWeight: 500, color: '#64748b' }}>kWh</span>
                   </div>
-                  <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 2 }}>
-                    Spike: <strong>{model.powerSpikeKw} kW</strong> (Baseline {model.normalPowerKw} kW)
+                  <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
+                    Spike: <strong style={{ color: '#334155' }}>{model.powerSpikeKw} kW</strong> (Baseline {model.normalPowerKw} kW)
                   </div>
                 </div>
 
@@ -1035,26 +1062,28 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                   className="loss-card-hover"
                   style={{
                     background: '#ffffff',
-                    border: '1px solid #cbd5e1',
-                    borderLeft: '4px solid #dc2626',
-                    borderRadius: 4,
-                    padding: '10px 14px',
-                    transition: 'all 0.15s ease',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 6,
+                    padding: '12px 14px',
+                    transition: 'border-color 0.15s ease',
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 9.5, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>
-                      ⛽ Fuel Consumed / Lost
-                    </span>
-                    <span style={{ fontSize: 8.5, fontWeight: 900, color: '#b91c1c', background: '#fef2f2', padding: '1px 5px', borderRadius: 2 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#64748b' }}>local_gas_station</span>
+                      <span style={{ fontSize: 9.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Fuel Consumed
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 8.5, fontWeight: 700, color: '#475569', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '1px 5px', borderRadius: 3 }}>
                       Arctic ATF-50
                     </span>
                   </div>
-                  <div style={{ fontSize: 20, fontWeight: 900, color: '#b91c1c', marginTop: 4 }}>
-                    {model.fuelLossLitres} <span style={{ fontSize: 11, fontWeight: 600 }}>Litres</span>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.02em', marginTop: 4 }}>
+                    {model.fuelLossLitres} <span style={{ fontSize: 11.5, fontWeight: 500, color: '#64748b' }}>Litres</span>
                   </div>
-                  <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 2 }}>
-                    Burn rate: <strong>{model.anomalyFuelBurnLh} L/h</strong> (Normal {model.normalFuelBurnLh} L/h)
+                  <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
+                    Burn rate: <strong style={{ color: '#334155' }}>{model.anomalyFuelBurnLh} L/h</strong> (Normal {model.normalFuelBurnLh} L/h)
                   </div>
                 </div>
 
@@ -1063,26 +1092,28 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                   className="loss-card-hover"
                   style={{
                     background: '#ffffff',
-                    border: '1px solid #cbd5e1',
-                    borderLeft: '4px solid #0284c7',
-                    borderRadius: 4,
-                    padding: '10px 14px',
-                    transition: 'all 0.15s ease',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 6,
+                    padding: '12px 14px',
+                    transition: 'border-color 0.15s ease',
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 9.5, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>
-                      💰 Estimated Cost Loss
-                    </span>
-                    <span style={{ fontSize: 8.5, fontWeight: 900, color: '#0369a1', background: '#f0f9ff', padding: '1px 5px', borderRadius: 2 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#64748b' }}>currency_rupee</span>
+                      <span style={{ fontSize: 9.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Estimated Impact
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 8.5, fontWeight: 700, color: '#0369a1', background: '#f0f9ff', border: '1px solid #bae6fd', padding: '1px 5px', borderRadius: 3 }}>
                       Fuel + Wear
                     </span>
                   </div>
-                  <div style={{ fontSize: 20, fontWeight: 900, color: '#0369a1', marginTop: 4 }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.02em', marginTop: 4 }}>
                     ₹{model.financialLossInr.toLocaleString()}
                   </div>
-                  <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 2 }}>
-                    Carbon: <strong>+{model.carbonFootprintKg} kg CO₂ eq</strong>
+                  <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
+                    Carbon: <strong style={{ color: '#334155' }}>+{model.carbonFootprintKg} kg CO₂ eq</strong>
                   </div>
                 </div>
 
@@ -1091,35 +1122,40 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                   className="loss-card-hover"
                   style={{
                     background: '#ffffff',
-                    border: '1px solid #cbd5e1',
-                    borderLeft: '4px solid #7c3aed',
-                    borderRadius: 4,
-                    padding: '10px 14px',
-                    transition: 'all 0.15s ease',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 6,
+                    padding: '12px 14px',
+                    transition: 'border-color 0.15s ease',
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 9.5, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>
-                      ⏱️ System Degradation
-                    </span>
-                    <span style={{ fontSize: 8.5, fontWeight: 900, color: '#6d28d9', background: '#faf5ff', padding: '1px 5px', borderRadius: 2 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#64748b' }}>timer</span>
+                      <span style={{ fontSize: 9.5, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        System Degradation
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 8.5, fontWeight: 700, color: '#475569', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '1px 5px', borderRadius: 3 }}>
                       Downtime
                     </span>
                   </div>
-                  <div style={{ fontSize: 20, fontWeight: 900, color: '#6d28d9', marginTop: 4 }}>
-                    ~{model.downtimeHours} <span style={{ fontSize: 11, fontWeight: 600 }}>Hours</span>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.02em', marginTop: 4 }}>
+                    ~{model.downtimeHours} <span style={{ fontSize: 11.5, fontWeight: 500, color: '#64748b' }}>Hours</span>
                   </div>
-                  <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 2 }}>
-                    Telemetry Buffer: <strong>{model.dataLossMb} MB</strong> ({model.packetsDelayed} packets)
+                  <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
+                    Telemetry Buffer: <strong style={{ color: '#334155' }}>{model.dataLossMb} MB</strong> ({model.packetsDelayed} packets)
                   </div>
                 </div>
               </div>
 
               {/* Side-by-side Before vs During Anomaly Comparison Table */}
               <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: 4, overflow: 'hidden' }}>
-                <div style={{ background: '#0b3b60', color: '#ffffff', padding: '8px 14px', fontSize: 11, fontWeight: 800, display: 'flex', justifyContent: 'space-between' }}>
-                  <span>📊 TELEMETRY & SYSTEM RESOURCE COMPARISON (NOMINAL vs ANOMALY)</span>
-                  <span style={{ fontSize: 9.5, color: '#93c5fd' }}>Polar Edge Telemetry Model</span>
+                <div style={{ background: '#0b3b60', color: '#ffffff', padding: '7px 12px', fontSize: 10.5, fontWeight: 800, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#93c5fd' }}>compare_arrows</span>
+                    <span>TELEMETRY & RESOURCE COMPARISON (BASELINE vs ANOMALY)</span>
+                  </div>
+                  <span style={{ fontSize: 9, color: '#bfdbfe' }}>Polar Edge Telemetry Model</span>
                 </div>
 
                 <div style={{ overflowX: 'auto' }}>
@@ -1135,48 +1171,60 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                     </thead>
                     <tbody>
                       <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                        <td style={{ padding: '8px 12px', fontWeight: 700, color: '#0f172a' }}>⚡ Station Power Grid Load</td>
+                        <td style={{ padding: '8px 12px', fontWeight: 700, color: '#0f172a' }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#ea580c', marginRight: 5, verticalAlign: 'middle' }}>bolt</span>
+                          <span>Station Power Grid Load</span>
+                        </td>
                         <td style={{ padding: '8px 12px', color: '#16a34a', fontWeight: 700 }}>{model.normalPowerKw} kW</td>
                         <td style={{ padding: '8px 12px', color: '#dc2626', fontWeight: 800 }}>{model.anomalyPowerKw} kW</td>
                         <td style={{ padding: '8px 12px', color: '#b91c1c', fontWeight: 800 }}>+{Number((model.anomalyPowerKw - model.normalPowerKw).toFixed(1))} kW (+{Math.round(((model.anomalyPowerKw - model.normalPowerKw) / model.normalPowerKw) * 100)}%)</td>
                         <td style={{ padding: '8px 12px' }}>
-                          <span style={{ background: '#fef2f2', color: '#b91c1c', border: '1px solid #fca5a5', padding: '1px 6px', borderRadius: 2, fontSize: 9, fontWeight: 800 }}>
+                          <span style={{ background: '#fef2f2', color: '#b91c1c', border: '1px solid #fca5a5', padding: '2px 8px', borderRadius: 4, fontSize: 9.5, fontWeight: 800, letterSpacing: '0.03em' }}>
                             EXCESS SURGE
                           </span>
                         </td>
                       </tr>
 
                       <tr style={{ borderBottom: '1px solid #e2e8f0', background: '#fcfcfd' }}>
-                        <td style={{ padding: '8px 12px', fontWeight: 700, color: '#0f172a' }}>⛽ Fuel Consumption Rate</td>
+                        <td style={{ padding: '8px 12px', fontWeight: 700, color: '#0f172a' }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#dc2626', marginRight: 5, verticalAlign: 'middle' }}>local_gas_station</span>
+                          <span>Fuel Consumption Rate</span>
+                        </td>
                         <td style={{ padding: '8px 12px', color: '#16a34a', fontWeight: 700 }}>{model.normalFuelBurnLh} L/h</td>
                         <td style={{ padding: '8px 12px', color: '#dc2626', fontWeight: 800 }}>{model.anomalyFuelBurnLh} L/h</td>
                         <td style={{ padding: '8px 12px', color: '#b91c1c', fontWeight: 800 }}>+{Number((model.anomalyFuelBurnLh - model.normalFuelBurnLh).toFixed(1))} L/h</td>
                         <td style={{ padding: '8px 12px' }}>
-                          <span style={{ background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa', padding: '1px 6px', borderRadius: 2, fontSize: 9, fontWeight: 800 }}>
+                          <span style={{ background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa', padding: '2px 8px', borderRadius: 4, fontSize: 9.5, fontWeight: 800, letterSpacing: '0.03em' }}>
                             HIGH BURN
                           </span>
                         </td>
                       </tr>
 
                       <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                        <td style={{ padding: '8px 12px', fontWeight: 700, color: '#0f172a' }}>🌡️ Habitat Thermal Stability</td>
+                        <td style={{ padding: '8px 12px', fontWeight: 700, color: '#0f172a' }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#b91c1c', marginRight: 5, verticalAlign: 'middle' }}>thermostat</span>
+                          <span>Habitat Thermal Stability</span>
+                        </td>
                         <td style={{ padding: '8px 12px', color: '#16a34a', fontWeight: 700 }}>+21.0 °C (Nominal)</td>
                         <td style={{ padding: '8px 12px', color: '#dc2626', fontWeight: 800 }}>{Number((21.0 + model.tempVarianceC).toFixed(1))} °C</td>
                         <td style={{ padding: '8px 12px', color: '#b91c1c', fontWeight: 800 }}>{model.tempVarianceC} °C Deficit</td>
                         <td style={{ padding: '8px 12px' }}>
-                          <span style={{ background: '#fef2f2', color: '#b91c1c', border: '1px solid #fca5a5', padding: '1px 6px', borderRadius: 2, fontSize: 9, fontWeight: 800 }}>
+                          <span style={{ background: '#fef2f2', color: '#b91c1c', border: '1px solid #fca5a5', padding: '2px 8px', borderRadius: 4, fontSize: 9.5, fontWeight: 800, letterSpacing: '0.03em' }}>
                             COMPROMISED
                           </span>
                         </td>
                       </tr>
 
                       <tr style={{ borderBottom: '1px solid #e2e8f0', background: '#fcfcfd' }}>
-                        <td style={{ padding: '8px 12px', fontWeight: 700, color: '#0f172a' }}>📡 Telemetry Buffer Hold</td>
+                        <td style={{ padding: '8px 12px', fontWeight: 700, color: '#0f172a' }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#0284c7', marginRight: 5, verticalAlign: 'middle' }}>cell_tower</span>
+                          <span>Telemetry Buffer Hold</span>
+                        </td>
                         <td style={{ padding: '8px 12px', color: '#16a34a', fontWeight: 700 }}>0 KB (Live Sync)</td>
                         <td style={{ padding: '8px 12px', color: '#ea580c', fontWeight: 800 }}>{model.dataLossMb} MB Edge Cached</td>
                         <td style={{ padding: '8px 12px', color: '#0284c7', fontWeight: 800 }}>{model.packetsDelayed} Packets Queued</td>
                         <td style={{ padding: '8px 12px' }}>
-                          <span style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', padding: '1px 6px', borderRadius: 2, fontSize: 9, fontWeight: 800 }}>
+                          <span style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', padding: '2px 8px', borderRadius: 4, fontSize: 9.5, fontWeight: 800, letterSpacing: '0.03em' }}>
                             PROTECTED (VajraX)
                           </span>
                         </td>
@@ -1215,26 +1263,27 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                         <span className="material-symbols-outlined" style={{ fontSize: 18, color: impact.color }}>
                           {impact.icon}
                         </span>
-                        <span style={{ fontSize: 12, fontWeight: 900, color: '#0f172a' }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>
                           {impact.dept}
                         </span>
                       </div>
                       <span
                         style={{
                           fontSize: 9,
-                          fontWeight: 900,
+                          fontWeight: 700,
                           color: impact.color,
                           background: '#f8fafc',
                           border: `1px solid ${impact.color}40`,
                           padding: '1px 6px',
-                          borderRadius: 2,
+                          borderRadius: 3,
+                          letterSpacing: '0.03em',
                         }}
                       >
                         {impact.badge}
                       </span>
                     </div>
 
-                    <div style={{ fontSize: 11, fontWeight: 800, color: '#1e293b' }}>
+                    <div style={{ fontSize: 11.5, fontWeight: 600, color: '#1e293b' }}>
                       {impact.summary}
                     </div>
 
@@ -1250,10 +1299,10 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
           {/* TAB 3: Action Protocol */}
           {activeTab === 'actions' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: 4, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 20 }}>⚠️</span>
-                <div style={{ fontSize: 11, color: '#92400e' }}>
-                  <strong>Immediate Standard Operating Procedure (SOP):</strong> Wintering expedition crew members must follow these steps to isolate the fault and prevent secondary cascading grid failures.
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#0284c7' }}>assignment_late</span>
+                <div style={{ fontSize: 11, color: '#334155' }}>
+                  <strong style={{ color: '#0f172a' }}>Standard Operating Procedure (SOP):</strong> Execute designated containment steps sequentially to isolate the subsystem fault and preserve grid integrity.
                 </div>
               </div>
 
@@ -1264,8 +1313,8 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                     style={{
                       background: '#ffffff',
                       border: '1px solid #e2e8f0',
-                      borderRadius: 4,
-                      padding: '10px 14px',
+                      borderRadius: 6,
+                      padding: '11px 15px',
                       display: 'flex',
                       alignItems: 'flex-start',
                       justifyContent: 'space-between',
@@ -1273,10 +1322,10 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                     }}
                   >
                     <div>
-                      <div style={{ fontSize: 11.5, fontWeight: 800, color: '#0b3b60' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>
                         {act.step}
                       </div>
-                      <div style={{ fontSize: 10.5, color: '#475569', marginTop: 2 }}>
+                      <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>
                         {act.desc}
                       </div>
                     </div>
@@ -1286,10 +1335,11 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                         color: act.urgency === 'IMMEDIATE' ? '#b91c1c' : '#0369a1',
                         border: `1px solid ${act.urgency === 'IMMEDIATE' ? '#fca5a5' : '#bae6fd'}`,
                         fontSize: 9,
-                        fontWeight: 900,
+                        fontWeight: 700,
                         padding: '2px 8px',
-                        borderRadius: 3,
+                        borderRadius: 4,
                         whiteSpace: 'nowrap',
+                        letterSpacing: '0.04em',
                       }}
                     >
                       {act.urgency}
@@ -1306,9 +1356,10 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
               {/* Shipment Header Banner */}
               <div
                 style={{
-                  background: 'linear-gradient(90deg, #0b3b60 0%, #1e40af 100%)',
+                  background: '#0b3b60',
+                  border: '1px solid #1e3a5f',
                   color: '#ffffff',
-                  borderRadius: 4,
+                  borderRadius: 6,
                   padding: '12px 16px',
                   display: 'flex',
                   alignItems: 'center',
@@ -1318,11 +1369,12 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                 }}
               >
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 900 }}>
-                    📦 NEXT RESUPPLY SHIPMENT / AIR-DROP REQUISITION MANIFEST
+                  <div style={{ fontSize: 13, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#93c5fd' }}>local_shipping</span>
+                    <span>RESUPPLY SHIPMENT REQUISITION MANIFEST</span>
                   </div>
                   <div style={{ fontSize: 10.5, color: '#93c5fd', marginTop: 2 }}>
-                    Replenishment parts and supplies required to recover from this anomaly for Voyage <strong>#EXP-44</strong> (NCPOR Goa to {stationId.toUpperCase()}).
+                    Designated equipment & consumables required for Voyage <strong>#EXP-44</strong> (NCPOR Goa to {stationId.toUpperCase()}).
                   </div>
                 </div>
 
@@ -1331,22 +1383,24 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                     onClick={handleAddAllToShipment}
                     disabled={allRecommendationsAdded}
                     style={{
-                      background: allRecommendationsAdded ? '#15803d' : '#22c55e',
+                      background: allRecommendationsAdded ? '#15803d' : '#0284c7',
                       color: '#ffffff',
                       border: 'none',
                       padding: '6px 14px',
                       borderRadius: 4,
                       fontSize: 11,
-                      fontWeight: 800,
+                      fontWeight: 700,
                       cursor: allRecommendationsAdded ? 'default' : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       gap: 6,
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
                     }}
                   >
-                    <span>{allRecommendationsAdded ? '✓' : '➕'}</span>
-                    <span>{allRecommendationsAdded ? 'All Added to Manifest' : 'Add All to Next Shipment'}</span>
+                    <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                      {allRecommendationsAdded ? 'check_circle' : 'playlist_add_check'}
+                    </span>
+                    <span>{allRecommendationsAdded ? 'All Added to Manifest' : 'Add All to Manifest'}</span>
                   </button>
                 </div>
               </div>
@@ -1362,52 +1416,53 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                       key={rec.id}
                       style={{
                         background: '#ffffff',
-                        border: isAdded ? '1.5px solid #86efac' : '1px solid #cbd5e1',
-                        borderRadius: 4,
-                        padding: '12px 14px',
+                        border: isAdded ? '1px solid #86efac' : '1px solid #e2e8f0',
+                        borderRadius: 6,
+                        padding: '12px 16px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         gap: 12,
                         flexWrap: 'wrap',
-                        boxShadow: isAdded ? '0 0 10px rgba(34, 197, 94, 0.15)' : 'none',
+                        boxShadow: isAdded ? '0 0 10px rgba(34, 197, 94, 0.1)' : 'none',
                       }}
                     >
                       <div style={{ flex: 1, minWidth: 260 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 12, fontWeight: 900, color: '#0f172a' }}>
+                          <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0f172a' }}>
                             {rec.name}
                           </span>
                           <span
                             style={{
-                              fontSize: 8.5,
+                              fontSize: 9,
                               fontFamily: 'monospace',
                               background: '#f1f5f9',
                               color: '#475569',
-                              padding: '1px 5px',
-                              borderRadius: 2,
-                              fontWeight: 700,
+                              padding: '1px 6px',
+                              borderRadius: 3,
+                              fontWeight: 600,
                             }}
                           >
                             {rec.sku}
                           </span>
                           <span
                             style={{
-                              fontSize: 8.5,
-                              fontWeight: 800,
+                              fontSize: 9,
+                              fontWeight: 700,
                               background: rec.priority === 'CRITICAL' ? '#fef2f2' : '#f0f9ff',
                               color: rec.priority === 'CRITICAL' ? '#b91c1c' : '#0369a1',
                               border: `1px solid ${rec.priority === 'CRITICAL' ? '#fca5a5' : '#bae6fd'}`,
-                              padding: '1px 5px',
-                              borderRadius: 2,
+                              padding: '1px 6px',
+                              borderRadius: 4,
+                              letterSpacing: '0.03em',
                             }}
                           >
                             {rec.priority} PRIORITY
                           </span>
                         </div>
 
-                        <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
-                          Category: <strong>{rec.category}</strong> • Reason: <em>{rec.reason}</em>
+                        <div style={{ fontSize: 10.5, color: '#64748b', marginTop: 4 }}>
+                          Category: <strong style={{ color: '#334155' }}>{rec.category}</strong> • Reason: <em>{rec.reason}</em>
                         </div>
                       </div>
 
@@ -1429,16 +1484,16 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                             style={{
                               background: '#f1f5f9',
                               border: 'none',
-                              padding: '4px 8px',
+                              padding: '4px 9px',
                               cursor: 'pointer',
-                              fontWeight: 800,
+                              fontWeight: 700,
                               color: '#334155',
                             }}
                             title="Decrease quantity"
                           >
                             -
                           </button>
-                          <span style={{ padding: '0 8px', fontSize: 11, fontWeight: 800, color: '#0f172a', minWidth: 48, textAlign: 'center' }}>
+                          <span style={{ padding: '0 8px', fontSize: 11, fontWeight: 700, color: '#0f172a', minWidth: 48, textAlign: 'center' }}>
                             {currentQty} {rec.unit}
                           </span>
                           <button
@@ -1446,9 +1501,9 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                             style={{
                               background: '#f1f5f9',
                               border: 'none',
-                              padding: '4px 8px',
+                              padding: '4px 9px',
                               cursor: 'pointer',
-                              fontWeight: 800,
+                              fontWeight: 700,
                               color: '#334155',
                             }}
                             title="Increase quantity"
@@ -1467,7 +1522,7 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                             padding: '6px 14px',
                             borderRadius: 4,
                             fontSize: 10.5,
-                            fontWeight: 800,
+                            fontWeight: 700,
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
@@ -1477,7 +1532,9 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                             transition: 'background 0.15s ease',
                           }}
                         >
-                          <span>{isAdded ? '✓' : '➕'}</span>
+                          <span className="material-symbols-outlined" style={{ fontSize: 13 }}>
+                            {isAdded ? 'check_circle' : 'add'}
+                          </span>
                           <span>{isAdded ? 'Added to Manifest' : 'Add to Shipment'}</span>
                         </button>
                       </div>
@@ -1500,8 +1557,9 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                   gap: 10,
                 }}
               >
-                <div style={{ fontSize: 11, color: '#166534' }}>
-                  💡 <strong>Direct Synchronization:</strong> All added items are directly registered into your station's <strong>Logistics & Resupply Module</strong>.
+                <div style={{ fontSize: 11, color: '#166534', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#16a34a' }}>sync</span>
+                  <span><strong>Direct Synchronization:</strong> Requisitioned items automatically link to the station's Logistics Module.</span>
                 </div>
                 <button
                   onClick={handleNavigateToLogistics}
@@ -1519,8 +1577,8 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                     gap: 5,
                   }}
                 >
-                  <span>📋</span>
-                  <span>View All Queued Shipments in Logistics Page</span>
+                  <span className="material-symbols-outlined" style={{ fontSize: 13 }}>list_alt</span>
+                  <span>View Queued Shipments in Logistics</span>
                 </button>
               </div>
             </div>
@@ -1532,75 +1590,119 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
           style={{
             background: '#ffffff',
             borderTop: '1px solid #cbd5e1',
-            padding: '10px 18px',
+            padding: '12px 20px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             flexWrap: 'wrap',
-            gap: 10,
+            gap: 12,
           }}
         >
-          <div style={{ fontSize: 10.5, color: '#64748b' }}>
-            <span>Incident Reference: <strong>{incidentData.report_reference || incidentData.incident_id || 'INC-POLAR-99'}</strong></span>
-            <span style={{ margin: '0 8px' }}>•</span>
-            <span>Status: <strong style={{ color: isResolved ? '#16a34a' : '#dc2626' }}>{isResolved ? 'RESOLVED & AUDITED' : 'ACTIVE SIMULATION'}</strong></span>
-            <span style={{ margin: '0 8px' }}>•</span>
-            <span>Recorded: <strong>{new Date().toLocaleTimeString()}</strong></span>
+          <div style={{ fontSize: 10.5, color: '#64748b', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span>Incident Ref: <strong style={{ color: '#1e293b', fontFamily: 'monospace' }}>{incidentData.report_reference || incidentData.incident_id || 'INC-POLAR-99'}</strong></span>
+            <span style={{ color: '#cbd5e1' }}>•</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span>Status:</span>
+              <span
+                style={{
+                  background: isResolved ? '#f0fdf4' : '#fef2f2',
+                  color: isResolved ? '#15803d' : '#b91c1c',
+                  border: `1px solid ${isResolved ? '#bbf7d0' : '#fca5a5'}`,
+                  padding: '2px 8px',
+                  borderRadius: 4,
+                  fontWeight: 800,
+                  fontSize: 9.5,
+                  letterSpacing: '0.03em',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 12 }}>
+                  {isResolved ? 'check_circle' : 'warning'}
+                </span>
+                <span>{isResolved ? 'RESOLVED & AUDITED' : 'ACTIVE SIMULATION'}</span>
+              </span>
+            </div>
+            <span style={{ color: '#cbd5e1' }}>•</span>
+            <span>Recorded: <strong style={{ color: '#334155' }}>{new Date().toLocaleTimeString()}</strong></span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button
               onClick={handleDownloadPdf}
               style={{
-                background: '#15803d',
-                color: '#ffffff',
-                border: 'none',
+                background: '#ffffff',
+                color: '#0b3b60',
+                border: '1px solid #cbd5e1',
                 padding: '6px 14px',
                 borderRadius: 4,
                 fontSize: 11,
-                fontWeight: 800,
+                fontWeight: 600,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 5,
-                boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                gap: 6,
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#f8fafc'
+                e.currentTarget.style.borderColor = '#94a3b8'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#ffffff'
+                e.currentTarget.style.borderColor = '#cbd5e1'
               }}
               title="Download official Government Incident & Shipment PDF Report"
             >
-              <span>📄</span>
+              <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#0284c7' }}>picture_as_pdf</span>
               <span>Download PDF</span>
             </button>
 
             <button
               onClick={() => setActiveTab('shipment')}
               style={{
-                background: '#ea580c',
+                background: '#0b3b60',
                 color: '#ffffff',
                 border: 'none',
-                padding: '6px 14px',
-                borderRadius: 4,
-                fontSize: 11,
-                fontWeight: 800,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-              }}
-            >
-              <span>📦</span>
-              <span>Next Shipment Requisitions ({model.shipmentRecommendations.length})</span>
-            </button>
-            <button
-              onClick={onClose}
-              style={{
-                background: '#f1f5f9',
-                color: '#334155',
-                border: '1px solid #cbd5e1',
-                padding: '6px 14px',
+                padding: '7px 16px',
                 borderRadius: 4,
                 fontSize: 11,
                 fontWeight: 700,
                 cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                boxShadow: '0 2px 4px rgba(11, 59, 96, 0.2)',
+                transition: 'background 0.15s ease',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#082f4d' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#0b3b60' }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 14 }}>inventory_2</span>
+              <span>Next Shipment Requisitions ({model.shipmentRecommendations.length})</span>
+            </button>
+
+            <button
+              onClick={onClose}
+              style={{
+                background: 'transparent',
+                color: '#64748b',
+                border: '1px solid transparent',
+                padding: '6px 12px',
+                borderRadius: 4,
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#f1f5f9'
+                e.currentTarget.style.color = '#0f172a'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.color = '#64748b'
               }}
             >
               Close Assessment

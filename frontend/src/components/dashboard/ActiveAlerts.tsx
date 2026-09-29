@@ -362,7 +362,7 @@ export default function ActiveAlerts({ stationId }: Props) {
                       textDecoration: 'underline',
                     }}
                   >
-                    View past archive log ({storedAlerts.length}) →
+                    Archived Events ({storedAlerts.length}) →
                   </button>
                 </div>
               )}
@@ -848,7 +848,7 @@ export default function ActiveAlerts({ stationId }: Props) {
                               Acknowledge
                             </button>
                           ) : (
-                            <span style={{ fontSize: 9, color: '#16a34a', fontWeight: 700 }}>✓ Stored</span>
+                            <span style={{ fontSize: 9, color: '#16a34a', fontWeight: 700 }}>ACKNOWLEDGED</span>
                           )}
                         </td>
                       </tr>

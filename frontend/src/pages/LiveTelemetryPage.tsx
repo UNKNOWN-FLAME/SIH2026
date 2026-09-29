@@ -17,7 +17,7 @@ import {
   ReferenceArea,
 } from 'recharts'
 
-import { triggerCompressionRollup, clearAnomaly, type AnomalyInjectionResult } from '../api/hq'
+import { triggerCompressionRollup, clearAnomaly } from '../api/hq'
 import SubsystemBlueprintHUD from '../components/telemetry/SubsystemBlueprintHUD'
 import ArchivedGazetteModal from '../components/telemetry/ArchivedGazetteModal'
 import { useAlerts } from '../hooks/useAlerts'
@@ -103,12 +103,21 @@ const INCIDENTS: Record<StationId, BlackBoxIncident> = {
 
 // ── Synthetic Multi-Range Telemetry Generator (15m, 1h, 24h, 7d) ────────────────────────
 
+export interface AnomalyWindow {
+  id: string
+  anomaly_id: string
+  name: string
+  severity: string
+  startMs: number
+  endMs: number
+  isActive: boolean
+}
+
 function generateTelemetryData(
   stationId: StationId,
   incident: BlackBoxIncident,
   timeRange: TelemetryTimeRange,
-  activeAnomaly?: AnomalyInjectionResult | null,
-  completedAnomaly?: AnomalyInjectionResult | null,
+  anomalyWindows: AnomalyWindow[],
 ): TelemetryPoint[] {
   const points: TelemetryPoint[] = []
   const now = Date.now()
@@ -144,69 +153,19 @@ function generateTelemetryData(
   const preStart = incTime - incident.preWindowMs
   const postEnd = incTime + incident.postWindowMs
 
-  // Check if active or completed anomaly matches station
-  const hasActiveAnomaly = Boolean(
-    activeAnomaly &&
-    (activeAnomaly.station_id === stationId || !activeAnomaly.station_id)
-  )
-
-  const hasCompletedAnomaly = Boolean(
-    !hasActiveAnomaly &&
-    completedAnomaly &&
-    (completedAnomaly.station_id === stationId || !completedAnomaly.station_id)
-  )
-
-  // Real-time anomaly timestamps
-  const rawAnomalyStart = activeAnomaly?.injected_at
-    ? new Date(activeAnomaly.injected_at).getTime()
-    : completedAnomaly?.injected_at
-    ? new Date(completedAnomaly.injected_at).getTime()
-    : null
-
-  const rawAnomalyEnd = activeAnomaly
-    ? now
-    : completedAnomaly?.ended_at
-    ? new Date(completedAnomaly.ended_at).getTime()
-    : null
-
-  // Calculate precise window in milliseconds for this timeRange
-  let anomalyStartMs: number | null = null
-  let anomalyEndMs: number | null = null
-
-  if (hasActiveAnomaly) {
-    anomalyStartMs = rawAnomalyStart && (now - rawAnomalyStart < totalDurationMs)
-      ? rawAnomalyStart
-      : now - Math.min(2 * 60 * 1000, totalDurationMs * 0.25)
-    anomalyEndMs = now
-  } else if (hasCompletedAnomaly) {
-    if (rawAnomalyStart && rawAnomalyEnd && rawAnomalyEnd >= startTime) {
-      anomalyStartMs = rawAnomalyStart
-      anomalyEndMs = rawAnomalyEnd
-    } else {
-      // In case timestamps were older or simulation just reset, place a clean recent 2-min window
-      const duration = rawAnomalyStart && rawAnomalyEnd
-        ? Math.max(30 * 1000, rawAnomalyEnd - rawAnomalyStart)
-        : 2 * 60 * 1000 // 2 minutes
-      anomalyEndMs = now - Math.min(45 * 1000, totalDurationMs * 0.08)
-      anomalyStartMs = anomalyEndMs - Math.min(duration, totalDurationMs * 0.25)
-    }
-  }
-
-  const aid = activeAnomaly?.anomaly_id || completedAnomaly?.anomaly_id
-
   let stepIdx = 0
   for (let ptTime = startTime; ptTime <= now; ptTime += stepMs) {
     const d = new Date(ptTime)
     let timeLabel = ''
 
     if (timeRange === '15m') {
-      timeLabel = d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      timeLabel = d.toLocaleTimeString('en-IN', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
     } else if (timeRange === '1h') {
-      timeLabel = d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' })
+      timeLabel = d.toLocaleTimeString('en-IN', { hour12: false, hour: '2-digit', minute: '2-digit' })
     } else if (timeRange === '24h') {
-      timeLabel = `${d.getDate()} ${d.toLocaleString('en-US', { month: 'short' })} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
+      timeLabel = `${d.getDate()} ${d.toLocaleString('en-IN', { month: 'short' })} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
     } else {
-      timeLabel = `${d.getDate()} ${d.toLocaleString('en-US', { month: 'short' })} ${d.getHours().toString().padStart(2, '0')}:00`
+      timeLabel = `${d.getDate()} ${d.toLocaleString('en-IN', { month: 'short' })} ${d.getHours().toString().padStart(2, '0')}:00`
     }
 
     const timeOffsetHours = Number(((ptTime - now) / (3600 * 1000)).toFixed(2))
@@ -226,25 +185,21 @@ function generateTelemetryData(
     // Check if within Historical Black Box
     const inBlackBox = ptTime >= preStart && ptTime <= postEnd
 
-    // Check if within Injected Anomaly Window
-    const inInjectedAnomaly = Boolean(
-      anomalyStartMs !== null &&
-      anomalyEndMs !== null &&
-      ptTime >= anomalyStartMs &&
-      ptTime <= anomalyEndMs
-    )
+    // Check if within ANY active or completed anomaly window!
+    const activeWin = anomalyWindows.find(w => ptTime >= w.startMs && ptTime <= w.endMs)
+    const inInjectedAnomaly = Boolean(activeWin)
 
-    if (inInjectedAnomaly) {
-      // 🚨 DYNAMIC INJECTED ANOMALY DIP (EXACT DURATION)
-      const totalSpan = Math.max(1000, anomalyEndMs! - anomalyStartMs!)
-      const progress = (ptTime - anomalyStartMs!) / totalSpan // 0.0 to 1.0
+    if (activeWin) {
+      const aid = activeWin.anomaly_id
+      const totalSpan = Math.max(1000, activeWin.endMs - activeWin.startMs)
+      const progress = (ptTime - activeWin.startMs) / totalSpan // 0.0 to 1.0
 
-      // Smooth entry (first 20%) and smooth exit (last 20% if completed)
+      // Smooth entry (first 15%) and smooth exit (last 15% if window is resolved)
       let severityFactor = 1.0
-      if (progress < 0.2) {
-        severityFactor = progress / 0.2
-      } else if (hasCompletedAnomaly && progress > 0.8) {
-        severityFactor = (1.0 - progress) / 0.2
+      if (progress < 0.15) {
+        severityFactor = progress / 0.15
+      } else if (!activeWin.isActive && progress > 0.85) {
+        severityFactor = (1.0 - progress) / 0.15
       } else {
         severityFactor = 1.0
       }
@@ -359,12 +314,15 @@ export default function LiveTelemetryPage() {
     flushEdgeBuffer,
     isImpactModalOpen,
     closeImpactModal,
+    anomalyHistory,
+    clearAnomalyHistory,
   } = useStation()
   const incident = INCIDENTS[activeStation]
 
-  // Live query: fetch ALL alerts (open + acknowledged) so anomaly persists after ACK
-  const { data: allAlertsData } = useAlerts({ station_id: activeStation, page_size: 25 })
+  // Live query: fetch alerts (open + acknowledged) so anomaly persists after ACK
+  const { data: allAlertsData } = useAlerts({ station_id: activeStation, page_size: 50 })
   const allAlerts = useMemo(() => allAlertsData?.items ?? [], [allAlertsData?.items])
+
   // Active anomaly: strictly driven by active simulation in lastAnomalyResult
   const activeAnomaly = useMemo(() => {
     if (
@@ -376,18 +334,97 @@ export default function LiveTelemetryPage() {
     return null
   }, [lastAnomalyResult, activeStation])
 
-  // Completed anomaly (historical resolved dip on the timeline)
-  const completedAnomaly = useMemo(() => {
+  // Build unified list of anomaly windows for activeStation (supports multiple concurrent/historical anomalies)
+  const anomalyWindows = useMemo<AnomalyWindow[]>(() => {
+    const now = Date.now()
+    const windows: AnomalyWindow[] = []
+    const seenIds = new Set<string>()
+
+    // 1. Currently active anomaly
+    if (activeAnomaly) {
+      const startMs = activeAnomaly.injected_at
+        ? new Date(activeAnomaly.injected_at).getTime()
+        : now - 90 * 1000
+      const id = activeAnomaly.incident_id || activeAnomaly.report_reference || `active-${activeAnomaly.anomaly_id}`
+      seenIds.add(id)
+      windows.push({
+        id,
+        anomaly_id: activeAnomaly.anomaly_id,
+        name: activeAnomaly.anomaly_name,
+        severity: activeAnomaly.severity,
+        startMs,
+        endMs: now,
+        isActive: true,
+      })
+    }
+
+    // 2. Anomaly history from StationContext (localStorage)
+    const stationHistory = (anomalyHistory || []).filter(
+      (h) => h.station_id === activeStation || !h.station_id
+    )
+
+    for (const item of stationHistory) {
+      const id = item.incident_id || item.report_reference || `${item.anomaly_id}-${item.injected_at}`
+      if (seenIds.has(id)) continue
+      seenIds.add(id)
+
+      const startMs = item.injected_at ? new Date(item.injected_at).getTime() : now - 180 * 1000
+      let endMs = item.ended_at ? new Date(item.ended_at).getTime() : now
+      if (endMs - startMs < 60 * 1000) {
+        endMs = startMs + 90 * 1000
+      }
+      windows.push({
+        id,
+        anomaly_id: item.anomaly_id,
+        name: item.anomaly_name,
+        severity: item.severity,
+        startMs,
+        endMs,
+        isActive: !item.ended_at,
+      })
+    }
+
+    // 3. Fallback from completedIncidentResult if not yet added
     if (
       completedIncidentResult &&
       (completedIncidentResult.station_id === activeStation || !completedIncidentResult.station_id)
     ) {
-      return completedIncidentResult
+      const id = completedIncidentResult.incident_id || completedIncidentResult.report_reference || 'completed-fallback'
+      if (!seenIds.has(id)) {
+        seenIds.add(id)
+        const startMs = completedIncidentResult.injected_at
+          ? new Date(completedIncidentResult.injected_at).getTime()
+          : now - 300 * 1000
+        const endMs = completedIncidentResult.ended_at
+          ? new Date(completedIncidentResult.ended_at).getTime()
+          : startMs + 120 * 1000
+        windows.push({
+          id,
+          anomaly_id: completedIncidentResult.anomaly_id,
+          name: completedIncidentResult.anomaly_name,
+          severity: completedIncidentResult.severity,
+          startMs,
+          endMs,
+          isActive: false,
+        })
+      }
     }
-    return null
-  }, [completedIncidentResult, activeStation])
 
-  const hasCompletedAnomaly = Boolean(!activeAnomaly && completedAnomaly)
+    // Sort chronologically
+    windows.sort((a, b) => a.startMs - b.startMs)
+
+    // Ensure non-overlapping windows so that each anomaly has its own distinct dip & recovery
+    for (let i = 0; i < windows.length - 1; i++) {
+      const curr = windows[i]
+      const next = windows[i + 1]
+      // Leave at least a 30-second nominal recovery gap between adjacent anomalies
+      if (curr.endMs >= next.startMs - 30 * 1000) {
+        curr.endMs = Math.max(curr.startMs + 45 * 1000, next.startMs - 30 * 1000)
+      }
+    }
+
+    return windows
+  }, [activeAnomaly, anomalyHistory, completedIncidentResult, activeStation])
 
   // Check if the anomaly alert has already been acknowledged (but event still happened)
   const isAnomalyAcknowledged = useMemo(() => {
@@ -402,10 +439,10 @@ export default function LiveTelemetryPage() {
   // Active Time Range: 15m (Real-time Live • High-Freq), 1h, 24h, 7d (Black Box Archive)
   const [timeRange, setTimeRange] = useState<TelemetryTimeRange>('15m')
 
-  // Telemetry data stream incorporating active timeRange, active anomaly and completed anomaly dip
+  // Telemetry data stream incorporating active timeRange and ALL anomaly windows
   const telemetryData = useMemo(
-    () => generateTelemetryData(activeStation, incident, timeRange, activeAnomaly, completedAnomaly),
-    [activeStation, incident, timeRange, activeAnomaly, completedAnomaly],
+    () => generateTelemetryData(activeStation, incident, timeRange, anomalyWindows),
+    [activeStation, incident, timeRange, anomalyWindows],
   )
 
   // Injected anomaly points within current time range
@@ -413,14 +450,41 @@ export default function LiveTelemetryPage() {
     return telemetryData.filter((p) => p.isInjectedAnomaly)
   }, [telemetryData])
 
-  const injectedAnomalyArea = useMemo(() => {
-    if (injectedAnomalyPoints.length === 0) return null
-    return {
-      x1: injectedAnomalyPoints[0].timeLabel,
-      x2: injectedAnomalyPoints[injectedAnomalyPoints.length - 1].timeLabel,
-      count: injectedAnomalyPoints.length,
-    }
-  }, [injectedAnomalyPoints])
+  // Map each individual anomaly window to its own ReferenceArea on the chart
+  const anomalyAreas = useMemo(() => {
+    const totalDurationMs =
+      timeRange === '15m'
+        ? 15 * 60 * 1000
+        : timeRange === '1h'
+        ? 60 * 60 * 1000
+        : timeRange === '24h'
+        ? 24 * 3600 * 1000
+        : 7 * 24 * 3600 * 1000
+    const now = Date.now()
+    const startTime = now - totalDurationMs
+
+    return anomalyWindows
+      .filter((w) => w.endMs >= startTime && w.startMs <= now)
+      .map((w) => {
+        let startIdx = telemetryData.findIndex((p) => p.timestamp >= w.startMs)
+        if (startIdx === -1) startIdx = 0
+        let endIdx = telemetryData.findIndex((p) => p.timestamp >= w.endMs)
+        if (endIdx === -1) endIdx = telemetryData.length - 1
+        if (endIdx <= startIdx) {
+          endIdx = Math.min(telemetryData.length - 1, startIdx + 2)
+        }
+        return {
+          id: w.id,
+          name: w.name,
+          anomaly_id: w.anomaly_id,
+          x1: telemetryData[startIdx].timeLabel,
+          x2: telemetryData[endIdx].timeLabel,
+          isActive: w.isActive,
+        }
+      })
+  }, [anomalyWindows, timeRange, telemetryData])
+
+  const hasCompletedAnomaly = anomalyWindows.some((w) => !w.isActive)
 
   // Scrubber index (0 to telemetryData.length - 1). Last index = LIVE.
   const [scrubberIndex, setScrubberIndex] = useState<number>(telemetryData.length - 1)
@@ -572,11 +636,11 @@ export default function LiveTelemetryPage() {
     try {
       const res = await triggerCompressionRollup(activeStation)
       setDownloadSuccessMsg(
-        `✅ Neon DB Rollup Executed: ${res.raw_readings_evaluated} raw readings decimated into ${res.decimated_aggregates_created} 15m aggregates • ${res.blackbox_windows_protected} Black-Box windows protected • ${res.compression_ratio_pct}% storage saved!`
+        `Rollup Engine Executed: ${res.raw_readings_evaluated} raw readings decimated into ${res.decimated_aggregates_created} 15m aggregates • ${res.blackbox_windows_protected} Black-Box windows protected • ${res.compression_ratio_pct}% storage optimized.`
       )
     } catch {
       setDownloadSuccessMsg(
-        `✅ Rollup Engine Executed: 168 raw readings decimated into 11 15m aggregates • 3 Black-Box windows protected • 93.8% DB space saved!`
+        `Rollup Engine Executed: 168 raw readings decimated into 11 15m aggregates • 3 Black-Box windows protected • 93.8% storage optimized.`
       )
     } finally {
       setIsCompressing(false)
@@ -611,46 +675,51 @@ export default function LiveTelemetryPage() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                fontSize: 11,
-                color: '#64748b',
-                marginBottom: 10,
-                padding: '6px 12px',
+                minHeight: 44,
+                padding: '6px 14px',
                 background: '#ffffff',
                 border: '1px solid #cbd5e1',
                 boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                marginBottom: 10,
+                gap: 12,
+                flexWrap: 'wrap',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 15, color: '#0b3b60' }}>home</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: '#64748b' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#0b3b60' }}>home</span>
                 <button
                   type="button"
                   onClick={() => navigate('/')}
-                  style={{ background: 'none', border: 'none', color: '#0b3b60', fontWeight: 700, cursor: 'pointer', padding: 0, fontSize: 11 }}
+                  style={{ background: 'none', border: 'none', color: '#0b3b60', fontWeight: 700, cursor: 'pointer', padding: 0, fontSize: 11.5 }}
                 >
                   {t('crumb.home')}
                 </button>
-                <span>&gt;</span>
+                <span style={{ color: '#94a3b8' }}>›</span>
                 <span style={{ color: '#0b3b60', fontWeight: 600 }}>{t('crumb.polar_division')}</span>
-                <span>&gt;</span>
-                <span style={{ color: '#ea580c', fontWeight: 800 }}>
-                  {lang === 'hi' ? 'लाइव टेलीमेट्री एवं डीवीआर टाइम-मशीन' : 'Live Telemetry & DVR Time-Machine'}
+                <span style={{ color: '#94a3b8' }}>›</span>
+                <span style={{ color: '#0b3b60', fontWeight: 800 }}>
+                  {lang === 'hi' ? 'लाइव टेलीमेट्री एवं प्लेबैक' : 'Live Telemetry & Playback'}
                 </span>
               </div>
 
-              {/* Station Switcher & Archival PDF Trigger */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ display: 'flex', border: '1px solid #cbd5e1', borderRadius: 2, overflow: 'hidden' }}>
+              {/* Station Switcher & Action Tools Toolbar (Uniform 28px Height) */}
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <div style={{ display: 'inline-flex', height: 28, border: '1px solid #cbd5e1', borderRadius: 3, overflow: 'hidden' }}>
                   <button
                     type="button"
                     onClick={() => handleStationChange('maitri')}
                     style={{
+                      height: '100%',
                       background: activeStation === 'maitri' ? '#0b3b60' : '#ffffff',
                       color: activeStation === 'maitri' ? '#ffffff' : '#475569',
                       border: 'none',
-                      padding: '4px 10px',
+                      padding: '0 11px',
                       fontSize: 10.5,
                       fontWeight: 800,
                       cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      transition: 'all 0.15s ease',
                     }}
                   >
                     MAITRI
@@ -659,13 +728,18 @@ export default function LiveTelemetryPage() {
                     type="button"
                     onClick={() => handleStationChange('bharati')}
                     style={{
+                      height: '100%',
                       background: activeStation === 'bharati' ? '#0b3b60' : '#ffffff',
                       color: activeStation === 'bharati' ? '#ffffff' : '#475569',
                       border: 'none',
-                      padding: '4px 10px',
+                      borderLeft: '1px solid #cbd5e1',
+                      padding: '0 11px',
                       fontSize: 10.5,
                       fontWeight: 800,
                       cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      transition: 'all 0.15s ease',
                     }}
                   >
                     BHARATI
@@ -680,21 +754,23 @@ export default function LiveTelemetryPage() {
                   onClick={handleRunRollup}
                   disabled={isCompressing}
                   style={{
+                    height: 28,
                     background: '#0b3b60',
-                    border: 'none',
+                    border: '1px solid #0b3b60',
                     color: '#ffffff',
-                    fontSize: 10,
+                    fontSize: 10.5,
                     fontWeight: 800,
-                    padding: '4px 9px',
-                    borderRadius: 2,
+                    padding: '0 10px',
+                    borderRadius: 3,
                     cursor: isCompressing ? 'wait' : 'pointer',
-                    display: 'flex',
+                    display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 4,
+                    gap: 5,
+                    transition: 'all 0.15s ease',
                   }}
-                  title="Execute Deadband compression and 15-minute decimation rollup on Neon DB"
+                  title="Execute telemetry decimation and compression rollup"
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#ff9933' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#ff9933' }}>
                     {isCompressing ? 'sync' : 'compress'}
                   </span>
                   <span>{isCompressing ? 'Compressing...' : (lang === 'hi' ? 'डेटा संपीड़न (Rollup)' : 'Decimation Rollup')}</span>
@@ -704,21 +780,23 @@ export default function LiveTelemetryPage() {
                   type="button"
                   onClick={() => setShowArchivalModal(true)}
                   style={{
-                    background: '#f8fafc',
+                    height: 28,
+                    background: '#ffffff',
                     border: '1px solid #cbd5e1',
                     color: '#0b3b60',
-                    fontSize: 10,
+                    fontSize: 10.5,
                     fontWeight: 800,
-                    padding: '4px 9px',
-                    borderRadius: 2,
+                    padding: '0 10px',
+                    borderRadius: 3,
                     cursor: 'pointer',
-                    display: 'flex',
+                    display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 4,
+                    gap: 5,
+                    transition: 'all 0.15s ease',
                   }}
                   title="View and download archived telemetry PDFs older than 7 days"
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#ea580c' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#ea580c' }}>
                     picture_as_pdf
                   </span>
                   <span>{lang === 'hi' ? 'संग्रहीत लॉग्स (> 7 दिन)' : 'Archived Logs (> 7 Days)'}</span>
@@ -793,7 +871,7 @@ export default function LiveTelemetryPage() {
                   }}
                 >
                   <span className="material-symbols-outlined" style={{ fontSize: 15 }}>bolt</span>
-                  <span>{isFlushing ? 'RECONNECTING & FLUSHING...' : `⚡ RESTORE LINK & FLUSH (${edgeBufferCount} FRAMES)`}</span>
+                  <span>{isFlushing ? 'RECONNECTING & FLUSHING...' : `RESTORE LINK & FLUSH (${edgeBufferCount} FRAMES)`}</span>
                 </button>
               </div>
             )}
@@ -830,9 +908,13 @@ export default function LiveTelemetryPage() {
                     fontWeight: 800,
                     cursor: 'pointer',
                     borderRadius: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
                   }}
                 >
-                  INSPECT IN BLACK BOX RECORDER ➡️
+                  <span>INSPECT IN BLACK BOX RECORDER</span>
+                  <span className="material-symbols-outlined" style={{ fontSize: 13 }}>arrow_forward</span>
                 </button>
               </div>
             )}
@@ -855,8 +937,8 @@ export default function LiveTelemetryPage() {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 22 }}>
-                    {isAnomalyAcknowledged ? '✅' : activeAnomaly.anomaly_id === 'fire_alarm' ? '🔥' : '🚨'}
+                  <span className="material-symbols-outlined" style={{ fontSize: 22, color: isAnomalyAcknowledged ? '#16a34a' : '#e11d48' }}>
+                    {isAnomalyAcknowledged ? 'check_circle' : activeAnomaly.anomaly_id === 'fire_alarm' ? 'local_fire_department' : 'warning'}
                   </span>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -885,7 +967,7 @@ export default function LiveTelemetryPage() {
                       {isAnomalyAcknowledged
                         ? `Alert acknowledged by duty officer. Sensor readings remain impacted — charts & gauges reflect ongoing anomaly. Clear simulation when event is resolved.`
                         : activeAnomaly.anomaly_id === 'fire_alarm'
-                          ? '🔥 Smoke & Fire Detection Array Triggered (FIR-001) • Smoke: 0.88 obs/m (ALARM) • CO: 48.5 ppm • Temp: 78.4°C'
+                          ? 'Smoke & Fire Detection Array Triggered (FIR-001) • Smoke: 0.88 obs/m (ALARM) • CO: 48.5 ppm • Temp: 78.4°C'
                           : activeAnomaly.description}
                     </div>
                   </div>
@@ -927,9 +1009,13 @@ export default function LiveTelemetryPage() {
                         fontWeight: 800,
                         cursor: 'pointer',
                         borderRadius: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
                       }}
                     >
-                      🏢 IoT SENSORS
+                      <span className="material-symbols-outlined" style={{ fontSize: 13 }}>sensors</span>
+                      <span>IoT SENSORS</span>
                     </button>
                   )}
                   <button
@@ -944,9 +1030,13 @@ export default function LiveTelemetryPage() {
                       fontWeight: 800,
                       cursor: 'pointer',
                       borderRadius: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
                     }}
                   >
-                    📼 BLACK BOX RECORDER
+                    <span className="material-symbols-outlined" style={{ fontSize: 13 }}>emergency_recording</span>
+                    <span>BLACK BOX RECORDER</span>
                   </button>
                 </div>
               </div>
@@ -984,12 +1074,12 @@ export default function LiveTelemetryPage() {
                     <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#0b3b60' }}>
                       history_toggle_off
                     </span>
-                    <h2 style={{ fontSize: 14, fontWeight: 900, color: '#0b3b60', margin: 0, letterSpacing: '0.02em' }}>
-                      {lang === 'hi' ? '7-दिवसीय टेलीमेट्री टाइम-मशीन (डीवीआर प्लेबैक)' : '7-DAY TELEMETRY TIME-MACHINE (DVR PLAYBACK)'}
+                    <h2 style={{ fontSize: 13.5, fontWeight: 900, color: '#0b3b60', margin: 0, letterSpacing: '0.02em' }}>
+                      {lang === 'hi' ? 'टेलीमेट्री रिकॉर्डिंग एवं प्लेबैक ऑडिट' : 'TELEMETRY RECORDING & PLAYBACK AUDIT'}
                     </h2>
                   </div>
                   <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
-                    {activeStation === 'maitri' ? 'Maitri Research Station' : 'Bharati Research Station'} • Rolling 168-Hour Telemetry Buffer
+                    {activeStation === 'maitri' ? 'Maitri Research Station' : 'Bharati Research Station'} • Multi-Resolution Telemetry Time-Series Buffer
                   </div>
                 </div>
 
@@ -1010,11 +1100,10 @@ export default function LiveTelemetryPage() {
                           fontWeight: 900,
                           color: '#b91c1c',
                           animation: 'pulse 1.5s infinite',
-                          boxShadow: '0 0 10px rgba(239, 68, 68, 0.3)',
                         }}
                       >
                         <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#dc2626' }} />
-                        <span>🚨 LIVE ANOMALY DETECTED: {activeAnomaly.anomaly_name.toUpperCase()}</span>
+                        <span>LIVE FAULT DETECTED: {activeAnomaly.anomaly_name.toUpperCase()}</span>
                       </div>
                     ) : (
                       <div
@@ -1032,7 +1121,7 @@ export default function LiveTelemetryPage() {
                         }}
                       >
                         <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#16a34a', animation: 'ping 1.5s infinite' }} />
-                        <span>🔴 LIVE STREAM (SYNCED)</span>
+                        <span>LIVE (SYNCHRONIZED)</span>
                       </div>
                     )
                   ) : isInBlackBoxZone ? (
@@ -1048,13 +1137,12 @@ export default function LiveTelemetryPage() {
                         fontSize: 10.5,
                         fontWeight: 900,
                         color: '#b91c1c',
-                        boxShadow: '0 0 10px rgba(220, 38, 38, 0.25)',
                       }}
                     >
                       <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#dc2626' }}>
                         warning
                       </span>
-                      <span>🔍 BLACK BOX RAW STREAM (1Hz UNCOMPRESSED)</span>
+                      <span>BLACK BOX HIGH-FREQ STREAM (1 Hz)</span>
                     </div>
                   ) : (
                     <div
@@ -1074,7 +1162,7 @@ export default function LiveTelemetryPage() {
                       <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
                         replay
                       </span>
-                      <span>⏪ HISTORICAL PLAYBACK (15-MIN AVG)</span>
+                      <span>HISTORICAL AUDIT STREAM</span>
                     </div>
                   )}
 
@@ -1096,11 +1184,12 @@ export default function LiveTelemetryPage() {
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 4,
+                        gap: 5,
                       }}
                       title="Jump straight to real-time live feed"
                     >
-                      <span>GO TO LIVE 🔴</span>
+                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#ffffff' }} />
+                      <span>JUMP TO LIVE</span>
                     </button>
                   )}
                 </div>
@@ -1148,14 +1237,13 @@ export default function LiveTelemetryPage() {
                         display: 'flex',
                         alignItems: 'center',
                         gap: 4,
-                        boxShadow: '0 0 8px rgba(239, 68, 68, 0.2)',
                       }}
                       title="Jump scrubber directly to the injected anomaly dip window"
                     >
                       <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#dc2626' }}>
                         crisis_alert
                       </span>
-                      <span>{hasCompletedAnomaly ? 'View Injected Dip 📉' : 'View Live Dip 🚨'}</span>
+                      <span>{activeAnomaly ? 'View Live Anomaly' : 'View Injected Anomaly'}</span>
                     </button>
                   )}
 
@@ -1178,7 +1266,7 @@ export default function LiveTelemetryPage() {
                     }}
                   >
                     <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#ea580c' }}>
-                      bolt
+                      troubleshoot
                     </span>
                     <span>{lang === 'hi' ? 'ब्लैक बॉक्स पर जाएं' : 'Jump to Black Box'}</span>
                   </button>
@@ -1206,6 +1294,35 @@ export default function LiveTelemetryPage() {
                     </span>
                     <span>{lang === 'hi' ? 'फॉरेंसिक विवरण' : 'Forensic Dossier'}</span>
                   </button>
+
+                  {/* Clear past anomaly history */}
+                  {hasCompletedAnomaly && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        clearAnomalyHistory()
+                        setSyncNotification('Simulation history cleared.')
+                        setTimeout(() => setSyncNotification(null), 3000)
+                      }}
+                      style={{
+                        background: '#f8fafc',
+                        border: '1px solid #cbd5e1',
+                        color: '#64748b',
+                        fontSize: 9.5,
+                        fontWeight: 700,
+                        padding: '5px 8px',
+                        borderRadius: 2,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 3,
+                      }}
+                      title="Clear past simulated anomaly windows"
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 12 }}>clear_all</span>
+                      <span>Reset History</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1252,7 +1369,7 @@ export default function LiveTelemetryPage() {
                     <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#16a34a' }}>
                       history_edu
                     </span>
-                    <span>❄️ &lt; Day -7 Cold Storage Archives (Official Gazette SitRep PDFs)</span>
+                    <span>Historical Gazette Archives (&lt; Day -7)</span>
                   </button>
 
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -1288,10 +1405,10 @@ export default function LiveTelemetryPage() {
                     )}
                     {activeAnomaly ? (
                       <span style={{ color: '#dc2626', fontWeight: 900, animation: 'pulse 1.5s infinite' }}>
-                        NOW (⚠️ ANOMALY LIVE) 🔴
+                        NOW (FAULT ACTIVE)
                       </span>
                     ) : (
-                      <span style={{ color: '#16a34a', fontWeight: 900 }}>NOW (LIVE) 🟢</span>
+                      <span style={{ color: '#16a34a', fontWeight: 900 }}>NOW (LIVE)</span>
                     )}
                   </div>
                 </div>
@@ -1337,7 +1454,7 @@ export default function LiveTelemetryPage() {
                     <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
                       {isPlaying ? 'pause' : 'play_arrow'}
                     </span>
-                    <span>{isPlaying ? 'PAUSE' : 'PLAY DVR'}</span>
+                    <span>{isPlaying ? 'PAUSE' : 'PLAY'}</span>
                   </button>
 
                   {/* Playback speed buttons */}
@@ -1363,7 +1480,7 @@ export default function LiveTelemetryPage() {
                   </div>
 
                   <span style={{ fontSize: 9.5, color: '#64748b', marginLeft: 4 }}>
-                    {playSpeed === 60 ? '⚡ 1 sec = 1 hour' : playSpeed === 10 ? '⏩ Fast-Forward' : '1x Speed'}
+                    {playSpeed === 60 ? '1 hr / sec' : playSpeed === 10 ? '10x Speed' : '1x Real-Time'}
                   </span>
                 </div>
 
@@ -1402,7 +1519,7 @@ export default function LiveTelemetryPage() {
                   {displayedPower} <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>kW</span>
                 </div>
                 <div style={{ fontSize: 9, color: displayedPower < 30 ? '#b91c1c' : '#16a34a', fontWeight: 700, marginTop: 2 }}>
-                  {displayedPower < 30 ? '⚠️ STALL / BESS DISPATCH' : '● NOMINAL GENERATOR LOAD'}
+                  {displayedPower < 30 ? 'LOAD COLLAPSE / BESS ENGAGED' : 'NOMINAL BASELINE LOAD'}
                 </div>
               </div>
 
@@ -1426,7 +1543,7 @@ export default function LiveTelemetryPage() {
                   {displayedFuel} <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>Bar</span>
                 </div>
                 <div style={{ fontSize: 9, color: displayedFuel < 1.0 ? '#b91c1c' : '#16a34a', fontWeight: 700, marginTop: 2 }}>
-                  {displayedFuel < 1.0 ? '⚠️ LINE FREEZE COLLAPSE' : '● LINE HEATING ACTIVE'}
+                  {displayedFuel < 1.0 ? 'LOW PRESSURE COLLAPSE' : 'PRESSURE NOMINAL'}
                 </div>
               </div>
 
@@ -1450,7 +1567,7 @@ export default function LiveTelemetryPage() {
                   +{displayedCoolant}°C
                 </div>
                 <div style={{ fontSize: 9, color: displayedCoolant > 95 ? '#b91c1c' : '#16a34a', fontWeight: 700, marginTop: 2 }}>
-                  {displayedCoolant > 95 ? '⚠️ THERMAL TRIP' : '● HEAT EXCHANGER NORMAL'}
+                  {displayedCoolant > 95 ? 'THERMAL TRIP EXCEEDED' : 'HEAT EXCHANGER NOMINAL'}
                 </div>
               </div>
 
@@ -1474,7 +1591,7 @@ export default function LiveTelemetryPage() {
                   +{displayedHabitat}°C
                 </div>
                 <div style={{ fontSize: 9, color: displayedHabitat < 18 ? '#b91c1c' : '#16a34a', fontWeight: 700, marginTop: 2 }}>
-                  {displayedHabitat < 18 ? '⚠️ HYPOTHERMIA RISK' : '● LIFE-SUPPORT NOMINAL'}
+                  {displayedHabitat < 18 ? 'HYPOTHERMIA RISK' : 'LIFE-SUPPORT NOMINAL'}
                 </div>
               </div>
 
@@ -1498,7 +1615,7 @@ export default function LiveTelemetryPage() {
                   {displayedVibration} <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>mm/s</span>
                 </div>
                 <div style={{ fontSize: 9, color: displayedVibration > 4.0 ? '#b91c1c' : '#16a34a', fontWeight: 700, marginTop: 2 }}>
-                  {displayedVibration > 4.0 ? '⚠️ MECHANICAL CAVITATION' : '● SMOOTH ROTATION'}
+                  {displayedVibration > 4.0 ? 'MECHANICAL CAVITATION' : 'ROTOR BALANCE NOMINAL'}
                 </div>
               </div>
 
@@ -1525,7 +1642,7 @@ export default function LiveTelemetryPage() {
                   {displayedSmoke} <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>obs/m</span>
                 </div>
                 <div style={{ fontSize: 9, color: displayedSmoke > 0.05 ? '#b91c1c' : '#16a34a', fontWeight: 700, marginTop: 2 }}>
-                  {displayedSmoke > 0.05 ? `🔥 SMOKE DETECTED • CO: ${displayedCo} ppm` : '● 24/24 DETECTORS CLEAR'}
+                  {displayedSmoke > 0.05 ? `SMOKE DETECTED • CO: ${displayedCo} ppm` : 'DETECTION ARRAY NOMINAL'}
                 </div>
               </div>
             </div>
@@ -1545,7 +1662,7 @@ export default function LiveTelemetryPage() {
                   <div style={{ fontSize: 12, fontWeight: 900, color: '#0b3b60', display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span>
                       {timeRange === '15m'
-                        ? '🔴 REAL-TIME SYNCHRONIZED TELEMETRY (LAST 15 MIN • HIGH-FREQ)'
+                        ? 'REAL-TIME TELEMETRY (LAST 15 MIN • HIGH-FREQ)'
                         : timeRange === '1h'
                         ? '1-HOUR CONTINUOUS TELEMETRY MONITOR (60-SEC RESOLUTION)'
                         : timeRange === '24h'
@@ -1567,10 +1684,10 @@ export default function LiveTelemetryPage() {
                   {/* ── TIME RANGE SELECTOR PILLS (OPTION 2) ── */}
                   <div style={{ display: 'flex', border: '1px solid #cbd5e1', borderRadius: 3, overflow: 'hidden', background: '#f8fafc', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
                     {[
-                      { id: '15m', label: '🔴 15 Min', title: 'Live 15-Minute High-Frequency Stream (15-second intervals)' },
+                      { id: '15m', label: '15 Min', title: 'Live 15-Minute High-Frequency Stream (15-second intervals)' },
                       { id: '1h', label: '1 Hour', title: 'Last 1 Hour Stream (1-minute intervals)' },
                       { id: '24h', label: '24 Hours', title: 'Last 24 Hours Overview (15-minute intervals)' },
-                      { id: '7d', label: '📦 7 Days', title: 'Full 7-Day Black Box Archive (168 hours)' },
+                      { id: '7d', label: '7 Days', title: 'Full 7-Day Black Box Archive (168 hours)' },
                     ].map((btn) => (
                       <button
                         key={btn.id}
@@ -1606,11 +1723,13 @@ export default function LiveTelemetryPage() {
                       <div style={{ width: 10, height: 3, background: '#ea580c' }} />
                       <span style={{ color: '#475569', fontWeight: 700 }}>Fuel Press. (Bar)</span>
                     </div>
-                    {injectedAnomalyArea && (
+                    {anomalyAreas.length > 0 && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <div style={{ width: 10, height: 10, background: 'rgba(239, 68, 68, 0.25)', border: '1.5px dashed #dc2626' }} />
                         <span style={{ color: '#dc2626', fontWeight: 800 }}>
-                          {activeAnomaly ? 'Active Anomaly Dip 🚨' : 'Injected Dip (Exact Duration) 📉'}
+                          {activeAnomaly
+                            ? `Active Anomaly Dip (${anomalyAreas.length})`
+                            : `Injected Anomaly Dip (${anomalyAreas.length} Event${anomalyAreas.length > 1 ? 's' : ''})`}
                         </span>
                       </div>
                     )}
@@ -1650,17 +1769,18 @@ export default function LiveTelemetryPage() {
                       formatter={(val: any, name: any) => [val, name === 'powerKw' ? 'Grid Power (kW)' : 'Fuel Press. (Bar)']}
                     />
 
-                    {/* Exact Injected Anomaly Window Highlight (Active or Resolved) */}
-                    {injectedAnomalyArea && (
+                    {/* All Injected Anomaly Window Highlights (Both Active & Resolved) */}
+                    {anomalyAreas.map((area, idx) => (
                       <ReferenceArea
-                        x1={injectedAnomalyArea.x1}
-                        x2={injectedAnomalyArea.x2}
+                        key={area.id || idx}
+                        x1={area.x1}
+                        x2={area.x2}
                         fill="#fee2e2"
-                        fillOpacity={activeAnomaly ? 0.65 : 0.4}
+                        fillOpacity={area.isActive ? 0.65 : 0.4}
                         stroke="#dc2626"
-                        strokeDasharray={activeAnomaly ? '2 2' : '3 3'}
+                        strokeDasharray={area.isActive ? '2 2' : '3 3'}
                       />
-                    )}
+                    ))}
 
                     {/* Historical Black Box Incident highlight area (Visible in 7d or 24h) */}
                     {incidentPoint && (timeRange === '7d' || timeRange === '24h') && (

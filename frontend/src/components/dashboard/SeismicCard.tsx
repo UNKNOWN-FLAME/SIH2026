@@ -14,7 +14,6 @@ export default function SeismicCard({ stationId }: Props) {
   const isInfected = Boolean(anomalyImpact?.isInfected)
 
   const isMaitri = stationId === 'maitri'
-  const stationName = isMaitri ? 'Maitri Base' : 'Bharati Base'
 
   const syncMetrics = [
     {
@@ -28,21 +27,21 @@ export default function SeismicCard({ stationId }: Props) {
       icon: 'compress',
       label: 'DATA COMPRESSION',
       value: '88.2% SAVED',
-      sub: '8.4x Compacted at Edge',
+      sub: 'Protobuf WireFormat',
       color: '#0b3b60',
     },
     {
       icon: 'inventory_2',
       label: 'LOCAL BACKUP',
       value: '30 DAYS',
-      sub: 'Zero Data Loss Risk',
+      sub: 'NVMe Ring Buffer',
       color: '#0b3b60',
     },
     {
       icon: 'cloud_sync',
       label: 'UPLINK SPEED',
       value: '42 kbps',
-      sub: 'Hourly Batched Sync',
+      sub: '1Hz Telemetry Rate',
       color: '#0b3b60',
     },
   ]
@@ -73,7 +72,7 @@ export default function SeismicCard({ stationId }: Props) {
       icon: 'group',
       label: 'WINTER CREW',
       value: '48 ON SITE',
-      sub: 'Safe Autonomy: 246 Days',
+      sub: 'Autonomy: 246 Days',
       color: '#0b3b60',
     },
   ]
@@ -228,29 +227,6 @@ export default function SeismicCard({ stationId }: Props) {
             </div>
           </div>
         ))}
-      </div>
-
-      {/* Official Government Verification Strip */}
-      <div
-        style={{
-          background: '#f1f5f9',
-          borderTop: '1px solid #e2e8f0',
-          padding: '4px 10px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          fontSize: 8.5,
-          color: '#475569',
-        }}
-      >
-        <span>
-          {viewMode === 'sync'
-            ? `● DTN Polar Store & Forward • ${stationName}`
-            : `● 45th Expedition • Winter Lockout Ready`}
-        </span>
-        <span style={{ color: '#15803d', fontWeight: 700 }}>
-          {viewMode === 'sync' ? '✓ ISRO Verified' : '✓ Resources Safe'}
-        </span>
       </div>
     </div>
   )

@@ -13,6 +13,10 @@ import { useQueryClient } from '@tanstack/react-query'
 export type StationId = 'maitri' | 'bharati'
 export type LinkState = 'UP' | 'DOWN' | 'DEGRADED'
 
+export interface InjectedAnomalyRecord extends AnomalyInjectionResult {
+  ended_at?: string
+}
+
 interface StationContextType {
   stationId: StationId
   setStationId: (id: StationId | ((prev: StationId) => StationId)) => void
@@ -36,6 +40,8 @@ interface StationContextType {
   openImpactModal: () => void
   closeImpactModal: () => void
   completedIncidentResult: AnomalyInjectionResult | null
+  anomalyHistory: InjectedAnomalyRecord[]
+  clearAnomalyHistory: () => void
 }
 
 const StationContext = createContext<StationContextType | undefined>(undefined)
@@ -67,24 +73,71 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
     }
   })
 
+  const [anomalyHistory, setAnomalyHistory] = useState<InjectedAnomalyRecord[]>(() => {
+    try {
+      const raw = localStorage.getItem('himantar_anomaly_history')
+      return raw ? JSON.parse(raw) : []
+    } catch {
+      return []
+    }
+  })
+
+  const clearAnomalyHistory = useCallback(() => {
+    setAnomalyHistory([])
+    try {
+      localStorage.removeItem('himantar_anomaly_history')
+    } catch {}
+  }, [])
+
   const [isImpactModalOpen, setIsImpactModalOpen] = useState<boolean>(false)
   const openImpactModal = useCallback(() => setIsImpactModalOpen(true), [])
   const closeImpactModal = useCallback(() => setIsImpactModalOpen(false), [])
 
   const setLastAnomalyResult = useCallback((res: AnomalyInjectionResult | null) => {
     setLastAnomalyResultState((prev) => {
+      const nowIso = new Date().toISOString()
       // When anomaly ends (transitions from active to null):
-      // Store completed incident and automatically open post-incident assessment report!
       if (prev && res === null) {
         const completedWithEnd = {
           ...prev,
-          ended_at: new Date().toISOString(),
+          ended_at: nowIso,
         }
         setCompletedIncidentResult(completedWithEnd)
         try {
           localStorage.setItem('himantar_last_completed_incident', JSON.stringify(completedWithEnd))
         } catch {}
         setIsImpactModalOpen(true)
+
+        // Close it in anomalyHistory
+        setAnomalyHistory((prevHistory) => {
+          const updated = prevHistory.map((item) => {
+            if (!item.ended_at && (item.incident_id === prev.incident_id || item.anomaly_id === prev.anomaly_id)) {
+              return { ...item, ended_at: nowIso }
+            }
+            return item
+          })
+          try {
+            localStorage.setItem('himantar_anomaly_history', JSON.stringify(updated.slice(-50)))
+          } catch {}
+          return updated
+        })
+      } else if (res) {
+        // When a new anomaly is injected:
+        setAnomalyHistory((prevHistory) => {
+          // If a previous one was running without ended_at, close it at now
+          const closed = prevHistory.map((item) =>
+            !item.ended_at ? { ...item, ended_at: nowIso } : item
+          )
+          const newRecord: InjectedAnomalyRecord = {
+            ...res,
+            injected_at: res.injected_at || nowIso,
+          }
+          const updated = [...closed, newRecord]
+          try {
+            localStorage.setItem('himantar_anomaly_history', JSON.stringify(updated.slice(-50)))
+          } catch {}
+          return updated
+        })
       }
       return res
     })
@@ -217,6 +270,8 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
         openImpactModal,
         closeImpactModal,
         completedIncidentResult,
+        anomalyHistory,
+        clearAnomalyHistory,
       }}
     >
       {children}

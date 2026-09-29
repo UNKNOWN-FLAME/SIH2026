@@ -112,10 +112,10 @@ export default function ReportsPage() {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      setDownloadMsg(`✅ Downloaded: ${result.filename}`)
+      setDownloadMsg(`Downloaded: ${result.filename}`)
       setTimeout(() => setDownloadMsg(null), 5000)
     } catch {
-      setDownloadMsg('❌ Download failed — please try again')
+      setDownloadMsg('Download failed — please try again')
       setTimeout(() => setDownloadMsg(null), 4000)
     } finally {
       setIsDownloading(false)
@@ -138,14 +138,12 @@ export default function ReportsPage() {
                 <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: '#0b3b60', fontWeight: 700, cursor: 'pointer', padding: 0, fontSize: 11 }}>Home</button>
                 <span>›</span><span style={{ color: '#ea580c', fontWeight: 800 }}>Reports</span>
               </div>
-              <span style={{ fontSize: 10, color: '#16a34a', fontWeight: 700, background: '#f0fdf4', padding: '2px 8px', border: '1px solid #bbf7d0' }}>● LIVE DB</span>
             </div>
 
             {/* Header */}
             <div style={{ background: '#0b3b60', color: '#fff', padding: '10px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 800 }}>📄 OFFICIAL REPORTS — NCPOR DOCUMENT MANAGEMENT SYSTEM</div>
-                <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Live data from Neon DB • GIGW 3.0 Compliant • VajraX Digital Twin Platform</div>
+                <div style={{ fontSize: 13, fontWeight: 800 }}>OFFICIAL REPORTS — NCPOR DOCUMENT MANAGEMENT SYSTEM</div>
               </div>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 {/* Station filter */}
@@ -160,7 +158,7 @@ export default function ReportsPage() {
 
             {/* Download notification */}
             {downloadMsg && (
-              <div style={{ background: downloadMsg.startsWith('✅') ? '#f0fdf4' : '#fef2f2', border: `1px solid ${downloadMsg.startsWith('✅') ? '#bbf7d0' : '#fecaca'}`, padding: '8px 14px', marginBottom: 10, fontSize: 11, fontWeight: 700, color: downloadMsg.startsWith('✅') ? '#16a34a' : '#dc2626' }}>
+              <div style={{ background: downloadMsg.includes('failed') ? '#fef2f2' : '#f0fdf4', border: `1px solid ${downloadMsg.includes('failed') ? '#fecaca' : '#bbf7d0'}`, padding: '8px 14px', marginBottom: 10, fontSize: 11, fontWeight: 700, color: downloadMsg.includes('failed') ? '#dc2626' : '#16a34a' }}>
                 {downloadMsg}
               </div>
             )}
@@ -195,9 +193,11 @@ export default function ReportsPage() {
                   </span>
                   <div style={{ textAlign: 'left' }}>
                     <div>{tab.label}</div>
-                    <div style={{ fontSize: 8.5, color: tab.badge ? (activeTab === tab.id ? '#ff9933' : '#ea580c') : undefined, opacity: tab.badge ? 1 : 0.7, fontWeight: tab.badge ? 800 : 500 }}>
-                      {tab.badge ? `★ ${tab.badge}` : 'Live from DB'}
-                    </div>
+                    {tab.badge && (
+                      <div style={{ fontSize: 8.5, color: activeTab === tab.id ? '#ff9933' : '#ea580c', fontWeight: 800 }}>
+                        {tab.badge}
+                      </div>
+                    )}
                   </div>
                 </button>
               ))}
@@ -219,33 +219,187 @@ export default function ReportsPage() {
             {/* Loading / Error states */}
             {isLoading && (
               <div style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '32px', textAlign: 'center', color: '#64748b' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 32, display: 'block', marginBottom: 8 }}>hourglass_empty</span>
-                Loading report data from Neon DB…
+                <span className="material-symbols-outlined" style={{ fontSize: 32, display: 'block', marginBottom: 8, color: '#0b3b60' }}>hourglass_empty</span>
+                Loading official report telemetry…
               </div>
             )}
 
             {error && !isLoading && (
-              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '16px', color: '#dc2626', fontSize: 12, fontWeight: 700 }}>
-                ❌ Failed to load report. Check that the backend is running.
+              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '14px 16px', color: '#dc2626', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#dc2626' }}>error</span>
+                <span>Unable to load report data. Please verify central telemetry server connection.</span>
               </div>
             )}
 
             {!isLoading && !error && reportData && (
               <>
                 {/* Station Status Cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${stationIds.length}, 1fr)`, gap: 8, marginBottom: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${stationIds.length}, 1fr)`, gap: 10, marginBottom: 12 }}>
                   {stationIds.map(sid => {
                     const info = stationsInfo?.[sid]
                     if (!info) return null
+                    const isUp = info.link_state === 'UP'
+                    const isDegraded = info.link_state === 'DEGRADED'
                     return (
-                      <div key={sid} style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '12px 16px', position: 'relative', overflow: 'hidden' }}>
-                        <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: info.link_state === 'UP' ? '#16a34a' : info.link_state === 'DEGRADED' ? '#d97706' : '#dc2626' }} />
-                        <div style={{ marginLeft: 8 }}>
-                          <div style={{ fontSize: 12, fontWeight: 800, color: '#0b3b60' }}>{info.display_name}</div>
-                          <div style={{ display: 'flex', gap: 12, marginTop: 6, fontSize: 10 }}>
-                            <span style={{ fontWeight: 700, color: info.link_state === 'UP' ? '#16a34a' : '#d97706' }}>● {info.link_state}</span>
-                            <span style={{ color: '#dc2626', fontWeight: 700 }}>🔴 Critical: {info.open_critical_alerts}</span>
-                            <span style={{ color: '#d97706', fontWeight: 700 }}>🟡 High: {info.open_high_alerts}</span>
+                      <div
+                        key={sid}
+                        style={{
+                          background: '#fff',
+                          border: '1px solid #cbd5e1',
+                          padding: '12px 16px',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                        }}
+                      >
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: 4,
+                            height: '100%',
+                            background: isUp ? '#16a34a' : isDegraded ? '#d97706' : '#dc2626',
+                          }}
+                        />
+                        <div style={{ marginLeft: 6 }}>
+                          {/* Card Top Row: Station Name + Professional Link Status */}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 800, color: '#0b3b60', letterSpacing: '0.02em' }}>
+                                {info.display_name}
+                              </div>
+                              <div style={{ fontSize: 9.5, color: '#64748b', fontWeight: 600, marginTop: 1 }}>
+                                {sid === 'maitri' ? '70°45′S, 11°44′E • Schirmacher Oasis' : '69°24′S, 76°11′E • Larsemann Hills'}
+                              </div>
+                            </div>
+
+                            {/* Link Status Pill */}
+                            <div
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                padding: '3px 8px',
+                                borderRadius: 2,
+                                background: isUp ? '#f0fdf4' : isDegraded ? '#fffbeb' : '#fef2f2',
+                                border: `1px solid ${isUp ? '#86efac' : isDegraded ? '#fde68a' : '#fca5a5'}`,
+                                color: isUp ? '#15803d' : isDegraded ? '#b45309' : '#dc2626',
+                                fontSize: 10,
+                                fontWeight: 800,
+                                letterSpacing: '0.03em',
+                                flexShrink: 0,
+                              }}
+                            >
+                              <span
+                                style={{
+                                  width: 6,
+                                  height: 6,
+                                  borderRadius: '50%',
+                                  background: isUp ? '#16a34a' : isDegraded ? '#d97706' : '#dc2626',
+                                  boxShadow: isUp ? '0 0 0 2px rgba(22, 163, 74, 0.2)' : 'none',
+                                }}
+                              />
+                              <span className="material-symbols-outlined" style={{ fontSize: 13 }}>
+                                {isUp ? 'satellite_alt' : 'cloud_off'}
+                              </span>
+                              <span>LINK {info.link_state}</span>
+                            </div>
+                          </div>
+
+                          {/* Card Bottom Row: Structured Critical & High Metric Badges */}
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              marginTop: 10,
+                              paddingTop: 8,
+                              borderTop: '1px solid #f1f5f9',
+                              flexWrap: 'wrap',
+                            }}
+                          >
+                            <span style={{ fontSize: 9.5, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                              Incidents:
+                            </span>
+
+                            {/* Critical Pill */}
+                            <div
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 5,
+                                padding: '2px 8px',
+                                borderRadius: 2,
+                                fontSize: 9.5,
+                                fontWeight: 700,
+                                background: info.open_critical_alerts > 0 ? '#fef2f2' : '#f8fafc',
+                                border: `1px solid ${info.open_critical_alerts > 0 ? '#fca5a5' : '#e2e8f0'}`,
+                                color: info.open_critical_alerts > 0 ? '#b91c1c' : '#64748b',
+                              }}
+                            >
+                              <span
+                                className="material-symbols-outlined"
+                                style={{
+                                  fontSize: 13,
+                                  color: info.open_critical_alerts > 0 ? '#dc2626' : '#94a3b8',
+                                }}
+                              >
+                                error
+                              </span>
+                              <span>CRITICAL:</span>
+                              <strong
+                                style={{
+                                  fontWeight: 800,
+                                  color: info.open_critical_alerts > 0 ? '#b91c1c' : '#334155',
+                                }}
+                              >
+                                {info.open_critical_alerts}
+                              </strong>
+                            </div>
+
+                            {/* High Pill */}
+                            <div
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 5,
+                                padding: '2px 8px',
+                                borderRadius: 2,
+                                fontSize: 9.5,
+                                fontWeight: 700,
+                                background: info.open_high_alerts > 0 ? '#fffbeb' : '#f8fafc',
+                                border: `1px solid ${info.open_high_alerts > 0 ? '#fde68a' : '#e2e8f0'}`,
+                                color: info.open_high_alerts > 0 ? '#b45309' : '#64748b',
+                              }}
+                            >
+                              <span
+                                className="material-symbols-outlined"
+                                style={{
+                                  fontSize: 13,
+                                  color: info.open_high_alerts > 0 ? '#d97706' : '#94a3b8',
+                                }}
+                              >
+                                warning
+                              </span>
+                              <span>HIGH:</span>
+                              <strong
+                                style={{
+                                  fontWeight: 800,
+                                  color: info.open_high_alerts > 0 ? '#b45309' : '#334155',
+                                }}
+                              >
+                                {info.open_high_alerts}
+                              </strong>
+                            </div>
+
+                            {/* System Status Summary */}
+                            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, fontSize: 9.5, color: info.open_critical_alerts === 0 ? '#15803d' : '#b91c1c', fontWeight: 700 }}>
+                              <span className="material-symbols-outlined" style={{ fontSize: 13, color: info.open_critical_alerts === 0 ? '#16a34a' : '#dc2626' }}>
+                                {info.open_critical_alerts === 0 ? 'verified_user' : 'priority_high'}
+                              </span>
+                              <span>{info.open_critical_alerts === 0 ? 'Nominal Ops' : 'Action Required'}</span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -257,15 +411,46 @@ export default function ReportsPage() {
                 {(activeTab === 'daily' || activeTab === 'monthly') && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {/* Alert KPI row */}
-                    <div style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '14px 16px' }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 10, letterSpacing: '0.05em' }}>ALERT SUMMARY — LAST 30 DAYS</div>
+                    <div style={{ background: '#fff', border: '1px solid #cbd5e1', padding: '12px 16px' }}>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: '#0b3b60', marginBottom: 10, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                        Alert Summary — Last 30 Days (Consolidated Incident Log)
+                      </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-                        {['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(sev => (
-                          <div key={sev} style={{ border: `2px solid ${sevColor(sev)}`, padding: '10px', textAlign: 'center' }}>
-                            <div style={{ fontSize: 22, fontWeight: 800, color: sevColor(sev) }}>{alertSummary?.counts_by_severity[sev] ?? 0}</div>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b' }}>{sev}</div>
-                          </div>
-                        ))}
+                        {['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(sev => {
+                          const config: Record<string, { bg: string; border: string; color: string; icon: string }> = {
+                            CRITICAL: { bg: '#fef2f2', border: '#fca5a5', color: '#b91c1c', icon: 'error' },
+                            HIGH:     { bg: '#fffbeb', border: '#fde68a', color: '#b45309', icon: 'warning' },
+                            MEDIUM:   { bg: '#f0f9ff', border: '#bae6fd', color: '#0369a1', icon: 'info' },
+                            LOW:      { bg: '#f0fdf4', border: '#bbf7d0', color: '#15803d', icon: 'check_circle' },
+                          }
+                          const c = config[sev] || { bg: '#f8fafc', border: '#e2e8f0', color: '#64748b', icon: 'info' }
+                          return (
+                            <div
+                              key={sev}
+                              style={{
+                                background: c.bg,
+                                border: `1px solid ${c.border}`,
+                                padding: '10px 14px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                borderRadius: 2,
+                              }}
+                            >
+                              <div>
+                                <div style={{ fontSize: 9.5, fontWeight: 800, color: c.color, letterSpacing: '0.05em' }}>
+                                  {sev}
+                                </div>
+                                <div style={{ fontSize: 22, fontWeight: 900, color: c.color, lineHeight: 1.15, marginTop: 2 }}>
+                                  {alertSummary?.counts_by_severity[sev] ?? 0}
+                                </div>
+                              </div>
+                              <span className="material-symbols-outlined" style={{ fontSize: 22, color: c.color, opacity: 0.8 }}>
+                                {c.icon}
+                              </span>
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
 
@@ -407,7 +592,7 @@ export default function ReportsPage() {
                 {/* Download / Export Bar */}
                 <div style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '12px 16px', marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
                   <div style={{ fontSize: 10, color: '#64748b' }}>
-                    Report generated from live Neon DB &nbsp;•&nbsp; Generated: {reportData?.generated_at ? new Date(reportData.generated_at as string).toLocaleString('en-IN') : '—'}
+                    Generated: {reportData?.generated_at ? new Date(reportData.generated_at as string).toLocaleString('en-IN') : '—'}
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <button
@@ -429,7 +614,7 @@ export default function ReportsPage() {
                       }}
                       title="Download official Government of India / MoES formatted Gazette PDF"
                     >
-                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#ff9933' }}>verified</span>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#ff9933' }}>picture_as_pdf</span>
                       <span>Download Official PDF (Govt. Format)</span>
                     </button>
 
@@ -489,7 +674,7 @@ export default function ReportsPage() {
             <div style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '12px 16px', marginTop: 8 }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', marginBottom: 6, letterSpacing: '0.05em' }}>DOCUMENT MANAGEMENT SYSTEM INFO</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, fontSize: 10 }}>
-                {[{ label: 'Repository', value: 'Neon PostgreSQL (Live)', icon: 'cloud' }, { label: 'Encryption', value: 'AES-256 at rest & transit', icon: 'lock' }, { label: 'Digital Signatures', value: 'PKI / eSign (MeITY)', icon: 'verified' }, { label: 'Retention Policy', value: 'Daily: 90d • Monthly: 10yr', icon: 'history' }].map(info => (
+                {[{ label: 'Data Store', value: 'Operational Relational Data Store', icon: 'database' }, { label: 'Encryption', value: 'AES-256 at rest & transit', icon: 'lock' }, { label: 'Digital Signatures', value: 'PKI / eSign (MeITY)', icon: 'verified' }, { label: 'Retention Policy', value: 'Daily: 90d • Monthly: 10yr', icon: 'history' }].map(info => (
                   <div key={info.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#0b3b60' }}>{info.icon}</span>
                     <div><div style={{ fontWeight: 700, color: '#0b3b60' }}>{info.label}</div><div style={{ color: '#64748b' }}>{info.value}</div></div>

@@ -63,17 +63,20 @@
 
 /* Tricolour Ribbon */
 .tricolour-ribbon {
-  height: 4px;
+  height: 3px;
   width: 100%;
   background: linear-gradient(
     90deg,
     #FF9933 0%,
     #FF9933 33.33%,
-    #FFFFFF 33.33%,
-    #FFFFFF 66.66%,
+    #cbd5e1 33.33%,
+    #ffffff 33.6%,
+    #ffffff 66.4%,
+    #cbd5e1 66.66%,
     #138808 66.66%,
     #138808 100%
   );
+  border-bottom: 1px solid #e2e8f0;
   flex-shrink: 0;
 }
 
@@ -258,10 +261,12 @@ body {
   }
   .sidebar-blackbox-btn {
     width: 44px !important;
-    height: 48px !important;
+    height: 36px !important;
     padding: 4px !important;
+    justify-content: center !important;
   }
-  .sidebar-blackbox-text {
+  .sidebar-blackbox-text,
+  .sidebar-blackbox-badge {
     display: none !important;
   }
   .sidebar-anomaly-wrapper {
@@ -269,7 +274,9 @@ body {
     justify-content: center !important;
   }
   .anomaly-btn-sidebar {
-    padding: 6px 4px !important;
+    width: 44px !important;
+    height: 36px !important;
+    padding: 4px !important;
     justify-content: center !important;
   }
   .anomaly-btn-sidebar span:not(:first-child) {

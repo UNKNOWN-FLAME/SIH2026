@@ -20,28 +20,28 @@ export default function GlacialCard({ stationId = 'maitri' }: Props) {
   // Plain-English values for LSS view
   const lssData = isMaitri
     ? {
-        source: 'Water from Lake Priyadarshini (Warm Pipe)',
-        reserveL: '14,800 Litres',
+        source: 'Lake Priyadarshini Intake Line',
+        reserveL: '14,800 L',
         percent: 88,
-        days: '12 Days Left',
-        heatState: 'ON (Water Flows)',
+        days: '12 Days Reserve',
+        heatState: 'ACTIVE (+4.2°C)',
         habitatTemp: '+19.2°C',
-        habitatZone: 'Bedrooms (Warm & Safe)',
-        airO2: 'Safe (20.9% O₂)',
-        airSub: 'Clean air to breathe',
-        division: 'Station Life Support Active',
+        habitatZone: 'Habitat Zone 1',
+        airO2: '20.9% O₂',
+        airSub: 'CO₂: 410 ppm',
+        division: 'LSS Nominal',
       }
     : {
-        source: 'Clean Water from Sea Desalination Plant',
-        reserveL: '11,200 Litres',
+        source: 'Desalination Intake Plant',
+        reserveL: '11,200 L',
         percent: 84,
-        days: '9 Days Left',
-        heatState: 'ON (Water Flows)',
+        days: '9 Days Reserve',
+        heatState: 'ACTIVE (+4.2°C)',
         habitatTemp: '+20.1°C',
-        habitatZone: 'Bedrooms (Warm & Safe)',
-        airO2: 'Safe (20.9% O₂)',
-        airSub: 'Clean air to breathe',
-        division: 'Station Life Support Active',
+        habitatZone: 'Habitat Zone 1',
+        airO2: '20.9% O₂',
+        airSub: 'CO₂: 415 ppm',
+        division: 'LSS Nominal',
       }
 
   return (
@@ -192,7 +192,7 @@ export default function GlacialCard({ stationId = 'maitri' }: Props) {
                 borderRadius: 2,
               }}
             >
-              ✓ NO DANGER CRACKS
+              NOMINAL INTEGRITY
             </span>
           </div>
 
@@ -317,33 +317,16 @@ export default function GlacialCard({ stationId = 'maitri' }: Props) {
             </div>
 
             <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '4px 6px', borderRadius: 2 }}>
-              <div style={{ fontSize: 8.5, color: '#64748b', fontWeight: 700 }}>GROUND CRACKS</div>
-              <div style={{ fontSize: 13, color: '#16a34a', fontWeight: 800 }}>None (Zero)</div>
-              <div style={{ fontSize: 8, color: '#16a34a', fontWeight: 600 }}>100% Safe Ground</div>
+              <div style={{ fontSize: 8.5, color: '#64748b', fontWeight: 700 }}>FRACTURE RISK</div>
+              <div style={{ fontSize: 13, color: '#16a34a', fontWeight: 800 }}>0.0 (None)</div>
+              <div style={{ fontSize: 8, color: '#16a34a', fontWeight: 600 }}>Sub-surface Stable</div>
             </div>
 
             <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '4px 6px', borderRadius: 2 }}>
               <div style={{ fontSize: 8.5, color: '#64748b', fontWeight: 700 }}>BEDROCK DEPTH</div>
-              <div style={{ fontSize: 13, color: '#ea580c', fontWeight: 800 }}>-142.4 Metres</div>
-              <div style={{ fontSize: 8, color: '#64748b', fontWeight: 600 }}>Solid Continental Rock</div>
+              <div style={{ fontSize: 13, color: '#ea580c', fontWeight: 800 }}>-142.4 m</div>
+              <div style={{ fontSize: 8, color: '#64748b', fontWeight: 600 }}>Continental Basal</div>
             </div>
-          </div>
-
-          {/* Official Verification Footer */}
-          <div
-            style={{
-              background: '#f1f5f9',
-              borderTop: '1px solid #e2e8f0',
-              padding: '3px 10px',
-              fontSize: 8.5,
-              color: '#475569',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <span>● 400 MHz High-Resolution Radar Survey (GSI & NCPOR)</span>
-            <span style={{ color: '#15803d', fontWeight: 700 }}>✓ Certified Safe Foundation</span>
           </div>
         </div>
       ) : (
@@ -364,13 +347,13 @@ export default function GlacialCard({ stationId = 'maitri' }: Props) {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#16a34a' }}>
-                verified
+              <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#0284c7' }}>
+                water
               </span>
               <span>{lssData.source}</span>
             </div>
-            <span style={{ fontSize: 8.5, background: '#bbf7d0', padding: '1px 6px', borderRadius: 2, color: '#14532d', fontWeight: 800 }}>
-              SAFE TO DRINK
+            <span style={{ fontSize: 8.5, background: '#e0f2fe', padding: '1px 6px', borderRadius: 2, color: '#0369a1', fontWeight: 800 }}>
+              POTABLE (IS 10500)
             </span>
           </div>
 
@@ -406,7 +389,7 @@ export default function GlacialCard({ stationId = 'maitri' }: Props) {
               <div style={{ fontSize: 11, fontWeight: 800, color: '#16a34a', marginTop: 1 }}>
                 {lssData.heatState}
               </div>
-              <div style={{ fontSize: 8, color: '#64748b' }}>No ice in pipe</div>
+              <div style={{ fontSize: 8, color: '#64748b' }}>Trace Line Active</div>
             </div>
 
             {/* Tile 2: Room Temperature */}
@@ -432,22 +415,6 @@ export default function GlacialCard({ stationId = 'maitri' }: Props) {
             </div>
           </div>
 
-          {/* Clean Government Verified Footer */}
-          <div
-            style={{
-              background: '#f1f5f9',
-              borderTop: '1px solid #e2e8f0',
-              padding: '3px 10px',
-              fontSize: 8.5,
-              color: '#475569',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <span>● 100% Pure Drinking Water (Govt Tested)</span>
-            <span style={{ color: '#0284c7', fontWeight: 700 }}>✓ {lssData.division}</span>
-          </div>
         </div>
       )}
     </div>

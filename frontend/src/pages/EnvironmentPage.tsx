@@ -307,24 +307,6 @@ export default function EnvironmentPage() {
                 <span>›</span>
                 <span style={{ color: '#ea580c', fontWeight: 800 }}>Polar Meteorological & Environment Center</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span
-                  style={{
-                    fontSize: 9.5,
-                    color: '#15803d',
-                    fontWeight: 800,
-                    background: '#f0fdf4',
-                    padding: '2px 8px',
-                    border: '1px solid #bbf7d0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                  }}
-                >
-                  <span className="pulse-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a' }} />
-                  IMD AUTO SENSORS LIVE (1 Hz)
-                </span>
-              </div>
             </div>
 
             {/* Station Selector & Meteorological Banner */}
@@ -343,27 +325,9 @@ export default function EnvironmentPage() {
               }}
             >
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: '0.04em' }}>
-                    ❄️ {st.name.toUpperCase()} — POLAR ENVIRONMENTAL DIGITAL TWIN
-                  </span>
-                  <span
-                    style={{
-                      background: 'rgba(255,255,255,0.12)',
-                      padding: '1px 6px',
-                      borderRadius: 2,
-                      fontSize: 9.5,
-                      fontFamily: 'monospace',
-                      color: '#ff9933',
-                      fontWeight: 800,
-                    }}
-                  >
-                    WMO-ANT-{isM ? '89001' : '89002'}
-                  </span>
-                </div>
-                <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 3 }}>
-                  {st.coords} • Elevation: <strong style={{ color: '#ffffff' }}>{st.elevation}</strong> • {st.region}
-                </div>
+                <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: '0.04em' }}>
+                  {st.name.toUpperCase()} — POLAR ENVIRONMENTAL DIGITAL TWIN
+                </span>
               </div>
 
               {/* Station Toggle & Comparative Insights */}
@@ -382,7 +346,10 @@ export default function EnvironmentPage() {
                 >
                   <span style={{ color: '#94a3b8' }}>{otherSt.name.split(' ')[0]}:</span>
                   <strong style={{ color: '#38bdf8' }}>{fmt(otherTemp)}°C</strong>
-                  <span style={{ color: '#cbd5e1' }}>💨 {fmt(otherWind, 0)} km/h</span>
+                  <span style={{ color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#cbd5e1' }}>air</span>
+                    {fmt(otherWind, 0)} km/h
+                  </span>
                 </div>
 
                 <div style={{ display: 'flex', gap: 4 }}>
@@ -413,39 +380,80 @@ export default function EnvironmentPage() {
             <div
               style={{
                 display: 'flex',
-                borderBottom: '2px solid #cbd5e1',
-                marginBottom: 10,
+                alignItems: 'stretch',
+                gap: 6,
+                borderBottom: '2px solid #0b3b60',
+                marginBottom: 12,
                 background: '#ffffff',
-                padding: '0 8px',
+                padding: '6px 8px 0 8px',
                 overflowX: 'auto',
                 whiteSpace: 'nowrap',
               }}
             >
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    padding: '8px 14px',
-                    border: 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                    fontWeight: activeTab === tab.id ? 800 : 600,
-                    color: activeTab === tab.id ? '#0b3b60' : '#64748b',
-                    fontSize: 11,
-                    borderBottom: activeTab === tab.id ? '2px solid #0b3b60' : '2px solid transparent',
-                    marginBottom: -2,
-                  }}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: 15 }}>
-                    {tab.icon}
-                  </span>
-                  {tab.label}
-                </button>
-              ))}
+              {tabs.map((tab, idx, arr) => {
+                const isActive = activeTab === tab.id
+                return (
+                  <div key={tab.id} style={{ display: 'flex', alignItems: 'center' }}>
+                    <button
+                      onClick={() => setActiveTab(tab.id)}
+                      style={{
+                        background: isActive ? '#0b3b60' : '#f1f5f9',
+                        color: isActive ? '#ffffff' : '#334155',
+                        border: isActive ? '1px solid #0b3b60' : '1px solid #cbd5e1',
+                        borderBottom: isActive ? '2px solid #0b3b60' : '1px solid #cbd5e1',
+                        borderTop: isActive ? '2px solid #ff9933' : '1px solid #cbd5e1',
+                        borderTopLeftRadius: 4,
+                        borderTopRightRadius: 4,
+                        padding: '8px 14px',
+                        fontSize: 11.5,
+                        fontWeight: isActive ? 800 : 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 7,
+                        transition: 'all 0.15s ease',
+                        boxShadow: isActive ? '0 -1px 3px rgba(0,0,0,0.06)' : 'none',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.background = '#e2e8f0'
+                          e.currentTarget.style.borderColor = '#94a3b8'
+                          e.currentTarget.style.color = '#0f172a'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.background = '#f1f5f9'
+                          e.currentTarget.style.borderColor = '#cbd5e1'
+                          e.currentTarget.style.color = '#334155'
+                        }
+                      }}
+                    >
+                      <span
+                        className="material-symbols-outlined"
+                        style={{
+                          fontSize: 16,
+                          color: isActive ? '#ff9933' : '#64748b',
+                        }}
+                      >
+                        {tab.icon}
+                      </span>
+                      <span>{tab.label}</span>
+                    </button>
+                    {idx < arr.length - 1 && (
+                      <span
+                        style={{
+                          width: 1,
+                          height: 16,
+                          background: '#cbd5e1',
+                          marginLeft: 6,
+                          display: 'inline-block',
+                        }}
+                      />
+                    )}
+                  </div>
+                )
+              })}
             </div>
 
             {/* ════════════════════════════════════════════════════════════════════
@@ -1135,8 +1143,9 @@ export default function EnvironmentPage() {
                 </div>
 
                 <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', padding: '14px' }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: '#0b3b60', marginBottom: 12, letterSpacing: '0.04em' }}>
-                    🧊 CRYOSPHERE OBSERVATION NETWORK — NCPOR POLAR GLACIOLOGY
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#0b3b60', marginBottom: 12, letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#0284c7' }}>ac_unit</span>
+                    CRYOSPHERE OBSERVATION NETWORK — NCPOR POLAR GLACIOLOGY
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
                     {[

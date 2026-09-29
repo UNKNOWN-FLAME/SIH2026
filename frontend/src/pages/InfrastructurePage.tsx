@@ -10,22 +10,22 @@ import type { IoTSensor, SensorParameter } from '../api/hq'
 
 // ── Category config (colours + icons) ────────────────────────────────────────
 
-const CAT_META: Record<string, { color: string; bg: string; border: string; emoji: string }> = {
-  temperature:    { color: '#dc2626', bg: '#fef2f2', border: '#fecaca', emoji: '🌡️' },
-  pressure:       { color: '#7c3aed', bg: '#faf5ff', border: '#e9d5ff', emoji: '🔵' },
-  fuel:           { color: '#ea580c', bg: '#fff7ed', border: '#fed7aa', emoji: '⛽' },
-  seismic:        { color: '#92400e', bg: '#fefce8', border: '#fde68a', emoji: '🌍' },
-  wildlife:       { color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0', emoji: '🐧' },
-  radiation:      { color: '#ca8a04', bg: '#fefce8', border: '#fef08a', emoji: '☀️' },
-  meteorological: { color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd', emoji: '🌬️' },
-  structural:     { color: '#475569', bg: '#f8fafc', border: '#cbd5e1', emoji: '🏗️' },
-  air_quality:    { color: '#0891b2', bg: '#ecfeff', border: '#a5f3fc', emoji: '💨' },
-  oceanographic:  { color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe', emoji: '🌊' },
-  fire_safety:    { color: '#b91c1c', bg: '#fef2f2', border: '#fecaca', emoji: '🔥' },
-  communications: { color: '#6d28d9', bg: '#f5f3ff', border: '#ddd6fe', emoji: '📡' },
+const CAT_META: Record<string, { color: string; bg: string; border: string; icon: string }> = {
+  temperature:    { color: '#dc2626', bg: '#fef2f2', border: '#fecaca', icon: 'device_thermostat' },
+  pressure:       { color: '#7c3aed', bg: '#faf5ff', border: '#e9d5ff', icon: 'speed' },
+  fuel:           { color: '#ea580c', bg: '#fff7ed', border: '#fed7aa', icon: 'oil_barrel' },
+  seismic:        { color: '#92400e', bg: '#fefce8', border: '#fde68a', icon: 'vibration' },
+  wildlife:       { color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0', icon: 'biotech' },
+  radiation:      { color: '#ca8a04', bg: '#fefce8', border: '#fef08a', icon: 'wb_sunny' },
+  meteorological: { color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd', icon: 'air' },
+  structural:     { color: '#475569', bg: '#f8fafc', border: '#cbd5e1', icon: 'foundation' },
+  air_quality:    { color: '#0891b2', bg: '#ecfeff', border: '#a5f3fc', icon: 'filter_drama' },
+  oceanographic:  { color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe', icon: 'waves' },
+  fire_safety:    { color: '#b91c1c', bg: '#fef2f2', border: '#fecaca', icon: 'local_fire_department' },
+  communications: { color: '#6d28d9', bg: '#f5f3ff', border: '#ddd6fe', icon: 'cell_tower' },
 }
 
-const DEFAULT_META = { color: '#64748b', bg: '#f8fafc', border: '#e2e8f0', emoji: '🔌' }
+const DEFAULT_META = { color: '#64748b', bg: '#f8fafc', border: '#e2e8f0', icon: 'sensors' }
 
 function getCatMeta(cat: string) {
   return CAT_META[cat] ?? DEFAULT_META
@@ -306,9 +306,13 @@ function SensorCard({ sensor, onClick }: { sensor: IoTSensor; onClick: () => voi
             borderRadius: 2,
             textTransform: 'uppercase',
             letterSpacing: '0.04em',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
           }}
         >
-          {meta.emoji} {catLabel}
+          <span className="material-symbols-outlined" style={{ fontSize: 12 }}>{meta.icon}</span>
+          {catLabel}
         </span>
         {/* Online/Offline pill */}
         <span
@@ -490,7 +494,7 @@ export default function InfrastructurePage() {
               style={{
                 background: 'linear-gradient(135deg, #0b3b60 0%, #1e4d78 60%, #0b3b60 100%)',
                 color: '#ffffff',
-                padding: '14px 20px',
+                padding: '10px 18px',
                 marginBottom: 12,
                 display: 'flex',
                 alignItems: 'center',
@@ -505,15 +509,10 @@ export default function InfrastructurePage() {
               <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)', backgroundSize: '20px 20px', pointerEvents: 'none' }} />
 
               <div style={{ position: 'relative' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 28, color: '#ff9933' }}>sensors</span>
-                  <div>
-                    <div style={{ fontSize: 16, fontWeight: 900, letterSpacing: '0.02em' }}>
-                      📡 ANTARCTIC IoT SENSOR TELEMETRY COMMAND
-                    </div>
-                    <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>
-                      Real-time sensor monitoring for Maitri &amp; Bharati Research Stations • NCPOR / MoES
-                    </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 24, color: '#ff9933' }}>sensors</span>
+                  <div style={{ fontSize: 14, fontWeight: 900, letterSpacing: '0.04em' }}>
+                    ANTARCTIC IoT SENSOR TELEMETRY COMMAND
                   </div>
                 </div>
               </div>
@@ -532,17 +531,17 @@ export default function InfrastructurePage() {
                     style={{
                       background: activeStation === s ? '#ff9933' : 'rgba(255,255,255,0.1)',
                       border: activeStation === s ? '2px solid #ff9933' : '2px solid rgba(255,255,255,0.25)',
-                      color: '#ffffff',
-                      padding: '7px 18px',
+                      color: activeStation === s ? '#0b3b60' : '#ffffff',
+                      padding: '5px 16px',
                       fontWeight: 900,
-                      fontSize: 12,
+                      fontSize: 11,
                       cursor: 'pointer',
                       borderRadius: 3,
                       letterSpacing: '0.06em',
                       transition: 'all 0.15s',
                     }}
                   >
-                    {s === 'maitri' ? '🏔️ MAITRI' : '🌊 BHARATI'}
+                    {s.toUpperCase()}
                   </button>
                 ))}
               </div>
@@ -570,7 +569,7 @@ export default function InfrastructurePage() {
                 </div>
                 <div style={{ fontSize: 26, fontWeight: 900, color: '#16a34a' }}>{onlineCount}</div>
                 <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 700, marginTop: 2 }}>
-                  ● Transmitting data
+                  Transmitting Active
                 </div>
               </div>
 
@@ -584,7 +583,7 @@ export default function InfrastructurePage() {
                   {offlineCount}
                 </div>
                 <div style={{ fontSize: 10, color: offlineCount > 0 ? '#dc2626' : '#16a34a', fontWeight: 700, marginTop: 2 }}>
-                  {offlineCount > 0 ? '⚠️ Requires attention' : '✅ All sensors nominal'}
+                  {offlineCount > 0 ? 'Attention Required' : 'All Sensors Nominal'}
                 </div>
               </div>
 
@@ -658,17 +657,6 @@ export default function InfrastructurePage() {
                   <h3 style={{ fontSize: 13, fontWeight: 900, color: '#0b3b60', margin: 0, textTransform: 'uppercase' }}>
                     IoT Sensor Registry — {activeStation === 'maitri' ? 'Maitri' : 'Bharati'} Station
                   </h3>
-                  <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
-                    Click any sensor card to view operational parameters and real-time readings
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <span style={{ fontSize: 9.5, fontWeight: 800, background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', border: '1px solid #bae6fd', borderRadius: 2 }}>
-                    NCPOR Telemetry Network
-                  </span>
-                  <span style={{ fontSize: 9.5, fontWeight: 800, background: '#dcfce7', color: '#166534', padding: '2px 8px', border: '1px solid #86efac', borderRadius: 2 }}>
-                    ● Live Dashboard Ready
-                  </span>
                 </div>
               </div>
 
@@ -751,9 +739,13 @@ export default function InfrastructurePage() {
                         fontWeight: 700,
                         cursor: 'pointer',
                         borderRadius: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
                       }}
                     >
-                      {meta.emoji} {cat.label} ({count})
+                      <span className="material-symbols-outlined" style={{ fontSize: 13 }}>{meta.icon}</span>
+                      {cat.label} ({count})
                     </button>
                   )
                 })}

@@ -176,23 +176,6 @@ export default function WeatherCard({ stationId }: Props) {
           </div>
         </div>
       </div>
-
-      {/* Advisory Status Footer */}
-      <div
-        style={{
-          background: '#f8fafc',
-          borderTop: '1px solid #e2e8f0',
-          padding: '4px 10px',
-          fontSize: 8.5,
-          color: '#475569',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}
-      >
-        <span>● IMD Polar Advisory: Normal Operations</span>
-        <span style={{ color: '#16a34a', fontWeight: 700 }}>✓ No Blizzard Warning</span>
-      </div>
     </div>
   )
 }

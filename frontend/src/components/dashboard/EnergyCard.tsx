@@ -174,12 +174,12 @@ export default function EnergyCard({ stationId }: Props) {
               Reserve:{' '}
               <strong style={{ color: isFuelAnomaly ? '#dc2626' : '#0f172a' }}>
                 {isFuelAnomaly
-                  ? '~38 Days Emergency Rationing'
+                  ? '~38 Days (Critical)'
                   : isGenAnomaly
                     ? 'DG-2 Active (DG-1 Tripped)'
                     : isBlizzardAnomaly
-                      ? 'Heavy Winter Draw'
-                      : '~48 Days Winter Stock'}
+                      ? 'High Winter Draw'
+                      : '~48 Days Reserve'}
               </strong>
             </span>
             <span
@@ -192,7 +192,7 @@ export default function EnergyCard({ stationId }: Props) {
                 fontWeight: 700,
               }}
             >
-              ● Burn Rate: {isFuelAnomaly ? 'Forced Rationing' : isGenAnomaly ? 'Single Genset' : isBlizzardAnomaly ? 'High (+45%)' : 'Optimal'}
+              Burn Rate: {isFuelAnomaly ? 'Rationing' : isGenAnomaly ? 'Single DG' : isBlizzardAnomaly ? 'High (+45%)' : 'Nominal'}
             </span>
           </div>
         </div>

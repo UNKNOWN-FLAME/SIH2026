@@ -32,28 +32,28 @@ export default function MetMastCard({ stationId }: Props) {
       icon: 'air',
       label: t('met.wind_speed'),
       value: fmtVal(windSpd, 1, 'km/h'),
-      sub: (windSpd?.latest_value ?? 0) > 30 ? 'Strong Breeze' : 'Moderate',
+      sub: (windSpd?.latest_value ?? 0) > 30 ? 'High Gusts' : 'Nominal',
       color: (windSpd?.latest_value ?? 0) > 30 ? '#ea580c' : '#0b3b60',
     },
     {
       icon: 'explore',
       label: t('met.direction'),
       value: fmtVal(windDir, 0, '°'),
-      sub: '247° WSW Azimuth',
+      sub: 'WSW (247°)',
       color: '#0b3b60',
     },
     {
       icon: 'speed',
       label: t('met.pressure'),
       value: fmtVal(pressure, 0, 'hPa'),
-      sub: 'Normal Barometric',
+      sub: 'Trend: Steady',
       color: '#0b3b60',
     },
     {
       icon: 'wb_sunny',
       label: t('met.solar_rad'),
       value: fmtVal(solarRad, 0, 'W/m²'),
-      sub: 'Polar Daylight Flux',
+      sub: 'Irradiance Flux',
       color: '#0b3b60',
     },
   ]
@@ -165,23 +165,6 @@ export default function MetMastCard({ stationId }: Props) {
             </div>
           </div>
         ))}
-      </div>
-
-      {/* Official Calibration Strip */}
-      <div
-        style={{
-          background: '#f1f5f9',
-          borderTop: '1px solid #e2e8f0',
-          padding: '4px 10px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          fontSize: 8.5,
-          color: '#475569',
-        }}
-      >
-        <span>● Sensor Calibrated • 10m Tower</span>
-        <span style={{ color: '#15803d', fontWeight: 700 }}>✓ IMD Certified</span>
       </div>
     </div>
   )
