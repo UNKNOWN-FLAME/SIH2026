@@ -1,20 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useStation } from '../../context/StationContext'
-import { useQueryClient } from '@tanstack/react-query'
 
 export default function ActiveAnomalyBanner() {
   const {
     lastAnomalyResult,
-    setLastAnomalyResult,
     stationId,
-    refreshLinkState,
+    linkState,
     openBlackBox,
-    openImpactModal,
+    acknowledgeAnomalyAtHQ,
   } = useStation()
 
-  const queryClient = useQueryClient()
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0)
-  const [isTerminating, setIsTerminating] = useState<boolean>(false)
 
   // Track elapsed time since anomaly injection
   useEffect(() => {
@@ -39,42 +35,48 @@ export default function ActiveAnomalyBanner() {
 
   if (!lastAnomalyResult) return null
 
+  // If station doesn't match, don't show
   const isTargetStation = !lastAnomalyResult.station_id || lastAnomalyResult.station_id === stationId
+  if (!isTargetStation) return null
+
+  // If anomaly was injected while offline and link is still DOWN, Goa HQ does not know yet
+  if (linkState === 'DOWN' && lastAnomalyResult.injectedWhileOffline) return null
+
+  const isConsoleEnded = Boolean(lastAnomalyResult.consoleEnded)
+  const isHqAcked = Boolean(lastAnomalyResult.hqAcknowledged)
+
+  // Dual-Condition Rule: if both are met, banner disappears
+  if (isConsoleEnded && isHqAcked) return null
 
   const minutes = Math.floor(elapsedSeconds / 60)
   const seconds = elapsedSeconds % 60
   const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
 
-  function handleTerminate() {
-    setIsTerminating(true)
-    setTimeout(() => {
-      setLastAnomalyResult(null)
-      queryClient.invalidateQueries({ queryKey: ['alerts'] })
-      queryClient.invalidateQueries({ queryKey: ['sensors'] })
-      queryClient.invalidateQueries({ queryKey: ['iot-sensors'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      refreshLinkState()
-      setIsTerminating(false)
-    }, 250)
-  }
-
   const impacts = lastAnomalyResult.impacts || []
+
+  // Dynamic styling based on dual-twin stage
+  const bannerBg = isConsoleEnded ? '#f0fdf4' : isHqAcked ? '#fefce8' : 'rgba(254, 242, 242, 0.9)'
+  const bannerBorder = isConsoleEnded ? '#86efac' : isHqAcked ? '#fde047' : 'rgba(239, 68, 68, 0.35)'
+  const bannerLeftBorder = isConsoleEnded ? '4px solid #16a34a' : isHqAcked ? '4px solid #ca8a04' : '4px solid #ef4444'
+  const pulseColor = isConsoleEnded ? '#16a34a' : isHqAcked ? '#ca8a04' : '#ef4444'
 
   return (
     <div
       style={{
         position: 'relative',
-        background: 'rgba(254, 242, 242, 0.9)',
-        border: '1px solid rgba(239, 68, 68, 0.35)',
-        borderLeft: '4px solid #ef4444',
+        background: bannerBg,
+        border: `1px solid ${bannerBorder}`,
+        borderLeft: bannerLeftBorder,
         borderRadius: 4,
         padding: '8px 14px',
         marginBottom: 8,
-        boxShadow: '0 1px 4px rgba(239, 68, 68, 0.08)',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
         color: '#1e293b',
         display: 'flex',
         flexDirection: 'column',
         gap: 6,
+        opacity: isTargetStation ? 1 : 0.65,
+        transition: 'all 0.25s ease',
       }}
     >
       <style>{`
@@ -108,7 +110,7 @@ export default function ActiveAnomalyBanner() {
               width: 8,
               height: 8,
               borderRadius: '50%',
-              background: '#ef4444',
+              background: pulseColor,
               animation: 'subtle-beacon-pulse 1.4s infinite ease-in-out',
               flexShrink: 0,
             }}
@@ -118,19 +120,23 @@ export default function ActiveAnomalyBanner() {
             style={{
               fontSize: 9.5,
               fontWeight: 800,
-              background: 'rgba(239, 68, 68, 0.12)',
-              color: '#b91c1c',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
+              background: isConsoleEnded ? '#dcfce7' : isHqAcked ? '#fef9c3' : 'rgba(239, 68, 68, 0.12)',
+              color: isConsoleEnded ? '#15803d' : isHqAcked ? '#854d0e' : '#b91c1c',
+              border: `1px solid ${isConsoleEnded ? '#86efac' : isHqAcked ? '#fde047' : 'rgba(239, 68, 68, 0.3)'}`,
               padding: '1px 6px',
               borderRadius: 3,
               fontFamily: 'monospace',
               letterSpacing: '0.04em',
             }}
           >
-            ACTIVE ANOMALY
+            {isConsoleEnded
+              ? '✓ RESOLVED ON-ICE (PENDING HQ ACK)'
+              : isHqAcked
+              ? '🟡 HQ ACKNOWLEDGED (AWAITING ON-ICE STOP)'
+              : 'ACTIVE ANOMALY'}
           </span>
 
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: '#991b1b' }}>
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: isConsoleEnded ? '#15803d' : '#991b1b' }}>
             {lastAnomalyResult.anomaly_name}
           </span>
 
@@ -159,31 +165,31 @@ export default function ActiveAnomalyBanner() {
 
         {/* Right: Subdued Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <button
-            type="button"
-            onClick={openImpactModal}
-            title="Open comprehensive damage, resource loss & next shipment requisition report"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              background: '#b91c1c',
-              color: '#ffffff',
-              border: 'none',
-              padding: '3px 10px',
-              borderRadius: 3,
-              fontSize: 10.5,
-              fontWeight: 800,
-              cursor: 'pointer',
-              boxShadow: '0 1px 3px rgba(185, 28, 28, 0.3)',
-              transition: 'background 0.15s',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = '#991b1b')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = '#b91c1c')}
-          >
-            <span style={{ fontSize: 12 }}>📊</span>
-            <span>Loss & Shipment Report</span>
-          </button>
+          {!isHqAcked && (
+            <button
+              type="button"
+              onClick={() => acknowledgeAnomalyAtHQ()}
+              title="Acknowledge alert at HQ command"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                background: isConsoleEnded ? '#15803d' : '#ea580c',
+                color: '#ffffff',
+                border: 'none',
+                padding: '3px 10px',
+                borderRadius: 3,
+                fontSize: 10.5,
+                fontWeight: 800,
+                cursor: 'pointer',
+                boxShadow: `0 1px 4px ${isConsoleEnded ? 'rgba(21, 128, 61, 0.3)' : 'rgba(234, 88, 12, 0.3)'}`,
+                transition: 'background 0.15s',
+              }}
+            >
+              <span>🛡️</span>
+              <span>{isConsoleEnded ? 'Acknowledge & Close' : 'Acknowledge Alert'}</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -210,32 +216,6 @@ export default function ActiveAnomalyBanner() {
               emergency_recording
             </span>
             <span>Black Box</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleTerminate}
-            disabled={isTerminating}
-            title="Stop anomaly and restore normal telemetry"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              background: '#ffffff',
-              color: '#dc2626',
-              border: '1px solid rgba(239, 68, 68, 0.4)',
-              padding: '3px 10px',
-              borderRadius: 3,
-              fontSize: 10.5,
-              fontWeight: 800,
-              cursor: isTerminating ? 'wait' : 'pointer',
-              transition: 'background 0.15s',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = '#fee2e2')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = '#ffffff')}
-          >
-            <span style={{ fontSize: 11 }}>✕</span>
-            <span>{isTerminating ? 'Ending...' : 'Stop Anomaly'}</span>
           </button>
         </div>
       </div>

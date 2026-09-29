@@ -2196,7 +2196,13 @@ async def inject_anomaly(
       Simulates autonomous Edge Station store-and-forward mode by buffering
       tamper-evident SHA-256 hash-chained frames in local Black Box memory.
     """
-    anomaly = next((a for a in _ANOMALY_REGISTRY if a["id"] == anomaly_id), None)
+    canonical_id = {
+        "dg1_coolant_overheat": "generator_failure",
+        "water_line_freeze": "pressure_pipe_failure",
+        "habitat_fire_alarm": "fire_alarm",
+        "polar_blizzard_warning": "blizzard",
+    }.get(anomaly_id, anomaly_id)
+    anomaly = next((a for a in _ANOMALY_REGISTRY if a["id"] in (anomaly_id, canonical_id)), None)
     if anomaly is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -2217,7 +2223,7 @@ async def inject_anomaly(
     is_connected = (current_link == "UP")
 
     # Mutate IoT sensor registry
-    db_readings = _apply_anomaly_to_iot_sensors(sid, anomaly_id)
+    db_readings = _apply_anomaly_to_iot_sensors(sid, canonical_id)
 
     alert_id = f"ALT-{sid.upper()[:3]}-{datetime.now().strftime('%m%d%H%M%S')}"
 

@@ -15,6 +15,10 @@ import GroundLinkCard from '../components/dashboard/GroundLinkCard'
 import EmergencyWarningModal from '../components/dashboard/EmergencyWarningModal'
 import ActiveAnomalyBanner from '../components/dashboard/ActiveAnomalyBanner'
 import IncidentImpactModal from '../components/dashboard/IncidentImpactModal'
+import BlackoutSyncReportModal from '../components/dashboard/BlackoutSyncReportModal'
+import OfflineBlackoutAuditCard from '../components/dashboard/OfflineBlackoutAuditCard'
+import GovtTelemetrySyncBanner from '../components/dashboard/GovtTelemetrySyncBanner'
+import LiveImpactSideTab from '../components/dashboard/LiveImpactSideTab'
 import { useLanguage } from '../context/LanguageContext'
 import { useStation } from '../context/StationContext'
 
@@ -147,6 +151,9 @@ export default function DashboardPage() {
             {/* Live Active Anomaly Alert & Action Banner */}
             <ActiveAnomalyBanner />
 
+            {/* Live GSAT-7 Government Telemetry Synchronization Banner */}
+            <GovtTelemetrySyncBanner />
+
             {/* Bento Grid */}
             <div className="bento-grid">
               {/* ── Centre: Schematic (responsive cols) ── */}
@@ -158,6 +165,7 @@ export default function DashboardPage() {
               <div className="bento-side-stack">
                 <GroundLinkCard stationId={activeStation} />
                 <WeatherCard stationId={activeStation} />
+                <OfflineBlackoutAuditCard stationId={activeStation} />
               </div>
 
               {/* ── Operational Grid: Row 2 (3-col balanced cards) ── */}
@@ -186,6 +194,8 @@ export default function DashboardPage() {
       <Footer />
       <EmergencyWarningModal alert={emergencyAlert} onClose={dismissEmergencyAlert} />
       <IncidentImpactModal isOpen={isImpactModalOpen} onClose={closeImpactModal} />
+      <BlackoutSyncReportModal />
+      <LiveImpactSideTab />
     </div>
   )
 }

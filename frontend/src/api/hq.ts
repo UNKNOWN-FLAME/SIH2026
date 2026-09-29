@@ -680,6 +680,17 @@ export interface AnomalyInjectionResult {
   pdf_download_ready: boolean
   pdf_download_url: string
   simulation_note: string
+  consoleEnded?: boolean
+  hqAcknowledged?: boolean
+  injectedWhileOffline?: boolean
+  occurredAt?: string
+  lossAssessment?: {
+    equipmentStress?: string
+    telemetryDeviation?: string
+    rationImpact?: string
+    estimatedDowntime?: string
+  }
+  onIceActionTaken?: string
 }
 
 export interface LinkStateResponse {

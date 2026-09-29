@@ -11,21 +11,23 @@ interface EmergencyWarningModalProps {
 
 export default function EmergencyWarningModal({ alert, onClose }: EmergencyWarningModalProps) {
   const navigate = useNavigate()
-  const { openImpactModal } = useStation()
+  const { openImpactModal, acknowledgeAnomalyAtHQ, linkState } = useStation()
   const [mutedAlertRef, setMutedAlertRef] = useState<string | null>(null)
   const isAudioMuted = Boolean(alert && mutedAlertRef === alert.report_reference)
 
   useEffect(() => {
-    if (alert) {
-      // Trigger siren sound and audible alert voice
+    if (alert && linkState !== 'DOWN' && !alert.injectedWhileOffline && !isAudioMuted) {
+      // Trigger siren sound and audible alert voice only when online
       emergencyAudio.playAlarm(alert.station_id, alert.anomaly_name, alert.severity)
+    } else {
+      emergencyAudio.stop()
     }
     return () => {
       emergencyAudio.stop()
     }
-  }, [alert])
+  }, [alert, linkState, isAudioMuted])
 
-  if (!alert) return null
+  if (!alert || linkState === 'DOWN' || alert.injectedWhileOffline) return null
 
   function handleMuteAudio() {
     emergencyAudio.stop()
@@ -36,11 +38,13 @@ export default function EmergencyWarningModal({ alert, onClose }: EmergencyWarni
 
   function handleAcknowledge() {
     emergencyAudio.stop()
+    acknowledgeAnomalyAtHQ()
     onClose()
   }
 
   function handleViewBlackBox() {
     emergencyAudio.stop()
+    acknowledgeAnomalyAtHQ()
     onClose()
     navigate('/blackbox')
   }
@@ -57,25 +61,28 @@ export default function EmergencyWarningModal({ alert, onClose }: EmergencyWarni
         position: 'fixed',
         inset: 0,
         zIndex: 999999,
-        background: 'rgba(3, 7, 18, 0.86)',
-        backdropFilter: 'blur(6px)',
+        background: 'rgba(4, 9, 20, 0.72)',
+        backdropFilter: 'blur(12px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(12px) saturate(180%)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         padding: 16,
-        boxShadow: `inset 0 0 120px ${glowColor}`,
+        boxShadow: `inset 0 0 100px ${glowColor}`,
         animation: 'emergencyBackdrop 2s infinite alternate',
       }}
       onClick={handleAcknowledge}
     >
       <div
         style={{
-          background: '#090d16',
-          border: `2px solid ${accentColor}`,
-          borderRadius: 14,
+          background: 'rgba(10, 15, 29, 0.78)',
+          backdropFilter: 'blur(24px) saturate(190%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(190%)',
+          border: `1.5px solid ${isCritical ? 'rgba(239, 68, 68, 0.5)' : 'rgba(249, 115, 22, 0.5)'}`,
+          borderRadius: 16,
           width: '100%',
           maxWidth: 680,
-          boxShadow: `0 0 50px ${glowColor}, 0 25px 60px rgba(0, 0, 0, 0.9)`,
+          boxShadow: `0 25px 60px -10px rgba(0, 0, 0, 0.75), 0 0 45px ${glowColor}, inset 0 1px 0 rgba(255, 255, 255, 0.15)`,
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
@@ -87,12 +94,16 @@ export default function EmergencyWarningModal({ alert, onClose }: EmergencyWarni
         {/* Top Emergency Strobe Banner */}
         <div
           style={{
-            background: `linear-gradient(90deg, #7f1d1d 0%, ${accentColor} 50%, #7f1d1d 100%)`,
-            padding: '10px 18px',
+            background: isCritical
+              ? 'linear-gradient(90deg, rgba(153, 27, 27, 0.78) 0%, rgba(220, 38, 38, 0.85) 50%, rgba(153, 27, 27, 0.78) 100%)'
+              : 'linear-gradient(90deg, rgba(154, 52, 18, 0.78) 0%, rgba(234, 88, 12, 0.85) 50%, rgba(154, 52, 18, 0.78) 100%)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            padding: '11px 18px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.15)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -162,17 +173,19 @@ export default function EmergencyWarningModal({ alert, onClose }: EmergencyWarni
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
             <div
               style={{
-                width: 58,
-                height: 58,
+                width: 56,
+                height: 56,
                 borderRadius: 12,
-                background: 'rgba(220, 38, 38, 0.15)',
-                border: `1.5px solid ${accentColor}`,
+                background: isCritical ? 'rgba(220, 38, 38, 0.18)' : 'rgba(234, 88, 12, 0.18)',
+                border: `1.5px solid ${isCritical ? 'rgba(248, 113, 113, 0.5)' : 'rgba(251, 146, 60, 0.5)'}`,
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: 32,
+                fontSize: 28,
                 flexShrink: 0,
-                boxShadow: `0 0 20px ${glowColor}`,
+                boxShadow: `0 0 24px ${glowColor}`,
               }}
             >
               ⚡
@@ -231,9 +244,11 @@ export default function EmergencyWarningModal({ alert, onClose }: EmergencyWarni
           {/* Quick Threat Situation Card */}
           <div
             style={{
-              background: 'rgba(15, 23, 42, 0.65)',
+              background: 'rgba(255, 255, 255, 0.04)',
+              backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)',
               border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: 8,
+              borderRadius: 10,
               padding: '12px 16px',
               fontSize: 12,
               lineHeight: 1.5,
@@ -259,10 +274,12 @@ export default function EmergencyWarningModal({ alert, onClose }: EmergencyWarni
                   <div
                     key={idx}
                     style={{
-                      background: 'rgba(239, 68, 68, 0.08)',
-                      border: '1px solid rgba(239, 68, 68, 0.25)',
-                      borderRadius: 6,
-                      padding: '7px 11px',
+                      background: 'rgba(239, 68, 68, 0.07)',
+                      backdropFilter: 'blur(6px)',
+                      WebkitBackdropFilter: 'blur(6px)',
+                      border: '1px solid rgba(239, 68, 68, 0.22)',
+                      borderRadius: 8,
+                      padding: '8px 12px',
                       fontSize: 11.5,
                       color: '#fca5a5',
                       display: 'flex',
@@ -303,18 +320,20 @@ export default function EmergencyWarningModal({ alert, onClose }: EmergencyWarni
                   openImpactModal()
                 }}
                 style={{
-                  background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)',
-                  border: 'none',
+                  background: 'linear-gradient(135deg, rgba(234, 88, 12, 0.88) 0%, rgba(194, 65, 12, 0.92) 100%)',
+                  border: '1px solid rgba(255, 255, 255, 0.22)',
+                  backdropFilter: 'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
                   color: '#ffffff',
                   fontSize: 11,
                   fontWeight: 800,
                   padding: '8px 16px',
-                  borderRadius: 6,
+                  borderRadius: 7,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 6,
-                  boxShadow: '0 2px 8px rgba(234, 88, 12, 0.4)',
+                  boxShadow: '0 2px 10px rgba(234, 88, 12, 0.35)',
                 }}
               >
                 <span>📊</span>
@@ -327,11 +346,13 @@ export default function EmergencyWarningModal({ alert, onClose }: EmergencyWarni
                 style={{
                   background: 'rgba(255, 255, 255, 0.08)',
                   border: '1px solid rgba(255, 255, 255, 0.18)',
+                  backdropFilter: 'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
                   color: '#ffffff',
                   fontSize: 11,
                   fontWeight: 700,
                   padding: '8px 16px',
-                  borderRadius: 6,
+                  borderRadius: 7,
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
                 }}
@@ -343,15 +364,19 @@ export default function EmergencyWarningModal({ alert, onClose }: EmergencyWarni
                 type="button"
                 onClick={handleAcknowledge}
                 style={{
-                  background: `linear-gradient(135deg, ${accentColor} 0%, #b91c1c 100%)`,
-                  border: 'none',
+                  background: isCritical
+                    ? 'linear-gradient(135deg, rgba(220, 38, 38, 0.92) 0%, rgba(185, 28, 28, 0.95) 100%)'
+                    : 'linear-gradient(135deg, rgba(234, 88, 12, 0.92) 0%, rgba(194, 65, 12, 0.95) 100%)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  backdropFilter: 'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
                   color: '#ffffff',
                   fontSize: 11.5,
                   fontWeight: 900,
                   padding: '8px 22px',
-                  borderRadius: 6,
+                  borderRadius: 7,
                   cursor: 'pointer',
-                  boxShadow: `0 4px 14px ${glowColor}`,
+                  boxShadow: `0 4px 18px ${glowColor}`,
                   letterSpacing: '0.04em',
                 }}
               >

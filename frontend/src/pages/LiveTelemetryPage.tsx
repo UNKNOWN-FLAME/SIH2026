@@ -21,7 +21,6 @@ import { triggerCompressionRollup, clearAnomaly, type AnomalyInjectionResult } f
 import SubsystemBlueprintHUD from '../components/telemetry/SubsystemBlueprintHUD'
 import ArchivedGazetteModal from '../components/telemetry/ArchivedGazetteModal'
 import { useAlerts } from '../hooks/useAlerts'
-import AnomalyInjector from '../components/dashboard/AnomalyInjector'
 import EmergencyWarningModal from '../components/dashboard/EmergencyWarningModal'
 import IncidentImpactModal from '../components/dashboard/IncidentImpactModal'
 
@@ -671,9 +670,6 @@ export default function LiveTelemetryPage() {
                     BHARATI
                   </button>
                 </div>
-
-                {/* Direct Simulation Injector Trigger */}
-                <AnomalyInjector activeStation={activeStation} />
 
                 <button
                   type="button"
