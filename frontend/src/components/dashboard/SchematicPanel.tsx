@@ -32,47 +32,12 @@ function isPartAffectedByAnomaly(partId: string, anomalyId?: string): boolean {
 
 function isPartAffectedByOpenAlerts(
   partId: string,
-  openAlerts: AlertOut[],
+  _openAlerts: AlertOut[],
   activeAnomalyId?: string
 ): boolean {
-  if (activeAnomalyId && isPartAffectedByAnomaly(partId, activeAnomalyId)) {
-    return true
-  }
-
-  if (!openAlerts || openAlerts.length === 0) return false
-
-  const p = partId.toLowerCase()
-
-  for (const alert of openAlerts) {
-    const desc = (alert.description || '').toLowerCase()
-    const domain = (alert.domain || '').toLowerCase()
-    const asset = (alert.asset_id || '').toLowerCase()
-
-    if (asset && (asset.includes(p) || p.includes(asset))) return true
-    if (desc.includes('fire') || domain.includes('fire') || desc.includes('smoke')) {
-      if (p.includes('cmd') || p.includes('main') || p.includes('hub') || p.includes('living') || p.includes('hab') || p.includes('gen')) return true
-    }
-    if (desc.includes('generator') || desc.includes('fuel') || domain.includes('power') || domain.includes('energy')) {
-      if (p.includes('gen') || p.includes('fuel') || p.includes('energy') || p.includes('power')) return true
-    }
-    if (desc.includes('blizzard') || desc.includes('wind') || domain.includes('weather') || desc.includes('storm')) {
-      if (p.includes('met')) return true
-    }
-    if (desc.includes('earthquake') || desc.includes('seismic') || domain.includes('seismic')) {
-      if (p.includes('cmd') || p.includes('labs') || p.includes('main')) return true
-    }
-    if (desc.includes('vsat') || desc.includes('comm') || domain.includes('comm') || desc.includes('satellite')) {
-      if (p.includes('comm') || p.includes('hub') || p.includes('antenna') || p.includes('radome') || p.includes('main')) return true
-    }
-    if (desc.includes('hvac') || desc.includes('heat') || desc.includes('temp')) {
-      if (p.includes('hab') || p.includes('living') || p.includes('main')) return true
-    }
-  }
-
   if (activeAnomalyId) {
     return isPartAffectedByAnomaly(partId, activeAnomalyId)
   }
-
   return false
 }
 
@@ -1019,38 +984,15 @@ export default function SchematicPanel({ stationId }: Props) {
 
   const iotSensors = useMemo(() => iotData?.sensors ?? [], [iotData?.sensors])
   const openAlerts: AlertOut[] = useMemo(() => alertsData?.items ?? [], [alertsData?.items])
-  const hasOpenAlerts = openAlerts.length > 0
 
-  // NOTE: Do NOT auto-clear lastAnomalyResult here. An acknowledged alert does NOT
-  // mean the event is resolved. The anomaly must remain visible on Live Telemetry
-  // until the operator explicitly clears it via the "Clear Simulation" button.
-
-  // Active anomaly: checks lastAnomalyResult first (explicit injection), then fallback to open alerts
+  // Active anomaly: strictly driven by explicit operator manual injection via AnomalyInjector
   const activeAnomalyId = useMemo(() => {
-    if (lastAnomalyResult?.anomaly_id) {
-      return lastAnomalyResult.anomaly_id
-    }
-    if (!hasOpenAlerts) return undefined
-
-    const firstAlert = openAlerts[0]
-    const desc = (firstAlert?.description || '').toLowerCase()
-    const domain = (firstAlert?.domain || '').toLowerCase()
-
-    if (desc.includes('fire') || domain.includes('fire') || desc.includes('smoke')) return 'fire_alarm'
-    if (desc.includes('generator') || desc.includes('fuel') || domain.includes('power')) return 'generator_failure'
-    if (desc.includes('blizzard') || desc.includes('wind') || domain.includes('weather')) return 'severe_blizzard'
-    if (desc.includes('vsat') || desc.includes('comm') || domain.includes('comm') || desc.includes('satellite')) return 'vsat_link_loss'
-    if (desc.includes('seismic') || desc.includes('earthquake') || domain.includes('seismic')) return 'earthquake_swarm'
-    if (desc.includes('hvac') || desc.includes('heat') || desc.includes('temp')) return 'hvac_failure'
-
-    return 'general_alert'
-  }, [hasOpenAlerts, lastAnomalyResult, openAlerts])
+    return lastAnomalyResult?.anomaly_id || undefined
+  }, [lastAnomalyResult])
 
   const activeAnomalyName = useMemo(() => {
-    if (lastAnomalyResult?.anomaly_name) return lastAnomalyResult.anomaly_name
-    if (!hasOpenAlerts) return undefined
-    return openAlerts[0]?.description ?? 'Telemetry Alert'
-  }, [hasOpenAlerts, lastAnomalyResult, openAlerts])
+    return lastAnomalyResult?.anomaly_name || undefined
+  }, [lastAnomalyResult])
 
   const [hoveredPartId, setHoveredPartId] = useState<string | null>(null)
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null)

@@ -802,3 +802,212 @@ export async function getPredictionsV2(stationId: string): Promise<PredictionsV2
   const { data } = await api.get<PredictionsV2Out>(`/hq/stations/${stationId}/analytics/predictions-v2`)
   return data
 }
+
+// ── Bharati Digital Twin & Physics Telemetry ─────────────────────────────────
+
+export interface DigitalTwinStateOut {
+  station: string
+  timestamp: string
+  status?: string
+  environment: {
+    state?: string
+    katabatic_active?: boolean
+    ambient_temperature_c: number
+    wind_chill_c: number
+    wind_speed_ms: number
+    pressure_hpa?: number
+    atmospheric_pressure_hpa?: number
+    humidity_percent?: number
+    relative_humidity_pct?: number
+    solar_radiation_wm2: number
+    lake_priyadarshini?: Record<string, any>
+  }
+  power: {
+    grid_status: string
+    grid_voltage?: number
+    grid_frequency?: number
+    total_load_kw?: number
+    total_station_load_kw?: number
+    total_thermal_supplied_kw?: number
+    total_fuel_consumption_L_hr?: number
+    solar_pv?: Record<string, any>
+    battery_ups?: Record<string, any>
+    generators: Record<string, {
+      state: string
+      load_kw: number
+      rpm?: number
+      voltage?: number
+      oil_pressure_bar?: number
+      oil_viscosity_pct?: number
+      coolant_temp_c?: number
+      fuel_flow_L_hr?: number
+      fuel_rail_pressure_bar?: number
+      exhaust_gas_temp_c?: number
+      vibration_mms?: number
+      thermal_output_kw?: number
+      operating_hours?: number
+    }>
+  }
+  fuel: {
+    main_farm_level_L: number
+    main_farm_capacity_L?: number
+    main_farm_pct?: number
+    day_tank_level_L?: number
+    day_tank_litres?: number
+    day_tank_pct?: number
+    autonomy_days?: number
+    fuel_autonomy_days?: number
+    fuel_temp_c?: number
+    viscosity_cSt?: number
+    daily_burn_rate_L_day?: number
+    pumps?: Record<string, any>
+    separator?: Record<string, any>
+    electrical_demand_kw?: number
+  }
+  water: {
+    tank_level_L?: number
+    potable_storage_litres?: number
+    potable_storage_pct?: number
+    source?: string
+    pipeline_250m?: Record<string, any>
+    is_running?: boolean
+    intake_pipe_temp_c?: number
+    intake_blocked?: boolean
+    permeate_tds_ppm?: number
+    tank_tds_ppm?: number
+    tank_ph?: number
+    membrane_fouling_pct?: number
+    uv_disinfection?: Record<string, any>
+    electrical_demand_kw?: number
+  }
+  wastewater?: {
+    stp_mode?: string
+    greywater_tank_L?: number
+    technical_water_tank_L?: number
+    blackwater_tank_L?: number
+    mbr_tank_L?: number
+    mbr_temp_c?: number
+    bacteria_health_pct?: number
+    biomass_health_pct?: number
+    effluent_bod_mg_l?: number
+    effluent_cod_mgL?: number
+    madrid_protocol_compliant?: boolean
+    uv_intensity_pct?: number
+    pathogen_alarm?: boolean
+    chemical_alarm?: boolean
+    discharge_frozen?: boolean
+    electrical_demand_kw?: number
+    heat_demand_kw?: number
+  }
+  hvac?: {
+    total_heat_demand_kw?: number
+    total_electrical_demand_kw?: number
+    glycol_supply_temp_c?: number
+    glycol_return_temp_c?: number
+    glycol_pressure_bar?: number
+    dhw_tank_temp_c?: number
+    dhw_calorifier_temp_c?: number
+    legionella_safe?: boolean
+    legionella_risk?: boolean
+    heated_windows_kw?: number
+    living_zone_temp_c?: number
+    boiler_firing_rate_pct?: number
+    primary_supply_temp_c?: number
+    primary_return_temp_c?: number
+    indoor_co2_ppm?: number
+    zones?: Record<string, {
+      temp_c: number
+      perceived_temp_c?: number
+      heat_demand_kw?: number
+      ahu?: Record<string, any>
+    }>
+  }
+  human?: {
+    occupancy?: number
+    headcount?: number
+    pmv?: number
+    fatigue_index?: number
+    hrp?: number
+    co2_l_s?: number
+    crew_health_index_pct?: number
+    expedition_season?: string
+    outside_cold_stress_advisory?: string
+  }
+  vehicles?: {
+    fleet_size?: number
+    fleet?: Record<string, {
+      state: string
+      speed_kmh?: number
+      fuel_level_L?: number
+      engine_block_temp_c?: number
+      engine_load_kw?: number
+      battery_temp_c?: number
+      battery_soc_pct?: number
+      cabin_temp_c?: number
+      oil_viscosity_cSt?: number
+    }>
+    vehicles?: Record<string, {
+      type?: string
+      engine_running?: boolean
+      ready_for_dispatch?: boolean
+      engine_core_temp_c?: number
+      fuel_level_L?: number
+      hydraulic_pressure_bar?: number
+      cold_soak_risk?: string
+    }>
+    total_block_heater_kw?: number
+    fuel_requested_L?: number
+  }
+  communication?: {
+    status?: string
+    satellite_link?: Record<string, any>
+    tactical_radios?: Record<string, any>
+    geo_link_status?: string
+    geo_bandwidth_mbps?: number
+    leo_pass_active?: boolean
+    leo_timer_s?: number
+    san_used_gb?: number
+    san_capacity_gb?: number
+    san_utilization_pct?: number
+    server_core_temp_c?: number
+    electrical_demand_kw?: number
+  }
+  inventory?: {
+    food_stock_kg?: number
+    food_rations_remaining_days?: number
+    medical_supplies?: Record<string, any>
+    pharma?: Record<string, any>
+    spares?: Record<string, any>
+    active_work_orders?: number
+    active_repairs?: any[]
+    dg_weibull_wear_index?: number
+  }
+  faults?: Record<string, any>
+}
+
+export async function getDigitalTwinState(stationId: string): Promise<DigitalTwinStateOut> {
+  const { data } = await api.get<DigitalTwinStateOut>(`/hq/stations/${stationId}/digital-twin`)
+  return data
+}
+
+export async function triggerDigitalTwinFault(
+  stationId: string,
+  faultId: string,
+  severity = 1.0,
+): Promise<{ status: string; message: string }> {
+  const { data } = await api.post(`/hq/stations/${stationId}/digital-twin/fault`, null, {
+    params: { fault_id: faultId, severity },
+  })
+  return data
+}
+
+export async function dispatchDigitalTwinWorkOrder(
+  stationId: string,
+  faultId: string,
+): Promise<{ status: string; message: string }> {
+  const { data } = await api.post(`/hq/stations/${stationId}/digital-twin/repair`, null, {
+    params: { fault_id: faultId },
+  })
+  return data
+}
+

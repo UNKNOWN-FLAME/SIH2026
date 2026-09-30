@@ -23,6 +23,7 @@ import ArchivedGazetteModal from '../components/telemetry/ArchivedGazetteModal'
 import { useAlerts } from '../hooks/useAlerts'
 import EmergencyWarningModal from '../components/dashboard/EmergencyWarningModal'
 import IncidentImpactModal from '../components/dashboard/IncidentImpactModal'
+import { useDigitalTwin } from '../hooks/useDigitalTwin'
 
 type StationId = 'maitri' | 'bharati'
 
@@ -361,6 +362,9 @@ export default function LiveTelemetryPage() {
   } = useStation()
   const incident = INCIDENTS[activeStation]
 
+  // Live Digital Twin Physics Telemetry Stream
+  const { data: twinState } = useDigitalTwin(activeStation)
+
   // Live query: fetch ALL alerts (open + acknowledged) so anomaly persists after ACK
   const { data: allAlertsData } = useAlerts({ station_id: activeStation, page_size: 25 })
   const allAlerts = useMemo(() => allAlertsData?.items ?? [], [allAlertsData?.items])
@@ -402,10 +406,30 @@ export default function LiveTelemetryPage() {
   const [timeRange, setTimeRange] = useState<TelemetryTimeRange>('15m')
 
   // Telemetry data stream incorporating active timeRange, active anomaly and completed anomaly dip
-  const telemetryData = useMemo(
-    () => generateTelemetryData(activeStation, incident, timeRange, activeAnomaly, completedAnomaly),
-    [activeStation, incident, timeRange, activeAnomaly, completedAnomaly],
-  )
+  const telemetryData = useMemo(() => {
+    const pts = generateTelemetryData(activeStation, incident, timeRange, activeAnomaly, completedAnomaly)
+    if (twinState && pts.length > 0) {
+      const last = pts[pts.length - 1]
+      const pwr = activeStation === 'maitri'
+        ? (twinState.power?.total_station_load_kw ?? twinState.power?.generators?.['DG-1']?.load_kw)
+        : (twinState.power?.total_load_kw ?? twinState.power?.generators?.['CHP-1']?.load_kw)
+      const coolant = activeStation === 'maitri'
+        ? twinState.power?.generators?.['DG-1']?.coolant_temp_c
+        : twinState.power?.generators?.['CHP-1']?.coolant_temp_c
+      const hab = activeStation === 'maitri'
+        ? twinState.hvac?.living_zone_temp_c
+        : twinState.hvac?.zones?.['LIVING']?.temp_c
+      const vib = activeStation === 'maitri'
+        ? twinState.power?.generators?.['DG-1']?.vibration_mms
+        : twinState.power?.generators?.['CHP-1']?.vibration_mms
+
+      if (pwr != null) last.powerKw = Number(pwr.toFixed(1))
+      if (coolant != null) last.coolantTempC = Number(coolant.toFixed(1))
+      if (hab != null) last.habitatTempC = Number(hab.toFixed(1))
+      if (vib != null) last.vibrationRms = Number(vib.toFixed(2))
+    }
+    return pts
+  }, [activeStation, incident, timeRange, activeAnomaly, completedAnomaly, twinState])
 
   // Injected anomaly points within current time range
   const injectedAnomalyPoints = useMemo(() => {
@@ -477,21 +501,45 @@ export default function LiveTelemetryPage() {
     if (!isLive) return
     const tickInterval = setInterval(() => {
       setLiveJitter({
-        power: Number(((Math.random() - 0.5) * 0.8).toFixed(1)),
-        fuel: Number(((Math.random() - 0.5) * 0.06).toFixed(2)),
-        coolant: Number(((Math.random() - 0.5) * 0.3).toFixed(1)),
+        power: Number(((Math.random() - 0.5) * 0.4).toFixed(1)),
+        fuel: Number(((Math.random() - 0.5) * 0.03).toFixed(2)),
+        coolant: Number(((Math.random() - 0.5) * 0.2).toFixed(1)),
         habitat: Number(((Math.random() - 0.5) * 0.1).toFixed(1)),
-        vibration: Number(((Math.random() - 0.5) * 0.08).toFixed(2)),
+        vibration: Number(((Math.random() - 0.5) * 0.04).toFixed(2)),
       })
     }, 2500)
     return () => clearInterval(tickInterval)
   }, [isLive])
 
-  const displayedPower = Number((currentPoint.powerKw + (isLive ? liveJitter.power : 0)).toFixed(1))
+  const liveTwinPower = activeStation === 'maitri'
+    ? (twinState?.power?.total_station_load_kw ?? twinState?.power?.generators?.['DG-1']?.load_kw)
+    : (twinState?.power?.total_load_kw ?? twinState?.power?.generators?.['CHP-1']?.load_kw)
+
+  const liveTwinCoolant = activeStation === 'maitri'
+    ? twinState?.power?.generators?.['DG-1']?.coolant_temp_c
+    : twinState?.power?.generators?.['CHP-1']?.coolant_temp_c
+
+  const liveTwinHabitat = activeStation === 'maitri'
+    ? twinState?.hvac?.living_zone_temp_c
+    : twinState?.hvac?.zones?.['LIVING']?.temp_c
+
+  const liveTwinVibration = activeStation === 'maitri'
+    ? twinState?.power?.generators?.['DG-1']?.vibration_mms
+    : twinState?.power?.generators?.['CHP-1']?.vibration_mms
+
+  const displayedPower = Number(
+    ((isLive && liveTwinPower != null ? liveTwinPower : currentPoint.powerKw) + (isLive ? liveJitter.power : 0)).toFixed(1)
+  )
   const displayedFuel = Number((currentPoint.fuelPressureBar + (isLive ? liveJitter.fuel : 0)).toFixed(2))
-  const displayedCoolant = Number((currentPoint.coolantTempC + (isLive ? liveJitter.coolant : 0)).toFixed(1))
-  const displayedHabitat = Number((currentPoint.habitatTempC + (isLive ? liveJitter.habitat : 0)).toFixed(1))
-  const displayedVibration = Number((currentPoint.vibrationRms + (isLive ? liveJitter.vibration : 0)).toFixed(2))
+  const displayedCoolant = Number(
+    ((isLive && liveTwinCoolant != null ? liveTwinCoolant : currentPoint.coolantTempC) + (isLive ? liveJitter.coolant : 0)).toFixed(1)
+  )
+  const displayedHabitat = Number(
+    ((isLive && liveTwinHabitat != null ? liveTwinHabitat : currentPoint.habitatTempC) + (isLive ? liveJitter.habitat : 0)).toFixed(1)
+  )
+  const displayedVibration = Number(
+    ((isLive && liveTwinVibration != null ? liveTwinVibration : currentPoint.vibrationRms) + (isLive ? liveJitter.vibration : 0)).toFixed(2)
+  )
   const isFireActive = activeAnomaly?.anomaly_id === 'fire_alarm'
   const displayedSmoke = Number((currentPoint.smokeDensityObsM ?? (isFireActive ? 0.88 : 0.02)).toFixed(2))
   const displayedCo = Number((currentPoint.coPpm ?? (isFireActive ? 48.5 : 2.0)).toFixed(1))
@@ -1523,6 +1571,427 @@ export default function LiveTelemetryPage() {
                 <div style={{ fontSize: 9, color: displayedSmoke > 0.05 ? '#b91c1c' : '#16a34a', fontWeight: 700, marginTop: 2 }}>
                   {displayedSmoke > 0.05 ? `🔥 SMOKE DETECTED • CO: ${displayedCo} ppm` : '● 24/24 DETECTORS CLEAR'}
                 </div>
+              </div>
+            </div>
+
+            {/* ═══════════ COMPREHENSIVE SUBSYSTEM TELEMETRY GRID ═══════════ */}
+            <div
+              style={{
+                background: '#ffffff',
+                border: '1px solid #cbd5e1',
+                borderTop: '3px solid #0b3b60',
+                padding: '12px 14px',
+                marginBottom: 12,
+                boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#0b3b60' }}>monitoring</span>
+                <h3 style={{ fontSize: 13, fontWeight: 900, color: '#0b3b60', margin: 0, letterSpacing: '0.02em' }}>
+                  {lang === 'hi' ? 'सभी उप-प्रणालियाँ — लाइव फिज़िक्स टेलीमेट्री' : 'ALL SUBSYSTEMS — LIVE PHYSICS TELEMETRY'}
+                </h3>
+                <span style={{ fontSize: 9.5, color: '#64748b', marginLeft: 4 }}>
+                  (Digital Twin • 2s Refresh)
+                </span>
+              </div>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                  gap: 10,
+                }}
+              >
+
+                {/* ── 1. WATER SYSTEM ── */}
+                <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderLeft: '4px solid #0284c7', padding: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <span style={{ fontSize: 10.5, fontWeight: 900, color: '#0284c7', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      💧 {lang === 'hi' ? 'जल प्रणाली' : 'Water System'}
+                    </span>
+                    <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#0284c7' }}>water_drop</span>
+                  </div>
+                  {activeStation === 'maitri' ? (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Potable Storage</span>
+                        <strong>{twinState?.water?.potable_storage_litres?.toFixed(0) ?? '—'} L ({twinState?.water?.potable_storage_pct?.toFixed(1) ?? '—'}%)</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Source</span>
+                        <strong>{twinState?.water?.source ?? 'Lake Priyadarshini'}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Pipeline Temp</span>
+                        <strong>{twinState?.water?.pipeline_250m?.water_temp_c?.toFixed(1) ?? '—'}°C</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>UV Disinfection</span>
+                        <strong style={{ color: (twinState?.water?.uv_disinfection?.potable_certified) ? '#16a34a' : '#dc2626' }}>
+                          {twinState?.water?.uv_disinfection?.uv_intensity_pct?.toFixed(1) ?? '—'}% {twinState?.water?.uv_disinfection?.potable_certified ? '✓ Certified' : '⚠ Uncertified'}
+                        </strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b' }}>
+                        <span style={{ fontWeight: 600 }}>Freeze Hazard</span>
+                        <strong style={{ color: twinState?.water?.pipeline_250m?.freeze_hazard_risk === 'NOMINAL' ? '#16a34a' : '#dc2626' }}>
+                          {twinState?.water?.pipeline_250m?.freeze_hazard_risk ?? 'NOMINAL'}
+                        </strong>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Tank Level</span>
+                        <strong>{twinState?.water?.tank_level_L?.toFixed(0) ?? '—'} L</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Intake Pipe Temp</span>
+                        <strong>{twinState?.water?.intake_pipe_temp_c?.toFixed(1) ?? '—'}°C</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>TDS / pH</span>
+                        <strong>{twinState?.water?.tank_tds_ppm ?? '—'} ppm / {twinState?.water?.tank_ph ?? '—'}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b' }}>
+                        <span style={{ fontWeight: 600 }}>Membrane Fouling</span>
+                        <strong>{twinState?.water?.membrane_fouling_pct?.toFixed(1) ?? '0'}%</strong>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* ── 2. WASTEWATER / STP ── */}
+                <div style={{ background: '#fefce8', border: '1px solid #fde68a', borderLeft: '4px solid #ca8a04', padding: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <span style={{ fontSize: 10.5, fontWeight: 900, color: '#ca8a04', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      🚿 {lang === 'hi' ? 'अपशिष्ट जल उपचार' : 'Wastewater / STP'}
+                    </span>
+                    <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#ca8a04' }}>water_damage</span>
+                  </div>
+                  {activeStation === 'maitri' ? (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>STP Mode</span>
+                        <strong>{twinState?.wastewater?.stp_mode ?? 'EXTENDED_AERATION'}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Biomass Health</span>
+                        <strong>{twinState?.wastewater?.biomass_health_pct?.toFixed(0) ?? '—'}%</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Effluent BOD</span>
+                        <strong>{twinState?.wastewater?.effluent_bod_mg_l ?? '—'} mg/L</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b' }}>
+                        <span style={{ fontWeight: 600 }}>Madrid Protocol</span>
+                        <strong style={{ color: twinState?.wastewater?.madrid_protocol_compliant ? '#16a34a' : '#dc2626' }}>
+                          {twinState?.wastewater?.madrid_protocol_compliant ? '✓ Compliant' : '⚠ Non-Compliant'}
+                        </strong>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>MBR Tank</span>
+                        <strong>{twinState?.wastewater?.mbr_tank_L?.toFixed(0) ?? '—'} L @ {twinState?.wastewater?.mbr_temp_c?.toFixed(1) ?? '—'}°C</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Bacteria Health</span>
+                        <strong>{twinState?.wastewater?.bacteria_health_pct?.toFixed(0) ?? '—'}%</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Effluent COD</span>
+                        <strong>{twinState?.wastewater?.effluent_cod_mgL ?? '—'} mg/L</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b' }}>
+                        <span style={{ fontWeight: 600 }}>UV / Pathogen</span>
+                        <strong style={{ color: twinState?.wastewater?.pathogen_alarm ? '#dc2626' : '#16a34a' }}>
+                          {twinState?.wastewater?.uv_intensity_pct?.toFixed(0) ?? '100'}% {twinState?.wastewater?.pathogen_alarm ? '⚠ ALARM' : '✓ Clear'}
+                        </strong>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* ── 3. FUEL FARM ── */}
+                <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderLeft: '4px solid #ea580c', padding: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <span style={{ fontSize: 10.5, fontWeight: 900, color: '#ea580c', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      ⛽ {lang === 'hi' ? 'ईंधन फ़ार्म' : 'Fuel Farm'}
+                    </span>
+                    <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#ea580c' }}>local_gas_station</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                    <span style={{ fontWeight: 600 }}>Main Farm</span>
+                    <strong>{twinState?.fuel?.main_farm_level_L?.toFixed(0) ?? '—'} L {activeStation === 'maitri' ? `(${twinState?.fuel?.main_farm_pct?.toFixed(1) ?? '—'}%)` : ''}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                    <span style={{ fontWeight: 600 }}>Day Tank</span>
+                    <strong>{twinState?.fuel?.day_tank_level_L?.toFixed(0) ?? '—'} L {activeStation === 'maitri' ? `(${twinState?.fuel?.day_tank_pct?.toFixed(0) ?? '—'}%)` : ''}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                    <span style={{ fontWeight: 600 }}>Autonomy</span>
+                    <strong style={{ color: (twinState?.fuel?.autonomy_days ?? 999) < 60 ? '#dc2626' : '#16a34a' }}>
+                      {twinState?.fuel?.autonomy_days?.toFixed(0) ?? '—'} Days
+                    </strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b' }}>
+                    <span style={{ fontWeight: 600 }}>Fuel Temp / Viscosity</span>
+                    <strong>{twinState?.fuel?.fuel_temp_c?.toFixed(1) ?? '—'}°C / {twinState?.fuel?.viscosity_cSt?.toFixed(2) ?? '—'} cSt</strong>
+                  </div>
+                </div>
+
+                {/* ── 4. HVAC / HEATING ── */}
+                <div style={{ background: '#fdf4ff', border: '1px solid #f0abfc', borderLeft: '4px solid #a855f7', padding: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <span style={{ fontSize: 10.5, fontWeight: 900, color: '#a855f7', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      🌡️ {lang === 'hi' ? 'एचवीएसी / हीटिंग' : 'HVAC / Heating'}
+                    </span>
+                    <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#a855f7' }}>thermostat</span>
+                  </div>
+                  {activeStation === 'maitri' ? (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Boiler Firing</span>
+                        <strong>{twinState?.hvac?.boiler_firing_rate_pct?.toFixed(1) ?? '—'}%</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Supply / Return</span>
+                        <strong>{twinState?.hvac?.primary_supply_temp_c?.toFixed(0) ?? '—'}°C / {twinState?.hvac?.primary_return_temp_c?.toFixed(0) ?? '—'}°C</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>CO₂ Indoor</span>
+                        <strong style={{ color: (twinState?.hvac?.indoor_co2_ppm ?? 0) > 1000 ? '#dc2626' : '#1e293b' }}>
+                          {twinState?.hvac?.indoor_co2_ppm?.toFixed(0) ?? '—'} ppm
+                        </strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b' }}>
+                        <span style={{ fontWeight: 600 }}>DHW Calorifier</span>
+                        <strong>{twinState?.hvac?.dhw_calorifier_temp_c?.toFixed(1) ?? '—'}°C {twinState?.hvac?.legionella_safe ? '✓' : '⚠'}</strong>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Heat Demand</span>
+                        <strong>{twinState?.hvac?.total_heat_demand_kw?.toFixed(1) ?? '—'} kW</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Glycol Supply / Return</span>
+                        <strong>{twinState?.hvac?.glycol_supply_temp_c?.toFixed(1) ?? '—'}°C / {twinState?.hvac?.glycol_return_temp_c?.toFixed(1) ?? '—'}°C</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>DHW Tank</span>
+                        <strong>{twinState?.hvac?.dhw_tank_temp_c?.toFixed(1) ?? '—'}°C {twinState?.hvac?.legionella_risk ? '⚠ Legionella' : '✓'}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b' }}>
+                        <span style={{ fontWeight: 600 }}>Heated Windows</span>
+                        <strong>{twinState?.hvac?.heated_windows_kw?.toFixed(1) ?? '—'} kW</strong>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* ── 5. COMMUNICATION / SATCOM ── */}
+                <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderLeft: '4px solid #2563eb', padding: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <span style={{ fontSize: 10.5, fontWeight: 900, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      📡 {lang === 'hi' ? 'सैटकॉम / संचार' : 'SATCOM / Comms'}
+                    </span>
+                    <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#2563eb' }}>satellite_alt</span>
+                  </div>
+                  {activeStation === 'maitri' ? (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Satellite Link</span>
+                        <strong style={{ color: twinState?.communication?.satellite_link?.link_state === 'UP' ? '#16a34a' : '#dc2626' }}>
+                          {twinState?.communication?.satellite_link?.link_state ?? 'UP'}
+                        </strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Latency</span>
+                        <strong>{twinState?.communication?.satellite_link?.latency_ms?.toFixed(0) ?? '—'} ms</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Bandwidth ↑/↓</span>
+                        <strong>{twinState?.communication?.satellite_link?.uplink_kbps ?? '—'} / {twinState?.communication?.satellite_link?.downlink_kbps ?? '—'} kbps</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b' }}>
+                        <span style={{ fontWeight: 600 }}>Packet Loss</span>
+                        <strong>{twinState?.communication?.satellite_link?.packet_loss_pct?.toFixed(2) ?? '—'}%</strong>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>GEO Link</span>
+                        <strong style={{ color: twinState?.communication?.geo_link_status === 'ONLINE' ? '#16a34a' : '#dc2626' }}>
+                          {twinState?.communication?.geo_link_status ?? 'ONLINE'}
+                        </strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>GEO Bandwidth</span>
+                        <strong>{twinState?.communication?.geo_bandwidth_mbps?.toFixed(0) ?? '—'} Mbps</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>SAN Storage</span>
+                        <strong>{twinState?.communication?.san_utilization_pct?.toFixed(1) ?? '—'}%</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b' }}>
+                        <span style={{ fontWeight: 600 }}>Server Core Temp</span>
+                        <strong>{twinState?.communication?.server_core_temp_c?.toFixed(1) ?? '—'}°C</strong>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* ── 6. VEHICLE FLEET ── */}
+                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderLeft: '4px solid #16a34a', padding: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <span style={{ fontSize: 10.5, fontWeight: 900, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      🚜 {lang === 'hi' ? 'वाहन बेड़ा' : 'Vehicle Fleet'}
+                    </span>
+                    <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#16a34a' }}>agriculture</span>
+                  </div>
+                  {activeStation === 'maitri' ? (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Fleet Size</span>
+                        <strong>{twinState?.vehicles?.fleet_size ?? '4'} Vehicles</strong>
+                      </div>
+                      {twinState?.vehicles?.vehicles && Object.entries(twinState.vehicles.vehicles).slice(0, 3).map(([name, v]: [string, any]) => (
+                        <div key={name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#1e293b', marginBottom: 2 }}>
+                          <span style={{ fontWeight: 600 }}>{name}</span>
+                          <span>
+                            <strong style={{ color: v?.ready_for_dispatch ? '#16a34a' : '#dc2626' }}>{v?.engine_running ? 'RUNNING' : 'STANDBY'}</strong>
+                            {' '}• {v?.engine_core_temp_c?.toFixed(0) ?? '—'}°C • {v?.fuel_level_L?.toFixed(0) ?? '—'}L
+                          </span>
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <>
+                      {twinState?.vehicles?.fleet && Object.entries(twinState.vehicles.fleet).slice(0, 4).map(([name, v]: [string, any]) => (
+                        <div key={name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#1e293b', marginBottom: 2 }}>
+                          <span style={{ fontWeight: 600 }}>{name}</span>
+                          <span>
+                            <strong style={{ color: v?.state === 'RUNNING' ? '#ea580c' : '#16a34a' }}>{v?.state?.replace(/_/g, ' ') ?? '—'}</strong>
+                            {' '}• {v?.engine_block_temp_c?.toFixed(0) ?? '—'}°C • {v?.fuel_level_L?.toFixed(0) ?? '—'}L
+                          </span>
+                        </div>
+                      ))}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginTop: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Block Heater Load</span>
+                        <strong>{twinState?.vehicles?.total_block_heater_kw?.toFixed(1) ?? '—'} kW</strong>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* ── 7. HUMAN / CREW ── */}
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderLeft: '4px solid #e11d48', padding: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <span style={{ fontSize: 10.5, fontWeight: 900, color: '#e11d48', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      👥 {lang === 'hi' ? 'दल / मानव' : 'Crew / Human'}
+                    </span>
+                    <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#e11d48' }}>groups</span>
+                  </div>
+                  {activeStation === 'maitri' ? (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Headcount</span>
+                        <strong>{twinState?.human?.headcount ?? '25'}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Crew Health Index</span>
+                        <strong style={{ color: (twinState?.human?.crew_health_index_pct ?? 99) >= 90 ? '#16a34a' : '#dc2626' }}>
+                          {twinState?.human?.crew_health_index_pct?.toFixed(0) ?? '99'}%
+                        </strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Season</span>
+                        <strong>{(twinState?.human?.expedition_season ?? 'WINTER_OVER').replace(/_/g, ' ')}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b' }}>
+                        <span style={{ fontWeight: 600 }}>Cold Stress</span>
+                        <strong>{(twinState?.human?.outside_cold_stress_advisory ?? 'MODERATE').replace(/_/g, ' ')}</strong>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Occupancy</span>
+                        <strong>{twinState?.human?.occupancy ?? '25'}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>PMV (Comfort)</span>
+                        <strong>{twinState?.human?.pmv?.toFixed(1) ?? '—'}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Fatigue Index</span>
+                        <strong style={{ color: (twinState?.human?.fatigue_index ?? 0) > 1.5 ? '#dc2626' : '#16a34a' }}>
+                          {twinState?.human?.fatigue_index?.toFixed(2) ?? '—'}
+                        </strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b' }}>
+                        <span style={{ fontWeight: 600 }}>Health Risk</span>
+                        <strong>{twinState?.human?.hrp?.toFixed(2) ?? '0.01'}</strong>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* ── 8. INVENTORY / LOGISTICS ── */}
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: '4px solid #64748b', padding: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <span style={{ fontSize: 10.5, fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      📦 {lang === 'hi' ? 'सूची / रसद' : 'Inventory / Logistics'}
+                    </span>
+                    <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#64748b' }}>inventory_2</span>
+                  </div>
+                  {activeStation === 'maitri' ? (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Food Rations</span>
+                        <strong style={{ color: (twinState?.inventory?.food_rations_remaining_days ?? 999) < 60 ? '#dc2626' : '#16a34a' }}>
+                          {twinState?.inventory?.food_rations_remaining_days?.toFixed(0) ?? '—'} Days
+                        </strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>O₂ Cylinders</span>
+                        <strong>{twinState?.inventory?.medical_supplies?.oxygen_cylinders ?? '—'}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Trauma Kits</span>
+                        <strong>{twinState?.inventory?.medical_supplies?.trauma_kits ?? '—'}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b' }}>
+                        <span style={{ fontWeight: 600 }}>Active Work Orders</span>
+                        <strong>{twinState?.inventory?.active_work_orders ?? '0'}</strong>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Food Stock</span>
+                        <strong>{twinState?.inventory?.food_stock_kg?.toFixed(0) ?? '—'} kg</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>Pharma (Insulin)</span>
+                        <strong>{twinState?.inventory?.pharma?.INSULIN?.doses_available ?? '—'} doses</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b', marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600 }}>RO Membranes</span>
+                        <strong>{twinState?.inventory?.spares?.RO_MEMBRANE_CARTRIDGES ?? '—'} units</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: '#1e293b' }}>
+                        <span style={{ fontWeight: 600 }}>Active Repairs</span>
+                        <strong>{twinState?.inventory?.active_repairs?.length ?? '0'}</strong>
+                      </div>
+                    </>
+                  )}
+                </div>
+
               </div>
             </div>
 

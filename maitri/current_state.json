@@ -1,0 +1,263 @@
+{
+  "station": "MAITRI",
+  "timestamp": "2026-09-30T01:55:41Z",
+  "environment": {
+    "station": "MAITRI",
+    "coordinates": {
+      "lat": -70.7667,
+      "lon": 11.7333,
+      "oasis": "Schirmacher"
+    },
+    "ambient_temperature_c": -15.55,
+    "wind_chill_c": -25.36,
+    "wind_speed_ms": 6.19,
+    "wind_speed_kmh": 22.27,
+    "atmospheric_pressure_hpa": 988.1,
+    "relative_humidity_pct": 58.0,
+    "solar_radiation_wm2": 0.0,
+    "weather_state": "CLEAR",
+    "katabatic_active": false,
+    "lake_priyadarshini": {
+      "water_temp_c": 2.36,
+      "ice_thickness_m": 1.2,
+      "is_frozen_over": true
+    }
+  },
+  "human": {
+    "headcount": 25,
+    "expedition_season": "WINTER_OVER_ISOLATION",
+    "crew_metabolic_heat_kw": 3.0,
+    "crew_health_index_pct": 98.4,
+    "outside_cold_stress_advisory": "MODERATE_THERMAL_GEAR_MANDATORY",
+    "daily_potable_water_demand_L": 2500.0,
+    "daily_food_ration_consumption": 25.0
+  },
+  "vehicles": {
+    "fleet_size": 4,
+    "vehicles": {
+      "PistenBully-1": {
+        "type": "SNOW_GROOMER",
+        "engine_running": false,
+        "block_heater_connected": true,
+        "engine_core_temp_c": 28.0,
+        "ready_for_dispatch": true,
+        "cold_soak_risk": "NOMINAL",
+        "fuel_level_L": 180.0,
+        "hydraulic_pressure_bar": 210.3
+      },
+      "PistenBully-2": {
+        "type": "SNOW_GROOMER",
+        "engine_running": false,
+        "block_heater_connected": true,
+        "engine_core_temp_c": 28.0,
+        "ready_for_dispatch": true,
+        "cold_soak_risk": "NOMINAL",
+        "fuel_level_L": 180.0,
+        "hydraulic_pressure_bar": 209.3
+      },
+      "Crane-Manitou": {
+        "type": "HEAVY_CRANE",
+        "engine_running": false,
+        "block_heater_connected": true,
+        "engine_core_temp_c": 28.0,
+        "ready_for_dispatch": true,
+        "cold_soak_risk": "NOMINAL",
+        "fuel_level_L": 180.0,
+        "hydraulic_pressure_bar": 208.6
+      },
+      "SkiDoo-Alpha": {
+        "type": "SNOWMOBILE",
+        "engine_running": false,
+        "block_heater_connected": true,
+        "engine_core_temp_c": 28.0,
+        "ready_for_dispatch": true,
+        "cold_soak_risk": "NOMINAL",
+        "fuel_level_L": 180.0,
+        "hydraulic_pressure_bar": 208.7
+      }
+    },
+    "fuel_requested_L": 0.0,
+    "electrical_demand_kw": 6.0
+  },
+  "hvac": {
+    "system_mode": "HYDRONIC_OIL_BOILER",
+    "active_boiler": "Boiler-1",
+    "boiler_firing_rate_pct": 50.6,
+    "boiler_fuel_flow_L_hr": 8.92,
+    "primary_supply_temp_c": 92.0,
+    "primary_return_temp_c": 78.6,
+    "loop_flow_L_s": 4.2,
+    "loop_pressure_bar": 2.39,
+    "pump_status": {
+      "pump_a": "RUNNING",
+      "pump_b": "STANDBY"
+    },
+    "living_zone_temp_c": 21.01,
+    "displayed_thermostat_c": 21.01,
+    "laboratories_temp_c": 19.81,
+    "powerhouse_temp_c": 20.05,
+    "indoor_co2_ppm": 577.6,
+    "dhw_calorifier_temp_c": 60.2,
+    "legionella_safe": true,
+    "emergency_electric_heat_active": false,
+    "electrical_demand_kw": 4.5
+  },
+  "power": {
+    "grid_status": "NOMINAL",
+    "total_station_load_kw": 77.3,
+    "net_dg_demand_kw": 77.3,
+    "solar_pv": {
+      "installed_capacity_kw": 25.0,
+      "current_output_kw": 0.0,
+      "inverter_online": true
+    },
+    "battery_ups": {
+      "capacity_kva": 60.0,
+      "state_of_charge_pct": 95.2,
+      "supporting_critical_bus": false
+    },
+    "total_fuel_consumption_L_hr": 19.32,
+    "generators": {
+      "DG-1": {
+        "state": "RUNNING",
+        "load_kw": 77.3,
+        "load_pct": 96.6,
+        "rpm": 1501.9,
+        "coolant_temp_c": 62.2,
+        "oil_pressure_bar": 4.64,
+        "exhaust_gas_temp_c": 511.0,
+        "boost_pressure_bar": 2.35,
+        "fuel_rail_pressure_bar": 1207.1,
+        "fuel_flow_L_hr": 19.32,
+        "vibration_mms": 2.91,
+        "voltage_v": 414.5,
+        "frequency_hz": 50.08,
+        "operating_hours": 0.0
+      },
+      "DG-2": {
+        "state": "OFF",
+        "load_kw": 0.0,
+        "load_pct": 0.0,
+        "rpm": 0.0,
+        "coolant_temp_c": 20.0,
+        "oil_pressure_bar": 0.0,
+        "exhaust_gas_temp_c": 25.0,
+        "boost_pressure_bar": 1.0,
+        "fuel_rail_pressure_bar": 0.0,
+        "fuel_flow_L_hr": 0.0,
+        "vibration_mms": 0.0,
+        "voltage_v": 0.0,
+        "frequency_hz": 0.0,
+        "operating_hours": 0.0
+      },
+      "DG-3": {
+        "state": "OFF",
+        "load_kw": 0.0,
+        "load_pct": 0.0,
+        "rpm": 0.0,
+        "coolant_temp_c": 20.0,
+        "oil_pressure_bar": 0.0,
+        "exhaust_gas_temp_c": 25.0,
+        "boost_pressure_bar": 1.0,
+        "fuel_rail_pressure_bar": 0.0,
+        "fuel_flow_L_hr": 0.0,
+        "vibration_mms": 0.0,
+        "voltage_v": 0.0,
+        "frequency_hz": 0.0,
+        "operating_hours": 0.0
+      }
+    }
+  },
+  "fuel": {
+    "main_farm_level_L": 138400.0,
+    "main_farm_capacity_L": 165000.0,
+    "main_farm_pct": 83.9,
+    "autonomy_days": 204.2,
+    "day_tank_level_L": 2149.8,
+    "reported_day_tank_L": 2149.8,
+    "day_tank_pct": 86.0,
+    "fuel_temp_c": -14.0,
+    "viscosity_cSt": 2.78,
+    "trace_heating_online": true,
+    "transfer_pump_status": {
+      "pump_a": "STANDBY",
+      "pump_b": "STANDBY"
+    },
+    "transfer_flow_L_s": 0.0,
+    "filter_dp_bar": 0.25,
+    "daily_burn_rate_L_day": 677.8,
+    "electrical_demand_kw": 4.0
+  },
+  "water": {
+    "source": "LAKE_PRIYADARSHINI",
+    "potable_storage_litres": 16799.5,
+    "potable_storage_pct": 84.0,
+    "lake_pump_status": "STANDBY",
+    "intake_flow_L_s": 0.0,
+    "pipeline_250m": {
+      "water_temp_c": 5.59,
+      "trace_heating_online": true,
+      "is_frozen_blocked": false,
+      "freeze_hazard_risk": "NOMINAL"
+    },
+    "sediment_filter_dp_bar": 0.36,
+    "uv_disinfection": {
+      "uv_intensity_pct": 97.9,
+      "potable_certified": true
+    },
+    "electrical_demand_kw": 12.4
+  },
+  "wastewater": {
+    "stp_mode": "EXTENDED_AERATION",
+    "aeration_tank_temp_c": 14.5,
+    "immersion_heater_online": true,
+    "dissolved_oxygen_mg_l": 3.79,
+    "biomass_health_pct": 95.4,
+    "effluent_bod_mg_l": 10.1,
+    "madrid_protocol_compliant": true,
+    "raw_influent_tank_L": 1200.0,
+    "incinerator_toilet": {
+      "active": true,
+      "chamber_temp_c": 789.6,
+      "power_kw": 2.4
+    },
+    "electrical_demand_kw": 8.4
+  },
+  "communication": {
+    "satellite_link": {
+      "earth_station": "MAITRI_GSAT7A_VSAT",
+      "link_state": "UP",
+      "carrier_to_noise_db": 14.64,
+      "latency_ms": 627.4,
+      "packet_loss_pct": 0.17,
+      "radome_icing_attenuation_db": 0.0,
+      "uplink_kbps": 4096.0,
+      "downlink_kbps": 8192.0
+    },
+    "tactical_radios": {
+      "hf_traverse_network": "ONLINE",
+      "novo_runway_vhf_relay": "ONLINE"
+    },
+    "electrical_demand_kw": 2.8
+  },
+  "inventory": {
+    "food_rations_remaining_days": 420.0,
+    "medical_supplies": {
+      "oxygen_cylinders": 18,
+      "trauma_kits": 12
+    },
+    "spare_parts_inventory": {
+      "SPARE_INJECTORS": 12,
+      "SPARE_WATER_PUMP_SEALS": 8,
+      "SPARE_TRACE_CABLE_M": 150,
+      "SPARE_AHU_FAN_BELTS": 6,
+      "SPARE_BOILER_NOZZLES": 10,
+      "SPARE_AVR_BOARDS": 4,
+      "SPARE_STP_HEATER_COILS": 4
+    },
+    "active_work_orders": 0,
+    "repairs_in_progress": [],
+    "dg_weibull_wear_index": 0.0
+  },
+  "faults": {}
+}

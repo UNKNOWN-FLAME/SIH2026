@@ -201,8 +201,7 @@ class CHPUnit:
             self.current_load_kw = 0.0
             self.thermal_output_kw = 0.0
             
-        if water_contamination:
-            # Overwrite FaultManager if physically contaminated by separator
+        if water_contamination and self.fault_manager.is_fault_active(f"{self.unit_id}_WATER_IN_FUEL") > 0:
             self.fault_manager.active_faults[f"{self.unit_id}_WATER_IN_FUEL"] = 1.0
             
         if self.state == CHPState.OFF:

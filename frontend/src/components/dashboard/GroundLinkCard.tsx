@@ -16,6 +16,8 @@ export default function GroundLinkCard({ stationId }: Props) {
   const anomalyImpact = getCardAnomalyImpact('groundlink', lastAnomalyResult, stationId)
   const isInfected = Boolean(anomalyImpact?.isInfected)
 
+  const isMaitri = stationId === 'maitri'
+
   // Real-time link state directly from global StationContext
   const [isSyncing, setIsSyncing] = useState(false)
   const linkState = (isSyncing || isTelemetrySyncing) ? 'SYNCING' : (!isOnline ? 'OFFLINE' : 'SYNCED')
@@ -60,9 +62,12 @@ export default function GroundLinkCard({ stationId }: Props) {
     }
   }
 
-  const stationName = stationId === 'maitri' ? 'Maitri' : 'Bharati'
-  const dishSize = stationId === 'maitri' ? '3.8m Heated Dish' : '4.5m Polar Dish'
-  const latency = stationId === 'maitri' ? '584ms' : '562ms'
+  const stationName = isMaitri ? 'Maitri Base' : 'Bharati Base'
+  const satelliteName = isMaitri ? 'ISRO GSAT-30 (83°E)' : 'ISRO GSAT-7A (C-Band)'
+  const dishSize = isMaitri ? '3.8m Heated Radome' : '4.5m Polar Dish'
+  const latency = isMaitri ? '584ms' : '562ms'
+  const gatewayIp = isMaitri ? '10.42.1.254' : '10.43.1.254'
+  const compressionPct = isMaitri ? '94.2%' : '95.1%'
 
   return (
     <div
@@ -131,7 +136,7 @@ export default function GroundLinkCard({ stationId }: Props) {
             borderRadius: 2,
           }}
         >
-          {isInfected ? 'LINK FAULT' : 'ISRO GSAT-30'}
+          {isInfected ? 'LINK FAULT' : satelliteName}
         </span>
       </div>
 
@@ -159,7 +164,6 @@ export default function GroundLinkCard({ stationId }: Props) {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {/* Pulsing indicator circle */}
             <div style={{ position: 'relative', width: 12, height: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <div
                 style={{
@@ -214,7 +218,7 @@ export default function GroundLinkCard({ stationId }: Props) {
               </div>
               <div style={{ fontSize: 9, color: '#64748b' }}>
                 {linkState === 'SYNCED'
-                  ? `${stationName} ↔ Goa HQ (${latency})`
+                  ? `${stationName} (${gatewayIp}) ↔ Goa HQ (${latency})`
                   : linkState === 'SYNCING'
                   ? `Flushing ${edgeBufferCount > 0 ? `${edgeBufferCount} frames` : 'buffer'} (${syncProgress}%)`
                   : `Blizzard blackout • Disconnected ${lastHandshakeSec}s ago`}
@@ -222,7 +226,6 @@ export default function GroundLinkCard({ stationId }: Props) {
             </div>
           </div>
 
-          {/* Sync Percentage / Ping Badge */}
           <span
             style={{
               fontSize: 9.5,
@@ -238,7 +241,7 @@ export default function GroundLinkCard({ stationId }: Props) {
           </span>
         </div>
 
-        {/* Sync Progress Bar (Visible when syncing) */}
+        {/* Sync Progress Bar */}
         {linkState === 'SYNCING' && (
           <div style={{ width: '100%', background: '#e2e8f0', borderRadius: 2, height: 6, overflow: 'hidden', border: '1px solid #cbd5e1' }}>
             <div
@@ -256,7 +259,7 @@ export default function GroundLinkCard({ stationId }: Props) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, textAlign: 'center' }}>
           <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '5px 4px', borderRadius: 2 }}>
             <div style={{ fontSize: 8.5, color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Crushed</div>
-            <div style={{ fontSize: 11.5, fontWeight: 900, color: '#0369a1' }}>94.2%</div>
+            <div style={{ fontSize: 11.5, fontWeight: 900, color: '#0369a1' }}>{compressionPct}</div>
             <div style={{ fontSize: 8, color: '#94a3b8' }}>Protobuf</div>
           </div>
 
@@ -277,13 +280,13 @@ export default function GroundLinkCard({ stationId }: Props) {
           </div>
 
           <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '5px 4px', borderRadius: 2 }}>
-            <div style={{ fontSize: 8.5, color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Hardware</div>
+            <div style={{ fontSize: 8.5, color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Antenna</div>
             <div style={{ fontSize: 10, fontWeight: 800, color: '#0f172a' }}>{dishSize.split(' ')[0]}</div>
-            <div style={{ fontSize: 8, color: '#94a3b8' }}>Dish Array</div>
+            <div style={{ fontSize: 8, color: '#94a3b8' }}>{isMaitri ? 'Ku-Band Dish' : 'C-Band Array'}</div>
           </div>
         </div>
 
-        {/* Action Buttons: Outage Simulator & Open Telemetry */}
+        {/* Action Buttons */}
         <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
           <button
             type="button"
