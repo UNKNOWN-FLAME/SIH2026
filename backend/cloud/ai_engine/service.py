@@ -581,7 +581,7 @@ class PredictiveAIService:
                     station_id=sid,
                     model_name=p['model_name'],
                     target_metric=p['metric'],
-                    predicted_for_date=now.date(),
+                    predicted_for_date=now,
                     predicted_value=p['val'],
                     risk_level=p['risk'],
                     predicted_json=p['data'],

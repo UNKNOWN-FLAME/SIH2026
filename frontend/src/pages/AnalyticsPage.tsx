@@ -1,5 +1,5 @@
-
-import React, { useState, useMemo } from 'react'
+import { useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import TopNav from '../components/layout/TopNav'
 import AlertStrip from '../components/layout/AlertStrip'
 import Sidebar from '../components/layout/Sidebar'
@@ -7,395 +7,784 @@ import Footer from '../components/layout/Footer'
 import { useStation } from '../context/StationContext'
 import { usePredictionsV2 } from '../hooks/usePredictiveAI'
 
-type TabType = 'overview' | 'fuel' | 'energy' | 'generator' | 'blizzard' | 'water' | 'structural'
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-const actionBoxStyle: React.CSSProperties = {
-  borderLeft: '4px solid #ef4444',
-  backgroundColor: '#fef2f2',
-  padding: '12px',
-  marginTop: '16px',
-  borderRadius: '0 4px 4px 0'
+type StationId = 'maitri' | 'bharati'
+type RiskLevel = 'NOMINAL' | 'WARNING' | 'CRITICAL'
+
+interface Prediction {
+  model_name: string
+  metric: string
+  val: number
+  risk: RiskLevel
+  data: Record<string, number>
 }
 
-function KpiCard({ title, value, status }: { title: string; value: string; status: string }) {
-  const color = status === 'CRITICAL' ? '#ef4444' : status === 'WARNING' ? '#f59e0b' : '#10b981'
-  return (
-    <div style={{ background: '#1e293b', border: '1px solid #334155', padding: '16px', borderRadius: '8px' }}>
-      <div style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 600, letterSpacing: '0.05em' }}>{title}</div>
-      <div style={{ color: color, fontSize: '24px', fontWeight: 800, marginTop: '8px' }}>{value}</div>
-    </div>
-  )
+// ── Colour helpers ────────────────────────────────────────────────────────────
+
+function riskColor(risk: RiskLevel) {
+  if (risk === 'CRITICAL') return '#dc2626'
+  if (risk === 'WARNING')  return '#d97706'
+  return '#16a34a'
 }
 
-function TimelineChart({ data, color }: { data: number[], color: string }) {
+function riskBg(risk: RiskLevel) {
+  if (risk === 'CRITICAL') return '#fef2f2'
+  if (risk === 'WARNING')  return '#fffbeb'
+  return '#f0fdf4'
+}
+
+function riskBorder(risk: RiskLevel) {
+  if (risk === 'CRITICAL') return '#fecaca'
+  if (risk === 'WARNING')  return '#fde68a'
+  return '#bbf7d0'
+}
+
+// ── Spark bar (CSS only, no canvas) ─────────────────────────────────────────
+
+function SparkBars({ data, accentColor, risk }: { data: number[]; accentColor: string; risk: RiskLevel }) {
   const max = Math.max(...data, 1)
+  const barColor = risk === 'CRITICAL' ? '#dc2626' : risk === 'WARNING' ? '#d97706' : accentColor
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', height: '60px', gap: '4px', marginTop: '16px' }}>
-      {data.map((v, i) => {
-        const heightPct = (v / max) * 100
-        return (
-          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div style={{ width: '100%', height: `${heightPct}%`, backgroundColor: color, opacity: 0.85, borderTopLeftRadius: '2px', borderTopRightRadius: '2px' }} />
-            <div style={{ fontSize: '9px', color: '#64748b', marginTop: '4px', fontWeight: 600 }}>Day {i + 1}</div>
-          </div>
-        )
-      })}
+    <div style={{ display: 'flex', alignItems: 'flex-end', height: 52, gap: 3 }}>
+      {data.map((v, i) => (
+        <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+          <div
+            style={{
+              width: '100%',
+              height: `${Math.max(4, (v / max) * 48)}px`,
+              background: i === data.length - 1 ? barColor : `${barColor}66`,
+              borderRadius: '2px 2px 0 0',
+              transition: 'height 0.4s',
+            }}
+          />
+          <span style={{ fontSize: 8, color: '#94a3b8', fontWeight: 600 }}>D+{i + 1}</span>
+        </div>
+      ))}
     </div>
   )
 }
 
-function computeDeterministicPredictions(station: string) {
-  const isM = station.toLowerCase() === 'maitri'
-  const crew = isM ? 24 : 32
-  const fuel_remaining = isM ? 138400 : 210500
-  const capacity = isM ? 165000 : 250000
+// ── Risk pill ────────────────────────────────────────────────────────────────
 
-  // 1. Fuel Depletion (Linear Extrapolation)
-  const burnHistory = isM ? [1210, 1280, 1190, 1320, 1260, 1240, 1250] : [1580, 1620, 1590, 1680, 1640, 1610, 1650]
-  const slope = (burnHistory[6] - burnHistory[0]) / 6
-  const forecastedBurnDay7 = burnHistory[6] + slope * 7
-  const daysToEmpty = fuel_remaining / Math.max(1, forecastedBurnDay7)
-  const daysToCritical = (fuel_remaining - capacity * 0.30) / Math.max(1, forecastedBurnDay7)
-  const resupplyUrgencyScore = (1 - daysToEmpty / 120) * 100
-  let fuel_risk: 'NOMINAL' | 'WARNING' | 'CRITICAL' = 'NOMINAL'
-  if (daysToCritical < 60) fuel_risk = 'CRITICAL'
-  else if (daysToCritical < 90) fuel_risk = 'WARNING'
-
-  // 2. Energy Load (Degree-Days)
-  const T_ambient = isM ? -22.0 : -17.0
-  const wind_kmh = 35.0
-  const HDD = Math.max(0, 18 - T_ambient)
-  const load_kw = 120 + 2.8 * HDD + 1.5 * crew + 0.3 * wind_kmh
-  const capacity_kw = 250.0
-  const deficit = load_kw - capacity_kw
-  let energy_risk: 'NOMINAL' | 'WARNING' | 'CRITICAL' = 'NOMINAL'
-  if (deficit > 20) energy_risk = 'CRITICAL'
-  else if (deficit > 0) energy_risk = 'WARNING'
-
-  // 3. Generator Health Score (Weibull RUL)
-  const beta = 2.2
-  const eta = 4500
-  const reliability_target = 0.90
-  const RUL_hours_total = eta * Math.pow(-Math.log(reliability_target), 1 / beta)
-  const hours_used = 2180
-  const remaining = RUL_hours_total - hours_used
-  let gen_risk: 'NOMINAL' | 'WARNING' | 'CRITICAL' = 'NOMINAL'
-  if (remaining < 500) gen_risk = 'CRITICAL'
-  else if (remaining < 800) gen_risk = 'WARNING'
-
-  // 4. Blizzard Probability (Logistic Regression)
-  const dP_dt = 1.2
-  const humidity = 65
-  const z = 0.042 * wind_kmh + 0.18 * Math.abs(dP_dt) + 0.015 * humidity - 3.2
-  const P_blizzard = 1 / (1 + Math.exp(-z))
-  const blizz_prob = P_blizzard * 100
-  let blizz_risk: 'NOMINAL' | 'WARNING' | 'CRITICAL' = 'NOMINAL'
-  if (blizz_prob > 75) blizz_risk = 'CRITICAL'
-  else if (blizz_prob > 50) blizz_risk = 'WARNING'
-
-  // 5. Water Supply Sustainability
-  const currentVolume = 15000
-  const snowmeltRate = Math.max(0, (T_ambient + 10) * 0.8)
-  const usage = crew * 25
-  const netDailyChange = snowmeltRate - usage
-  const daysToRefillNeeded = currentVolume / Math.max(1, Math.abs(netDailyChange))
-  let water_risk: 'NOMINAL' | 'WARNING' | 'CRITICAL' = 'NOMINAL'
-  if (daysToRefillNeeded < 30) water_risk = 'CRITICAL'
-  else if (daysToRefillNeeded < 45) water_risk = 'WARNING'
-
-  // 6. Structural Snow Load
-  const snowDensity = 300
-  const snowDepth = 1.5
-  const snowLoad_kPa = (snowDensity * snowDepth * 9.81) / 1000
-  const wind_ms = wind_kmh / 3.6
-  const windPressure_kPa = (0.5 * 1.293 * Math.pow(wind_ms, 2) * 1.3) / 1000
-  const totalLoad = snowLoad_kPa + windPressure_kPa
-  const safeThreshold = 6.0
-  const stressPercent = (totalLoad / safeThreshold) * 100
-  let struct_risk: 'NOMINAL' | 'WARNING' | 'CRITICAL' = 'NOMINAL'
-  if (stressPercent > 85) struct_risk = 'CRITICAL'
-  else if (stressPercent > 70) struct_risk = 'WARNING'
-
-  return [
-    { model_name: 'FuelDepletion', metric: 'daysToCritical', val: daysToCritical, risk: fuel_risk, data: { daysToEmpty, daysToCritical, resupplyUrgencyScore, forecastedBurnDay7 } },
-    { model_name: 'EnergyLoad', metric: 'load_kw', val: load_kw, risk: energy_risk, data: { load_kw, deficit } },
-    { model_name: 'GeneratorRUL', metric: 'RUL_hours', val: remaining, risk: gen_risk, data: { RUL_hours: remaining } },
-    { model_name: 'BlizzardProb', metric: 'blizzard_prob_pct', val: blizz_prob, risk: blizz_risk, data: { blizzard_prob_pct: blizz_prob } },
-    { model_name: 'WaterSustainability', metric: 'daysToRefillNeeded', val: daysToRefillNeeded, risk: water_risk, data: { daysToRefillNeeded, netDailyChange } },
-    { model_name: 'StructuralStress', metric: 'stressPercent', val: stressPercent, risk: struct_risk, data: { stressPercent, totalLoad } },
-  ]
+function RiskPill({ risk }: { risk: RiskLevel }) {
+  const icons: Record<RiskLevel, string> = { NOMINAL: '✓', WARNING: '⚠', CRITICAL: '!' }
+  return (
+    <span
+      style={{
+        fontSize: 9.5,
+        fontWeight: 800,
+        padding: '2px 8px',
+        background: riskBg(risk),
+        color: riskColor(risk),
+        border: `1px solid ${riskBorder(risk)}`,
+        borderRadius: 3,
+        letterSpacing: '0.04em',
+      }}
+    >
+      {icons[risk]} {risk}
+    </span>
+  )
 }
+
+// ── Metric value display ─────────────────────────────────────────────────────
+
+function BigValue({ value, unit, risk }: { value: string; unit?: string; risk: RiskLevel }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+      <span style={{ fontSize: 28, fontWeight: 900, color: riskColor(risk), lineHeight: 1 }}>
+        {value}
+      </span>
+      {unit && (
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>{unit}</span>
+      )}
+    </div>
+  )
+}
+
+// ── Immediate action box ─────────────────────────────────────────────────────
+
+function ActionBox({ risk, actions }: { risk: RiskLevel; actions: { WARNING: string[]; CRITICAL: string[] } }) {
+  if (risk === 'NOMINAL') return null
+  const steps = actions[risk] || []
+  return (
+    <div
+      style={{
+        background: riskBg(risk),
+        border: `1px solid ${riskBorder(risk)}`,
+        borderLeft: `4px solid ${riskColor(risk)}`,
+        padding: '10px 14px',
+        marginTop: 12,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 10,
+          fontWeight: 900,
+          color: riskColor(risk),
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          marginBottom: 6,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 5,
+        }}
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+          {risk === 'CRITICAL' ? 'emergency' : 'warning'}
+        </span>
+        {risk === 'CRITICAL' ? 'CRITICAL — Immediate Action Required' : 'Action Advisory'}
+      </div>
+      <ol style={{ margin: 0, paddingLeft: 18 }}>
+        {steps.map((s, i) => (
+          <li key={i} style={{ fontSize: 11, color: '#334155', marginBottom: 4, lineHeight: 1.5, fontWeight: 600 }}>
+            {s}
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
+// ── Prediction card ───────────────────────────────────────────────────────────
+
+interface PanelConfig {
+  id: string
+  title: string
+  subtitle: string
+  icon: string
+  accentColor: string
+  modelName: string
+  formatValue: (pred: Prediction) => { main: string; unit: string }
+  sub1Label: string
+  sub1Value: (pred: Prediction) => string
+  sub2Label: string
+  sub2Value: (pred: Prediction) => string
+  sparkData: (pred: Prediction) => number[]
+  actions: { WARNING: string[]; CRITICAL: string[] }
+}
+
+function PredictionCard({
+  config,
+  pred,
+  loading,
+}: {
+  config: PanelConfig
+  pred: Prediction | undefined
+  loading: boolean
+}) {
+  const risk: RiskLevel = pred?.risk ?? 'NOMINAL'
+  const sparkData = pred ? config.sparkData(pred) : [50, 52, 54, 56, 58, 60, 62]
+  const fmtVal = pred ? config.formatValue(pred) : { main: '—', unit: '' }
+
+  return (
+    <div
+      style={{
+        background: '#ffffff',
+        border: '1px solid #e2e8f0',
+        borderTop: `3px solid ${config.accentColor}`,
+        padding: '14px 16px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+      }}
+    >
+      {/* Card header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              background: `${config.accentColor}18`,
+              border: `1px solid ${config.accentColor}33`,
+              borderRadius: 6,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 18, color: config.accentColor }}>
+              {config.icon}
+            </span>
+          </div>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: '#0f172a' }}>{config.title}</div>
+            <div style={{ fontSize: 9.5, color: '#94a3b8', fontWeight: 600 }}>{config.subtitle}</div>
+          </div>
+        </div>
+        <RiskPill risk={risk} />
+      </div>
+
+      {/* Main metric */}
+      <div>
+        {loading ? (
+          <div style={{ fontSize: 22, fontWeight: 900, color: '#94a3b8' }}>Loading…</div>
+        ) : (
+          <BigValue value={fmtVal.main} unit={fmtVal.unit} risk={risk} />
+        )}
+        <div style={{ display: 'flex', gap: 14, marginTop: 6 }}>
+          <div>
+            <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase' }}>
+              {config.sub1Label}
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: '#334155' }}>
+              {pred ? config.sub1Value(pred) : '—'}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase' }}>
+              {config.sub2Label}
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: '#334155' }}>
+              {pred ? config.sub2Value(pred) : '—'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Spark bars */}
+      <div>
+        <div style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 6 }}>
+          7-Day Projection
+        </div>
+        <SparkBars data={sparkData} accentColor={config.accentColor} risk={risk} />
+      </div>
+
+      {/* Immediate action box */}
+      {pred && <ActionBox risk={risk} actions={config.actions} />}
+    </div>
+  )
+}
+
+// ── Top KPI strip card ────────────────────────────────────────────────────────
+
+function KpiStrip({
+  label,
+  value,
+  unit,
+  risk,
+  icon,
+}: {
+  label: string
+  value: string
+  unit: string
+  risk: RiskLevel
+  icon: string
+}) {
+  return (
+    <div
+      style={{
+        background: '#ffffff',
+        border: '1px solid #e2e8f0',
+        borderTop: `3px solid ${riskColor(risk)}`,
+        padding: '10px 14px',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+        <div style={{ fontSize: 9, fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          {label}
+        </div>
+        <span className="material-symbols-outlined" style={{ fontSize: 15, color: riskColor(risk) }}>
+          {icon}
+        </span>
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 900, color: riskColor(risk), lineHeight: 1 }}>
+        {value}
+      </div>
+      <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>{unit}</div>
+    </div>
+  )
+}
+
+// ── Panel configs ─────────────────────────────────────────────────────────────
+
+const PANEL_CONFIGS: PanelConfig[] = [
+  {
+    id: 'fuel',
+    title: 'Fuel Depletion Forecast',
+    subtitle: 'Linear extrapolation · 7-day burn trend',
+    icon: 'local_gas_station',
+    accentColor: '#ea580c',
+    modelName: 'FuelDepletion',
+    formatValue: (p) => ({ main: `${Math.round(p.data.daysToCritical ?? p.val)}`, unit: 'days to 30% level' }),
+    sub1Label: 'Days to Empty',
+    sub1Value: (p) => `${Math.round(p.data.daysToEmpty ?? 0)} days`,
+    sub2Label: 'Forecasted Burn',
+    sub2Value: (p) => `${Math.round(p.data.forecastedBurnDay7 ?? 0)} L/day`,
+    sparkData: (p) => {
+      const base = p.data.daysToEmpty ?? 100
+      return Array.from({ length: 7 }, (_, i) => Math.max(0, base - i * (p.data.forecastedBurnDay7 ?? 1240) / 1000))
+    },
+    actions: {
+      WARNING: [
+        'Place resupply vessel order immediately — minimum 45-day lead time required',
+        'Reduce non-critical generator loads by 10% to extend autonomy',
+        'Notify NCPOR Goa logistics team of projected depletion date',
+      ],
+      CRITICAL: [
+        'EMERGENCY RESUPPLY: Contact NCPOR HQ Director immediately',
+        'Activate Station Order 7B — mandatory fuel rationing begins now',
+        'Shed all non-life-support electrical loads',
+        'Broadcast emergency SBD Iridium message to NCPOR Goa',
+      ],
+    },
+  },
+  {
+    id: 'energy',
+    title: 'Energy Load Prediction',
+    subtitle: 'Heating Degree-Days method · crew + climate',
+    icon: 'bolt',
+    accentColor: '#7c3aed',
+    modelName: 'EnergyLoad',
+    formatValue: (p) => ({ main: `${Math.round(p.data.load_kw ?? p.val)}`, unit: 'kW predicted load' }),
+    sub1Label: 'Grid Margin',
+    sub1Value: (p) => {
+      const d = p.data.deficit ?? 0
+      return d > 0 ? `−${Math.round(d)} kW deficit` : `+${Math.round(Math.abs(d))} kW surplus`
+    },
+    sub2Label: 'Status',
+    sub2Value: (p) => (p.data.deficit ?? 0) > 0 ? 'OVER CAPACITY' : 'WITHIN LIMITS',
+    sparkData: () => [162, 168, 172, 175, 170, 165, 160],
+    actions: {
+      WARNING: [
+        'Switch laboratory and workshop loads to off-peak hours',
+        'Pre-warm backup generator DG-2 for supplemental dispatch',
+        'Monitor battery SoC — avoid dropping below 60%',
+      ],
+      CRITICAL: [
+        'ACTIVATE LOAD-SHEDDING: Immediately disconnect non-essential circuits',
+        'Start DG-2 in parallel with DG-1 for combined output',
+        'Notify station commander — grid reliability at risk',
+        'Defer all high-power experiments and equipment charging',
+      ],
+    },
+  },
+  {
+    id: 'generator',
+    title: 'Generator Remaining Life',
+    subtitle: 'Weibull hazard model · β=2.2, η=4500h',
+    icon: 'engineering',
+    accentColor: '#0284c7',
+    modelName: 'GeneratorRUL',
+    formatValue: (p) => ({ main: `${Math.round(p.data.RUL_hours ?? p.val)}`, unit: 'hours remaining' }),
+    sub1Label: 'Reliability Target',
+    sub1Value: () => '90% confidence',
+    sub2Label: 'Hrs Since Overhaul',
+    sub2Value: () => '2,180 hrs',
+    sparkData: (p) => {
+      const base = p.data.RUL_hours ?? 2300
+      return Array.from({ length: 7 }, (_, i) => Math.max(0, base - i * 24))
+    },
+    actions: {
+      WARNING: [
+        'Schedule DG-1 overhaul within the next 7 days',
+        'Verify DG-2 is in full operational readiness as standby primary',
+        'Increase vibration and oil-pressure monitoring frequency to every 4 hours',
+      ],
+      CRITICAL: [
+        'STOP DG-1: Shutdown risk is imminent — switch to DG-2 immediately',
+        'Emergency engineering inspection of DG-1 bearings and lube system',
+        'Alert NCPOR Goa for replacement parts on next cargo flight',
+        'Implement single-genset power rationing protocol',
+      ],
+    },
+  },
+  {
+    id: 'blizzard',
+    title: 'Blizzard Probability',
+    subtitle: 'Logistic model · wind + pressure + humidity',
+    icon: 'severe_cold',
+    accentColor: '#0369a1',
+    modelName: 'BlizzardProb',
+    formatValue: (p) => ({ main: `${(p.data.blizzard_prob_pct ?? p.val).toFixed(1)}`, unit: '% probability' }),
+    sub1Label: 'Wind Input',
+    sub1Value: () => '35 km/h',
+    sub2Label: 'dP/dt Input',
+    sub2Value: () => '−1.2 hPa/hr',
+    sparkData: (p) => {
+      const base = p.data.blizzard_prob_pct ?? 40
+      return [base * 0.6, base * 0.75, base * 0.9, base, base * 1.1, base * 0.95, base * 0.7].map(v =>
+        Math.min(100, Math.max(0, v))
+      )
+    },
+    actions: {
+      WARNING: [
+        'Secure all outdoor equipment, vehicles, and antenna mounts',
+        'Brief all personnel on Blizzard Protocol B — no lone outdoor work',
+        'Pre-position emergency thermal suits at all exit points',
+        'Check HF radio backup and confirm antenna integrity',
+      ],
+      CRITICAL: [
+        'STATION LOCKDOWN: All outdoor operations immediately suspended',
+        'Account for all personnel — enforce 2-person buddy system',
+        'Activate HF backup radio — VSAT antenna stowed for protection',
+        'Operate in emergency heating mode — conserve fuel reserves',
+      ],
+    },
+  },
+  {
+    id: 'water',
+    title: 'Water Supply Sustainability',
+    subtitle: 'Snowmelt vs. crew consumption model',
+    icon: 'water_drop',
+    accentColor: '#0891b2',
+    modelName: 'WaterSustainability',
+    formatValue: (p) => ({ main: `${Math.round(p.data.daysToRefillNeeded ?? p.val)}`, unit: 'days until refill' }),
+    sub1Label: 'Net Daily Change',
+    sub1Value: (p) => `${(p.data.netDailyChange ?? 0).toFixed(1)} L/day`,
+    sub2Label: 'Current Volume',
+    sub2Value: () => '15,000 L',
+    sparkData: (p) => {
+      const base = p.data.daysToRefillNeeded ?? 60
+      return Array.from({ length: 7 }, (_, i) => Math.max(0, base - i * 2))
+    },
+    actions: {
+      WARNING: [
+        'Activate snow-melt unit at full capacity to maximise input rate',
+        'Reduce crew water allocation — limit showers to 2 min/person/day',
+        'Identify and repair any leaks in the distribution system',
+      ],
+      CRITICAL: [
+        'WATER EMERGENCY: Activate emergency ration mode — essential use only',
+        'All snow-melt units at maximum capacity immediately',
+        'Suspend all non-drinking water uses (cleaning, experiments)',
+        'Notify NCPOR Goa — request emergency water delivery on next aircraft',
+      ],
+    },
+  },
+  {
+    id: 'structural',
+    title: 'Structural Load Assessment',
+    subtitle: 'Snow load + wind pressure vs. design limit',
+    icon: 'domain',
+    accentColor: '#475569',
+    modelName: 'StructuralStress',
+    formatValue: (p) => ({ main: `${(p.data.stressPercent ?? p.val).toFixed(1)}`, unit: '% of safe limit' }),
+    sub1Label: 'Total Load',
+    sub1Value: (p) => `${(p.data.totalLoad ?? 0).toFixed(2)} kPa`,
+    sub2Label: 'Design Limit',
+    sub2Value: () => '6.0 kPa',
+    sparkData: (p) => {
+      const base = p.data.stressPercent ?? 45
+      return Array.from({ length: 7 }, (_, i) => Math.min(100, base + i * 2.5))
+    },
+    actions: {
+      WARNING: [
+        'Deploy snow-clearing team to roof structures and satellite dish mounts',
+        'Activate de-icing cable network on all load-bearing roof sections',
+        'Inspect structural connections at foundation level for cracking',
+      ],
+      CRITICAL: [
+        'STRUCTURAL ALERT: Evacuate personnel from affected modules immediately',
+        'Mandatory engineering inspection before re-entry is permitted',
+        'Contact NCPOR HQ structural team for emergency consultation',
+        'Activate secondary accommodation — restrict habitation to safe modules',
+      ],
+    },
+  },
+]
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
-  const { stationId: station, setStationId: setStation } = useStation()
-  const { data: v2Data } = usePredictionsV2(station)
-  const [activeTab, setActiveTab] = useState<TabType>('overview')
+  const navigate = useNavigate()
+  const { stationId, setStationId } = useStation()
+  const activeStation = stationId as StationId
 
-  const preds = useMemo(() => {
-    if (v2Data && v2Data.predictions && v2Data.predictions.length > 0) {
-      return v2Data.predictions
-    }
-    return computeDeterministicPredictions(station)
-  }, [v2Data, station])
+  const { data: v2Data, isLoading, error } = usePredictionsV2(activeStation)
 
-  const getPred = (name: string) => preds.find((p: any) => p.model_name === name)
+  const preds = useMemo((): Prediction[] => {
+    if (!v2Data?.predictions) return []
+    return v2Data.predictions as Prediction[]
+  }, [v2Data])
 
-  const fuelPred = getPred('FuelDepletion')
-  const energyPred = getPred('EnergyLoad')
-  const genPred = getPred('GeneratorRUL')
-  const blizzPred = getPred('BlizzardProb')
-  const waterPred = getPred('WaterSustainability')
-  const structPred = getPred('StructuralStress')
+  const getPred = (name: string) => preds.find((p) => p.model_name === name)
 
-  const tabs = [
-    { id: 'overview', label: 'OVERVIEW' },
-    { id: 'fuel', label: 'FUEL DEPLETION' },
-    { id: 'energy', label: 'ENERGY LOAD' },
-    { id: 'generator', label: 'GENERATOR RUL' },
-    { id: 'blizzard', label: 'BLIZZARD RISK' },
-    { id: 'water', label: 'WATER SUSTAINABILITY' },
-    { id: 'structural', label: 'STRUCTURAL LOAD' },
-  ]
+  // Derived per-model predictions
+  const fuelPred    = getPred('FuelDepletion')
+  const energyPred  = getPred('EnergyLoad')
+  const genPred     = getPred('GeneratorRUL')
+  const blizzPred   = getPred('BlizzardProb')
+  const waterPred   = getPred('WaterSustainability')
+  const structPred  = getPred('StructuralStress')
 
-  const panels = [
-    {
-      id: 'fuel',
-      title: 'Fuel Depletion',
-      subtitle: 'Forward consumption runway & reserve thresholds',
-      color: '#0284c7',
-      pred: fuelPred,
-      metric: fuelPred ? `${fuelPred.val.toFixed(1)} days to critical` : '--',
-      chartData: [1210, 1280, 1190, 1320, 1260, 1240, 1250],
-      actions: {
-        WARNING: ["Order resupply vessel now — 45-day lead time required"],
-        CRITICAL: ["EMERGENCY RESUPPLY: Contact NCPOR HQ immediately", "Activate fuel rationing protocol 7B"]
-      }
-    },
-    {
-      id: 'energy',
-      title: 'Energy Consumption & Thermal Load',
-      subtitle: 'Heating degree-days balance and microgrid demand forecast',
-      color: '#7c3aed',
-      pred: energyPred,
-      metric: energyPred ? `${energyPred.val.toFixed(1)} kW load` : '--',
-      chartData: [140, 145, 150, 160, 155, 142, 138],
-      actions: {
-        WARNING: ["Switch to partial load shedding", "Defer non-essential lab equipment"],
-        CRITICAL: ["Switch to partial load shedding", "Defer non-essential lab equipment"]
-      }
-    },
-    {
-      id: 'generator',
-      title: 'Generator Remaining Useful Life (RUL)',
-      subtitle: 'Cumulative operating hours & maintenance schedule',
-      color: '#059669',
-      pred: genPred,
-      metric: genPred ? `${genPred.val.toFixed(1)} hours remaining` : '--',
-      chartData: [2100, 2050, 2000, 1950, 1900, 1850, 1800],
-      actions: {
-        WARNING: ["Schedule DG overhaul within 7 days", "Prepare DG-2 as primary"],
-        CRITICAL: ["Schedule DG overhaul immediately", "Switch to DG-2 immediately"]
-      }
-    },
-    {
-      id: 'blizzard',
-      title: 'Blizzard & Severe Weather Risk',
-      subtitle: 'Barometric pressure variance and wind velocity projection',
-      color: '#d97706',
-      pred: blizzPred,
-      metric: blizzPred ? `${blizzPred.val.toFixed(1)}% probability` : '--',
-      chartData: [10, 15, 20, 45, 80, 85, 30],
-      actions: {
-        WARNING: ["Secure outdoor equipment", "Brief crew on blizzard protocol"],
-        CRITICAL: ["LOCKDOWN: All outdoor operations suspended", "Activate HF backup radio"]
-      }
-    },
-    {
-      id: 'water',
-      title: 'Water Supply Sustainability',
-      subtitle: 'Potable storage depletion rate vs lake intake yield',
-      color: '#0891b2',
-      pred: waterPred,
-      metric: waterPred ? `${waterPred.val.toFixed(1)} days to refill` : '--',
-      chartData: [45, 42, 38, 35, 30, 25, 20],
-      actions: {
-        WARNING: ["Activate snow-melt unit", "Reduce shower allocations to 2 min/person"],
-        CRITICAL: ["Activate snow-melt unit immediately", "Emergency water rations only"]
-      }
-    },
-    {
-      id: 'structural',
-      title: 'Structural Snow & Wind Load',
-      subtitle: 'Roof snowpack pressure and katabatic shear force',
-      color: '#475569',
-      pred: structPred,
-      metric: structPred ? `${structPred.val.toFixed(1)}% of safe limit` : '--',
-      chartData: [40, 45, 55, 60, 75, 82, 88],
-      actions: {
-        WARNING: ["Inspect roof snow accumulation", "Deploy de-icing cable"],
-        CRITICAL: ["EVACUATE AFFECTED MODULES", "Engineering inspection mandatory"]
-      }
-    }
-  ]
+  const predMap: Record<string, Prediction | undefined> = {
+    fuel: fuelPred, energy: energyPred, generator: genPred,
+    blizzard: blizzPred, water: waterPred, structural: structPred,
+  }
 
-  const activePanels = activeTab === 'overview' ? panels : panels.filter(p => p.id === activeTab)
+  // Compute system-wide risk summary
+  const allRisks = preds.map((p) => p.risk)
+  const criticalCount = allRisks.filter((r) => r === 'CRITICAL').length
+  const warningCount  = allRisks.filter((r) => r === 'WARNING').length
+  const overallStatus: RiskLevel = criticalCount > 0 ? 'CRITICAL' : warningCount > 0 ? 'WARNING' : 'NOMINAL'
 
   return (
-    <div style={{ display: 'flex', height: '100vh', backgroundColor: '#f8fafc', fontFamily: 'Inter, sans-serif' }}>
-      <Sidebar />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <TopNav />
-        <AlertStrip />
-        
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-          {/* Header */}
-          <div style={{ background: 'linear-gradient(90deg, #0b3b60 0%, #1e293b 100%)', padding: '20px 24px', borderRadius: '8px', color: 'white', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.08)' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 22, color: '#38bdf8' }}>analytics</span>
-                <h1 style={{ margin: 0, fontSize: '18px', fontWeight: 800, letterSpacing: '0.04em' }}>
-                  PREDICTION ENGINE: {station.toUpperCase()}
-                </h1>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#f0f4f8' }}>
+      <TopNav />
+      <AlertStrip />
+
+      <div style={{ display: 'flex', flex: 1 }}>
+        <Sidebar
+          activeStation={activeStation}
+          onSwitchStation={() => setStationId(activeStation === 'maitri' ? 'bharati' : 'maitri')}
+        />
+
+        <main id="main-content" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: '#f0f4f8' }}>
+          <div style={{ flex: 1, padding: '10px 14px 20px' }}>
+
+            {/* Breadcrumb */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontSize: 11,
+                color: '#64748b',
+                marginBottom: 10,
+                padding: '5px 12px',
+                background: '#ffffff',
+                border: '1px solid #cbd5e1',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 15, color: '#0b3b60' }}>home</span>
+                <button
+                  onClick={() => navigate('/')}
+                  style={{ background: 'none', border: 'none', color: '#0b3b60', fontWeight: 700, cursor: 'pointer', padding: 0, fontSize: 11 }}
+                >
+                  Home
+                </button>
+                <span>›</span>
+                <span style={{ color: '#0b3b60', fontWeight: 600 }}>Polar Operations</span>
+                <span>›</span>
+                <span style={{ color: '#ea580c', fontWeight: 800 }}>Predictive Analytics</span>
               </div>
-              <div style={{ fontSize: '11.5px', color: '#94a3b8', marginTop: '6px' }}>
-                Last Updated: {v2Data?.generated_at ? new Date(v2Data.generated_at).toLocaleTimeString() : new Date().toLocaleTimeString()} • Station Telemetry Feed
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <span
+                  style={{
+                    fontSize: 9.5,
+                    fontWeight: 800,
+                    background: overallStatus === 'CRITICAL' ? '#fef2f2' : overallStatus === 'WARNING' ? '#fffbeb' : '#f0fdf4',
+                    color: riskColor(overallStatus),
+                    border: `1px solid ${riskBorder(overallStatus)}`,
+                    padding: '2px 8px',
+                    borderRadius: 2,
+                  }}
+                >
+                  {overallStatus === 'NOMINAL' ? '✓' : '⚠'} SYSTEM: {overallStatus}
+                  {criticalCount > 0 && ` · ${criticalCount} CRITICAL`}
+                  {warningCount > 0 && ` · ${warningCount} WARNING`}
+                </span>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button 
-                onClick={() => setStation('maitri')}
-                style={{ background: station === 'maitri' ? '#f97316' : '#334155', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, fontSize: '12px' }}
-              >
-                MAITRI
-              </button>
-              <button 
-                onClick={() => setStation('bharati')}
-                style={{ background: station === 'bharati' ? '#f97316' : '#334155', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, fontSize: '12px' }}
-              >
-                BHARATI
-              </button>
+
+            {/* Page hero banner */}
+            <div
+              style={{
+                background: 'linear-gradient(135deg, #0b3b60 0%, #1e4d78 60%, #0b3b60 100%)',
+                color: '#ffffff',
+                padding: '14px 20px',
+                marginBottom: 12,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 10,
+                position: 'relative',
+                overflow: 'hidden',
+              }}
+            >
+              <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)', backgroundSize: '20px 20px', pointerEvents: 'none' }} />
+              <div style={{ position: 'relative' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 3 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 26, color: '#ff9933' }}>monitoring</span>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 900, letterSpacing: '0.02em' }}>
+                      PREDICTIVE ANALYTICS ENGINE — {activeStation.toUpperCase()} STATION
+                    </div>
+                    <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>
+                      Deterministic algorithm suite · 6 predictive models · Results updated on demand and persisted to DB
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {['Fuel Depletion', 'Energy Load', 'Generator RUL', 'Blizzard Risk', 'Water Supply', 'Structural Stress'].map((t) => (
+                    <span key={t} style={{ fontSize: 9, fontWeight: 700, background: 'rgba(255,255,255,0.1)', color: '#cbd5e1', padding: '2px 7px', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 3 }}>
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, position: 'relative' }}>
+                {(['maitri', 'bharati'] as const).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setStationId(s)}
+                    style={{
+                      background: activeStation === s ? '#ff9933' : 'rgba(255,255,255,0.1)',
+                      border: activeStation === s ? '2px solid #ff9933' : '2px solid rgba(255,255,255,0.25)',
+                      color: '#ffffff',
+                      padding: '6px 16px',
+                      fontWeight: 900,
+                      fontSize: 11,
+                      cursor: 'pointer',
+                      borderRadius: 3,
+                      letterSpacing: '0.06em',
+                    }}
+                  >
+                    {s === 'maitri' ? '🏔️ MAITRI' : '🌊 BHARATI'}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* KPI Dashboard */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '16px', marginBottom: '24px' }}>
-            <KpiCard title="FUEL CRITICAL IN" value={fuelPred ? `${fuelPred.val.toFixed(0)} d` : '--'} status={fuelPred?.risk || 'NOMINAL'} />
-            <KpiCard title="ENERGY DEFICIT" value={energyPred ? `${energyPred.data?.deficit?.toFixed(0)} kW` : '--'} status={energyPred?.risk || 'NOMINAL'} />
-            <KpiCard title="GENERATOR RUL" value={genPred ? `${genPred.val.toFixed(0)} h` : '--'} status={genPred?.risk || 'NOMINAL'} />
-            <KpiCard title="BLIZZARD RISK" value={blizzPred ? `${blizzPred.val.toFixed(0)}%` : '--'} status={blizzPred?.risk || 'NOMINAL'} />
-            <KpiCard title="WATER DAYS" value={waterPred ? `${waterPred.val.toFixed(0)} d` : '--'} status={waterPred?.risk || 'NOMINAL'} />
-            <KpiCard title="STRUCTURAL LOAD" value={structPred ? `${structPred.val.toFixed(0)}%` : '--'} status={structPred?.risk || 'NOMINAL'} />
-          </div>
+            {/* ── Error / Loading banner ── */}
+            {error && (
+              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderLeft: '4px solid #dc2626', padding: '10px 14px', marginBottom: 12, fontSize: 11, color: '#b91c1c', fontWeight: 700 }}>
+                ⚠ Prediction engine offline — backend connection failed. Retry or check NCPOR HQ data link.
+              </div>
+            )}
 
-          {/* Tabs */}
-          <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #e2e8f0', marginBottom: '24px', overflowX: 'auto' }}>
-            {tabs.map(t => (
-              <button
-                key={t.id}
-                onClick={() => setActiveTab(t.id as TabType)}
+            {/* ── KPI summary strip ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 12 }}>
+              <KpiStrip
+                label="Fuel Critical In"
+                value={fuelPred ? `${Math.round(fuelPred.data.daysToCritical ?? fuelPred.val)}d` : '—'}
+                unit="days to 30% level"
+                risk={fuelPred?.risk ?? 'NOMINAL'}
+                icon="local_gas_station"
+              />
+              <KpiStrip
+                label="Predicted Load"
+                value={energyPred ? `${Math.round(energyPred.data.load_kw ?? energyPred.val)}kW` : '—'}
+                unit={(energyPred?.data.deficit ?? 0) > 0 ? 'OVER CAPACITY' : 'within limits'}
+                risk={energyPred?.risk ?? 'NOMINAL'}
+                icon="bolt"
+              />
+              <KpiStrip
+                label="Generator RUL"
+                value={genPred ? `${Math.round(genPred.data.RUL_hours ?? genPred.val)}h` : '—'}
+                unit="hours of useful life"
+                risk={genPred?.risk ?? 'NOMINAL'}
+                icon="engineering"
+              />
+              <KpiStrip
+                label="Blizzard Probability"
+                value={blizzPred ? `${(blizzPred.data.blizzard_prob_pct ?? blizzPred.val).toFixed(0)}%` : '—'}
+                unit="next 6-hour window"
+                risk={blizzPred?.risk ?? 'NOMINAL'}
+                icon="severe_cold"
+              />
+              <KpiStrip
+                label="Water Days Left"
+                value={waterPred ? `${Math.round(waterPred.data.daysToRefillNeeded ?? waterPred.val)}d` : '—'}
+                unit="until refill needed"
+                risk={waterPred?.risk ?? 'NOMINAL'}
+                icon="water_drop"
+              />
+              <KpiStrip
+                label="Structural Load"
+                value={structPred ? `${(structPred.data.stressPercent ?? structPred.val).toFixed(0)}%` : '—'}
+                unit="of 6.0 kPa design limit"
+                risk={structPred?.risk ?? 'NOMINAL'}
+                icon="domain"
+              />
+            </div>
+
+            {/* ── Last computed timestamp ── */}
+            {v2Data?.generated_at && (
+              <div style={{ fontSize: 10, color: '#64748b', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 13 }}>schedule</span>
+                Predictions computed: {new Date(v2Data.generated_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST
+                &nbsp;·&nbsp; Station: {activeStation.toUpperCase()}
+                &nbsp;·&nbsp; {preds.length} models evaluated
+              </div>
+            )}
+
+            {/* ── Loading state ── */}
+            {isLoading && (
+              <div style={{ textAlign: 'center', padding: '48px 20px', background: '#ffffff', border: '1px solid #e2e8f0' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 36, color: '#0b3b60', display: 'block', marginBottom: 10 }}>monitoring</span>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#334155' }}>Running prediction algorithms…</div>
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Computing 6 deterministic models for {activeStation.toUpperCase()} station</div>
+              </div>
+            )}
+
+            {/* ── 6 Prediction Cards Grid ── */}
+            {!isLoading && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))', gap: 12 }}>
+                {PANEL_CONFIGS.map((config) => (
+                  <PredictionCard
+                    key={config.id}
+                    config={config}
+                    pred={predMap[config.id]}
+                    loading={isLoading}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* ── System Assessment Summary ── */}
+            {!isLoading && preds.length > 0 && (
+              <div
                 style={{
-                  background: 'none',
-                  border: 'none',
-                  borderBottom: activeTab === t.id ? '2px solid #0b3b60' : '2px solid transparent',
-                  padding: '12px 16px',
-                  cursor: 'pointer',
-                  fontWeight: activeTab === t.id ? 800 : 600,
-                  color: activeTab === t.id ? '#0b3b60' : '#64748b',
-                  fontSize: '12.5px',
-                  letterSpacing: '0.02em'
+                  marginTop: 14,
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderTop: `3px solid ${riskColor(overallStatus)}`,
+                  padding: '14px 18px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
                 }}
               >
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Panels */}
-          <div style={{ display: 'grid', gridTemplateColumns: activeTab === 'overview' ? 'repeat(2, 1fr)' : '1fr', gap: '20px' }}>
-            {activePanels.map((p, idx) => (
-              <div key={idx} style={{ background: 'white', borderRadius: '8px', border: '1px solid #cbd5e1', borderLeft: `4px solid ${p.color}`, padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <h2 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#0f172a' }}>{p.title}</h2>
-                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>{p.subtitle}</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 18, color: riskColor(overallStatus) }}>
+                      {overallStatus === 'NOMINAL' ? 'check_circle' : overallStatus === 'WARNING' ? 'warning' : 'emergency'}
+                    </span>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: '#0f172a' }}>System Status Assessment</div>
+                      <div style={{ fontSize: 10, color: '#64748b' }}>{activeStation.toUpperCase()} Station · All 6 predictive models evaluated</div>
+                    </div>
                   </div>
-                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '4px', fontSize: '10.5px', fontWeight: 700, color: '#475569' }}>
-                    MONITORED
-                  </div>
+                  <RiskPill risk={overallStatus} />
                 </div>
-
-                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Current Value</div>
-                    <div style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a', marginTop: 2 }}>{p.metric}</div>
-                  </div>
-                  <div style={{ width: '45%' }}>
-                    <div style={{ fontSize: '10.5px', color: '#64748b', textAlign: 'center', fontWeight: 700, letterSpacing: '0.02em' }}>7-DAY TREND FORECAST</div>
-                    <TimelineChart data={p.chartData} color={p.color} />
-                  </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {preds.map((p) => (
+                    <div
+                      key={p.model_name}
+                      style={{
+                        padding: '5px 10px',
+                        background: riskBg(p.risk),
+                        border: `1px solid ${riskBorder(p.risk)}`,
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: riskColor(p.risk),
+                        borderRadius: 3,
+                      }}
+                    >
+                      {p.model_name.replace(/([A-Z])/g, ' $1').trim()}: {p.risk}
+                    </div>
+                  ))}
                 </div>
-
-                {p.pred && (p.pred.risk === 'WARNING' || p.pred.risk === 'CRITICAL') && (
-                  <div style={actionBoxStyle}>
-                    <div style={{ color: '#ef4444', fontWeight: 800, fontSize: '12px', marginBottom: '8px' }}>⚡ IMMEDIATE ACTION REQUIRED</div>
-                    <ul style={{ margin: 0, paddingLeft: '20px', color: '#7f1d1d', fontSize: '13px', lineHeight: 1.5 }}>
-                      {(p.actions[p.pred.risk as 'WARNING'|'CRITICAL'] || []).map((act, i) => (
-                        <li key={i}>{act}</li>
-                      ))}
-                    </ul>
+                {overallStatus === 'NOMINAL' && (
+                  <div style={{ marginTop: 10, fontSize: 10.5, color: '#166534', fontWeight: 700 }}>
+                    ✓ All predictive models indicate nominal station health. No immediate action required.
                   </div>
                 )}
               </div>
-            ))}
-          </div>
+            )}
 
-          {/* Subsystem Telemetry Log */}
-          <div style={{ marginTop: '28px', background: 'white', borderRadius: '8px', border: '1px solid #cbd5e1', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <h3 style={{ margin: 0, fontSize: '13.5px', fontWeight: 800, color: '#0b3b60', letterSpacing: '0.02em' }}>
-                SUBSYSTEM TELEMETRY LOG
-              </h3>
-              <span style={{ fontSize: '11px', color: '#64748b' }}>Real-time sensor forecasting records</span>
-            </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #cbd5e1', textAlign: 'left', color: '#475569', background: '#f8fafc' }}>
-                  <th style={{ padding: '10px 12px', fontWeight: 700 }}>Timestamp</th>
-                  <th style={{ padding: '10px 12px', fontWeight: 700 }}>Subsystem Module</th>
-                  <th style={{ padding: '10px 12px', fontWeight: 700 }}>Risk Level</th>
-                  <th style={{ padding: '10px 12px', fontWeight: 700 }}>Projected Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                {preds.slice(0, 10).map((p: any, i: number) => (
-                  <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '10px 12px', color: '#64748b', fontFamily: 'monospace', fontSize: '11.5px' }}>{new Date().toLocaleTimeString()}</td>
-                    <td style={{ padding: '10px 12px', fontWeight: 600, color: '#0f172a' }}>{p.model_name}</td>
-                    <td style={{ padding: '10px 12px' }}>
-                      <span style={{ 
-                        background: p.risk === 'CRITICAL' ? '#fef2f2' : p.risk === 'WARNING' ? '#fffbeb' : '#ecfdf5',
-                        color: p.risk === 'CRITICAL' ? '#dc2626' : p.risk === 'WARNING' ? '#d97706' : '#16a34a',
-                        border: `1px solid ${p.risk === 'CRITICAL' ? '#fca5a5' : p.risk === 'WARNING' ? '#fde68a' : '#bbf7d0'}`,
-                        padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700
-                      }}>
-                        {p.risk}
-                      </span>
-                    </td>
-                    <td style={{ padding: '10px 12px', color: '#334155', fontWeight: 600 }}>{p.val.toFixed(2)}</td>
-                  </tr>
-                ))}
-                {preds.length === 0 && (
-                  <tr>
-                    <td colSpan={4} style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>No active telemetry records.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
           </div>
-
-        </div>
-        <Footer />
+        </main>
       </div>
+
+      <Footer />
     </div>
   )
 }
