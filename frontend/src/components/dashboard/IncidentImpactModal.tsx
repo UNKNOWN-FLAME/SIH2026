@@ -4,7 +4,7 @@ import { useStation } from '../../context/StationContext'
 import { addShipmentRequisition, getShipmentRequisitions, type RequisitionItem } from '../../utils/shipmentRequisitions'
 import { generateIncidentDamageAssessmentPDF } from '../../utils/pdfGenerator'
 
-interface AnomalyDataModel {
+export interface AnomalyDataModel {
   title: string
   subsystem: string
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM'

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import { useStation } from '../context/StationContext'
 import { emergencyAudio } from '../utils/emergencyAudio'
 import { injectAnomaly, type AnomalyInjectionResult } from '../api/hq'
@@ -41,7 +42,7 @@ const HAZARD_PRESETS: AnomalyHazardPreset[] = [
     code: 'HAZ-MET-01',
     category: 'METEOROLOGICAL',
     severity: 'HIGH',
-    icon: '❄️',
+    icon: 'ac_unit',
     description: 'Category-4 polar blizzard with sustained winds > 100 km/h, visibility < 50 m, temp drop -12°C.',
     localImpact: 'Wind sensors spike, snow gauges buried, VSAT margin drops by -8 dB.',
     sensorsAffected: ['WIND_SPEED (104.2 km/h)', 'VISIBILITY (42 m)', 'VSAT_SNR (4.2 dB)'],
@@ -55,7 +56,7 @@ const HAZARD_PRESETS: AnomalyHazardPreset[] = [
     code: 'HAZ-PWR-01',
     category: 'POWER',
     severity: 'CRITICAL',
-    icon: '⚡',
+    icon: 'bolt',
     description: 'Primary diesel generator trips. Station switches to battery bank and auto-cranks DG-2.',
     localImpact: 'Primary load drops to 0 kW. Battery bank discharges at 2.8%/hr. Non-essential loads shed.',
     sensorsAffected: ['DG1_LOAD (0.0 kW)', 'BATT_SOC (88.4%)', 'GEN_HALL_TEMP (58.2°C)'],
@@ -69,7 +70,7 @@ const HAZARD_PRESETS: AnomalyHazardPreset[] = [
     code: 'HAZ-HYD-01',
     category: 'LIFE SUPPORT',
     severity: 'HIGH',
-    icon: '💧',
+    icon: 'water_damage',
     description: 'Priyadarshini water pipeline pressure drop from 3.8 bar to 0.1 bar. Sub-zero ice blockage detected.',
     localImpact: 'Potable water supply to Main Living Habitat severed. Melt tank reserve: 4.2 hours.',
     sensorsAffected: ['PRIYA_FLOW_RATE (0.0 L/m)', 'PIPE_SECTOR4_TEMP (-4.1°C)', 'MELT_TANK_LVL (71%)'],
@@ -83,7 +84,7 @@ const HAZARD_PRESETS: AnomalyHazardPreset[] = [
     code: 'HAZ-SAF-01',
     category: 'CREW SAFETY',
     severity: 'CRITICAL',
-    icon: '🔥',
+    icon: 'local_fire_department',
     description: 'Optical smoke detector in Berthing Module B detects 88% obscuration. Temperature rises to 44.8°C.',
     localImpact: 'Local station emergency siren sounds at 110 dB. Automated fire dampers isolated.',
     sensorsAffected: ['SMOKE_DENS_ZONE_B (88%)', 'ZONE_B_TEMP (44.8°C)', 'FIRE_DAMPER_12 (CLOSED)'],
@@ -97,7 +98,7 @@ const HAZARD_PRESETS: AnomalyHazardPreset[] = [
     code: 'HAZ-GEO-01',
     category: 'SEISMIC',
     severity: 'CRITICAL',
-    icon: '🌍',
+    icon: 'vibration',
     description: 'Ml 3.8 ice-quake directly beneath station foundation. Peak ground velocity > 12 mm/s.',
     localImpact: 'Seismic PGV spikes to 14.2 mm/s. Foundation strain gauge reaches 228 micro-strain.',
     sensorsAffected: ['SEISMIC_PGV (14.2 mm/s)', 'FOUNDATION_STRAIN (228 ue)', 'GLACIER_SPEED (38 cm/d)'],
@@ -111,7 +112,7 @@ const HAZARD_PRESETS: AnomalyHazardPreset[] = [
     code: 'HAZ-COM-01',
     category: 'COMMUNICATIONS',
     severity: 'HIGH',
-    icon: '📡',
+    icon: 'sensors_off',
     description: 'Sensor bus failure or PoE switch reboot causing 60% of telemetry nodes to drop offline.',
     localImpact: 'Critical telemetry gaps appear. Edge black-box switches to store-and-forward mode.',
     sensorsAffected: ['BUS_NODES_ONLINE (40%)', 'POE_SWITCH_A (FAULT)', 'PACKET_LOSS (58.4%)'],
@@ -125,7 +126,7 @@ const HAZARD_PRESETS: AnomalyHazardPreset[] = [
     code: 'HAZ-COM-02',
     category: 'COMMUNICATIONS',
     severity: 'HIGH',
-    icon: '🛰️',
+    icon: 'satellite_alt',
     description: 'Complete carrier drop on primary GSAT-7 VSAT dish. Station enters Autonomous Island Mode.',
     localImpact: 'Cloud sync suspended. All raw 1Hz frames buffered into local NVMe SSD ring buffer.',
     sensorsAffected: ['VSAT_CARRIER (0.0 Mbps)', 'GSAT7_LOCK (LOST)', 'EDGE_BUFFER_ACTIVE (TRUE)'],
@@ -139,7 +140,7 @@ const HAZARD_PRESETS: AnomalyHazardPreset[] = [
     code: 'HAZ-LOG-01',
     category: 'FUEL',
     severity: 'HIGH',
-    icon: '⛽',
+    icon: 'local_gas_station',
     description: 'Station Arctic-grade diesel reserve drops below 30% emergency survival threshold.',
     localImpact: 'Reserve drops to 38,200 Litres (91 days survival). Mandatory fuel rationing activates.',
     sensorsAffected: ['DIESEL_TANK_LVL (28.6%)', 'DAYS_SURVIVAL (91 Days)', 'BURN_RATE (420 L/d)'],
@@ -153,7 +154,7 @@ const HAZARD_PRESETS: AnomalyHazardPreset[] = [
     code: 'HAZ-LIF-01',
     category: 'LIFE SUPPORT',
     severity: 'CRITICAL',
-    icon: '🌡️',
+    icon: 'thermostat',
     description: 'Primary HVAC blower motor jam in habitat. Indoor temperatures drop rapidly toward freezing.',
     localImpact: 'Living module temperature drops from +21°C toward +4°C. CO2 concentration climbs.',
     sensorsAffected: ['HABITAT_TEMP (+8.2°C)', 'CO2_LEVEL (890 ppm)', 'BLOWER_FAN_RPM (0)'],
@@ -167,7 +168,7 @@ const HAZARD_PRESETS: AnomalyHazardPreset[] = [
     code: 'HAZ-ENV-01',
     category: 'SPACE WEATHER',
     severity: 'MEDIUM',
-    icon: '☀️',
+    icon: 'wb_sunny',
     description: 'Class-M solar flare causes extreme UV index spike and ionospheric HF radio blackout.',
     localImpact: 'UV index spikes to 8.4 UVI. GPS positioning error degrades to +/-85 meters.',
     sensorsAffected: ['UV_INDEX (8.4 UVI)', 'SOLAR_IRRADIANCE (1180 W/m2)', 'GPS_DOP (14.2)'],
@@ -350,9 +351,9 @@ export default function StationEdgeConsolePage() {
 
       triggerEmergencyAlert(res)
       if (linkState === 'DOWN') {
-        setCrewStatusNotice(`⚠️ ANOMALY RECORDED TO LOCAL SSD BUFFER: ${preset.name}. Goa HQ is unaware due to satellite blackout.`)
+        setCrewStatusNotice(`[LOCAL BUFFER ACTIVE] ${preset.name} recorded to NVMe buffer. Goa HQ offline due to link blackout.`)
       } else {
-        setCrewStatusNotice(`🚨 EMERGENCY ANOMALY INJECTED: ${preset.name}. GSAT-7 binary packet transmitted to Goa HQ.`)
+        setCrewStatusNotice(`[EMERGENCY TELEMETRY] ${preset.name} injected. GSAT-7 binary frame transmitted to Goa HQ.`)
       }
     } catch (e) {
       console.error('Failed to inject anomaly:', e)
@@ -368,7 +369,7 @@ export default function StationEdgeConsolePage() {
       await endAnomalyOnConsole(stationId)
       dismissEmergencyAlert()
       emergencyAudio.stop()
-      setCrewStatusNotice('✓ HAZARD ENDED ON ICE. Telemetry normalized to nominal. Goa HQ command notified.')
+      setCrewStatusNotice('[STATUS NOMINAL] Hazard concluded on station. Nominal baseline restored. Goa HQ synchronized.')
       queryClient.invalidateQueries({ queryKey: ['alerts'] })
       queryClient.invalidateQueries({ queryKey: ['sensors'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
@@ -380,14 +381,14 @@ export default function StationEdgeConsolePage() {
   const handleSeverLink = useCallback(async () => {
     if (linkState === 'UP') {
       await toggleLinkState()
-      setCrewStatusNotice('🔴 GSAT-7 SATELLITE LINK SEVERED! Station running in Autonomous Edge Mode. Buffering to NVMe SSD.')
+      setCrewStatusNotice('[LINK SEVERED] GSAT-7 carrier disconnected. Autonomous on-ice mode engaged. Writing to SSD buffer.')
     }
   }, [linkState, toggleLinkState])
 
   const handleRestoreAndFlush = useCallback(async () => {
     setIsFlushing(true)
     const initialBuffer = edgeBufferCount || 92
-    setCrewStatusNotice(`🛰️ SATELLITE RE-ACQUIRED. Flushing ${initialBuffer} queued binary protobuf frames to Goa HQ...`)
+    setCrewStatusNotice(`[UPLINK ACQUIRED] Flushing ${initialBuffer} queued binary Protobuf frames to Goa HQ...`)
 
     let current = initialBuffer
     const stepInterval = setInterval(() => {
@@ -396,8 +397,8 @@ export default function StationEdgeConsolePage() {
         clearInterval(stepInterval)
         flushEdgeBuffer().then((res) => {
           setIsFlushing(false)
-          setFlushSuccessNotice(`✓ PROTOBUF SYNCHRONIZATION COMPLETE. ${res?.flushed_frames_count || initialBuffer} frames flushed with SHA-256 chain integrity verified.`)
-          setCrewStatusNotice('🟢 DUAL-TWIN SYNCHRONIZED. On-Ice Edge Console & Goa HQ are in 100% parity.')
+          setFlushSuccessNotice(`Protobuf synchronization complete: ${res?.flushed_frames_count || initialBuffer} frames flushed with SHA-256 chain integrity verified.`)
+          setCrewStatusNotice('[SYNC VERIFIED] Dual-twin parity 100%. Station telemetry synchronized with Goa HQ.')
           setTimeout(() => setFlushSuccessNotice(null), 6000)
         })
       }
@@ -472,8 +473,8 @@ export default function StationEdgeConsolePage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#0b3b60', fontWeight: 700, fontSize: 10.5 }}>
-            <span style={{ color: '#ea580c' }}>⏱</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#0b3b60', fontWeight: 600, fontSize: 10.5 }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#ea580c' }}>schedule</span>
             <span>{currentTimeStr || 'IST / UTC'}</span>
           </div>
 
@@ -543,13 +544,13 @@ export default function StationEdgeConsolePage() {
               राष्ट्रीय ध्रुवीय एवं समुद्री अनुसंधान केंद्र | NCPOR
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 1 }}>
-              <span style={{ fontSize: 15, fontWeight: 900, color: '#0b3b60', letterSpacing: '-0.01em' }}>
+              <span style={{ fontSize: 15, fontWeight: 800, color: '#0b3b60', letterSpacing: '-0.01em' }}>
                 HIMANTAR
               </span>
               <span
                 style={{
                   fontSize: 10,
-                  fontWeight: 800,
+                  fontWeight: 700,
                   background: '#042f2e',
                   color: '#2dd4bf',
                   padding: '2px 8px',
@@ -586,7 +587,7 @@ export default function StationEdgeConsolePage() {
                 border: 'none',
                 padding: '4px 10px',
                 fontSize: 10.5,
-                fontWeight: 800,
+                fontWeight: 700,
                 cursor: 'pointer',
                 borderRadius: 2,
               }}
@@ -601,7 +602,7 @@ export default function StationEdgeConsolePage() {
                 border: 'none',
                 padding: '4px 10px',
                 fontSize: 10.5,
-                fontWeight: 800,
+                fontWeight: 700,
                 cursor: 'pointer',
                 borderRadius: 2,
               }}
@@ -623,7 +624,7 @@ export default function StationEdgeConsolePage() {
                 padding: '4px 10px',
                 borderRadius: 4,
                 fontSize: 10.5,
-                fontWeight: 800,
+                fontWeight: 700,
               }}
               title="VSAT Telemetry stream is CONNECTED via GSAT-7 military satellite carrier"
             >
@@ -645,7 +646,7 @@ export default function StationEdgeConsolePage() {
                 padding: '4px 10px',
                 borderRadius: 4,
                 fontSize: 10.5,
-                fontWeight: 900,
+                fontWeight: 800,
                 boxShadow: '0 0 10px rgba(220, 38, 38, 0.25)',
               }}
               title="VSAT satellite link is severed! Station running in Autonomous Edge Mode. Storing to local SSD."
@@ -671,16 +672,39 @@ export default function StationEdgeConsolePage() {
               padding: '5px 10px',
               borderRadius: 4,
               fontSize: 11,
-              fontWeight: 800,
+              fontWeight: 700,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: 4,
+              gap: 5,
             }}
           >
-            <span>{isAudioMuted ? '🔇' : '🔊'}</span>
+            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>{isAudioMuted ? 'volume_off' : 'volume_up'}</span>
             <span>{isAudioMuted ? 'SIREN MUTED' : 'SIREN ARMED'}</span>
           </button>
+
+          {/* Back to Goa HQ Link */}
+          <Link
+            to="/"
+            style={{
+              background: '#0b3b60',
+              border: '1px solid #07253d',
+              color: '#ffffff',
+              padding: '5px 12px',
+              borderRadius: 4,
+              fontSize: 11,
+              fontWeight: 700,
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+            }}
+            title="Return to National Centre for Polar & Ocean Research Goa Headquarters Dashboard"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>dashboard</span>
+            <span>HQ COMMAND</span>
+          </Link>
 
         </div>
       </header>
@@ -694,7 +718,7 @@ export default function StationEdgeConsolePage() {
             color: linkState === 'DOWN' ? '#991b1b' : '#166534',
             padding: '7px 18px',
             fontSize: 11.5,
-            fontWeight: 800,
+            fontWeight: 700,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -702,7 +726,7 @@ export default function StationEdgeConsolePage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 13 }}>📢</span>
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>campaign</span>
             <span>{crewStatusNotice}</span>
           </div>
           <button
@@ -711,12 +735,13 @@ export default function StationEdgeConsolePage() {
               background: 'transparent',
               border: 'none',
               cursor: 'pointer',
-              fontWeight: 900,
-              fontSize: 12,
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
               color: 'inherit',
             }}
           >
-            ✕
+            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>close</span>
           </button>
         </div>
       )}
@@ -777,14 +802,13 @@ export default function StationEdgeConsolePage() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: 18,
                   flexShrink: 0,
                 }}
               >
-                📁
+                <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#0b3b60' }}>folder_managed</span>
               </div>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 900, color: '#0b3b60', letterSpacing: '-0.01em' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#0b3b60', letterSpacing: '-0.01em' }}>
                   LOCAL BLACK-BOX STORAGE ENGINE
                 </div>
                 <div style={{ fontSize: 10, color: '#64748b' }}>
@@ -804,11 +828,11 @@ export default function StationEdgeConsolePage() {
                   padding: '10px 12px',
                 }}
               >
-                <div style={{ fontSize: 10, fontWeight: 800, color: '#64748b' }}>BUFFERED FRAMES</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b' }}>BUFFERED FRAMES</div>
                 <div
                   style={{
-                    fontSize: 26,
-                    fontWeight: 900,
+                    fontSize: 24,
+                    fontWeight: 800,
                     color: linkState === 'DOWN' ? '#ea580c' : '#15803d',
                     fontFamily: 'monospace',
                     marginTop: 2,
@@ -830,8 +854,8 @@ export default function StationEdgeConsolePage() {
                   padding: '10px 12px',
                 }}
               >
-                <div style={{ fontSize: 10, fontWeight: 800, color: '#64748b' }}>BANDWIDTH CRUSH</div>
-                <div style={{ fontSize: 26, fontWeight: 900, color: '#0b3b60', fontFamily: 'monospace', marginTop: 2 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b' }}>BANDWIDTH CRUSH</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: '#0b3b60', fontFamily: 'monospace', marginTop: 2 }}>
                   94.1% <span style={{ fontSize: 11, color: '#64748b' }}>saved</span>
                 </div>
                 <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 2 }}>
@@ -851,8 +875,11 @@ export default function StationEdgeConsolePage() {
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10.5 }}>
-                <span style={{ color: '#0b3b60', fontWeight: 800 }}>CRYPTOGRAPHIC AUDIT CHAIN</span>
-                <span style={{ color: '#15803d', fontWeight: 800 }}>🔒 SHA-256 LOCKED</span>
+                <span style={{ color: '#0b3b60', fontWeight: 700 }}>CRYPTOGRAPHIC AUDIT CHAIN</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#15803d', fontWeight: 700 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 13 }}>lock</span>
+                  <span>SHA-256 LOCKED</span>
+                </span>
               </div>
               <div style={{ fontSize: 11, color: '#0369a1', fontFamily: 'monospace', marginTop: 4, fontWeight: 700 }}>
                 CURRENT BLOCK: {currentHash}
@@ -875,7 +902,7 @@ export default function StationEdgeConsolePage() {
                     padding: '8px 12px',
                     borderRadius: 4,
                     fontSize: 11,
-                    fontWeight: 900,
+                    fontWeight: 700,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -885,7 +912,8 @@ export default function StationEdgeConsolePage() {
                   }}
                   title="Simulate VSAT satellite outage caused by Antarctic storm"
                 >
-                  <span>⚡ SEVER SATELLITE LINK (BLIZZARD)</span>
+                  <span className="material-symbols-outlined" style={{ fontSize: 16 }}>link_off</span>
+                  <span>SEVER SATELLITE LINK (BLIZZARD)</span>
                 </button>
               ) : (
                 <button
@@ -899,7 +927,7 @@ export default function StationEdgeConsolePage() {
                     padding: '8px 12px',
                     borderRadius: 4,
                     fontSize: 11,
-                    fontWeight: 900,
+                    fontWeight: 700,
                     cursor: isFlushing ? 'wait' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -908,7 +936,10 @@ export default function StationEdgeConsolePage() {
                     boxShadow: '0 2px 6px rgba(11, 59, 96, 0.3)',
                   }}
                 >
-                  <span>{isFlushing ? '⏳ FLUSHING VIA PROTOBUF...' : '🛰️ RESTORE VSAT & FLUSH TO HQ'}</span>
+                  <span className="material-symbols-outlined" style={{ fontSize: 16, animation: isFlushing ? 'spin 1s linear infinite' : 'none' }}>
+                    {isFlushing ? 'sync' : 'satellite_alt'}
+                  </span>
+                  <span>{isFlushing ? 'FLUSHING VIA PROTOBUF...' : 'RESTORE VSAT & FLUSH TO HQ'}</span>
                 </button>
               )}
             </div>
@@ -1047,14 +1078,13 @@ export default function StationEdgeConsolePage() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: 18,
                     flexShrink: 0,
                   }}
                 >
-                  ⚠️
+                  <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#dc2626' }}>crisis_alert</span>
                 </div>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 900, color: '#0b3b60', letterSpacing: '-0.01em' }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#0b3b60', letterSpacing: '-0.01em' }}>
                     GROUND-ZERO ANOMALY INJECTOR (HARDWARE LAYER)
                   </div>
                   <div style={{ fontSize: 10, color: '#64748b' }}>
@@ -1071,14 +1101,18 @@ export default function StationEdgeConsolePage() {
                       background: '#15803d',
                       border: '1px solid #166534',
                       color: '#ffffff',
-                      padding: '7px 12px',
+                      padding: '6px 12px',
                       borderRadius: 4,
                       fontSize: 10.5,
-                      fontWeight: 800,
+                      fontWeight: 700,
                       cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
                     }}
                   >
-                    ✓ CLEAR ACTIVE HAZARD
+                    <span className="material-symbols-outlined" style={{ fontSize: 14 }}>check_circle</span>
+                    <span>CLEAR ACTIVE HAZARD</span>
                   </button>
                 )}
               </div>
@@ -1087,14 +1121,28 @@ export default function StationEdgeConsolePage() {
             {/* Search & Filter Toolbar */}
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
+                <span
+                  className="material-symbols-outlined"
+                  style={{
+                    position: 'absolute',
+                    left: 8,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    fontSize: 16,
+                    color: '#94a3b8',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  search
+                </span>
                 <input
                   type="text"
                   value={hazardSearch}
                   onChange={(e) => setHazardSearch(e.target.value)}
-                  placeholder="🔍 Search all 10 station anomalies (name, code, sensor)..."
+                  placeholder="Search 10 station anomalies (name, code, subsystem, sensor)..."
                   style={{
                     width: '100%',
-                    padding: '6px 28px 6px 10px',
+                    padding: '6px 28px 6px 30px',
                     fontSize: 11,
                     border: '1px solid #cbd5e1',
                     borderRadius: 4,
@@ -1115,11 +1163,11 @@ export default function StationEdgeConsolePage() {
                       border: 'none',
                       color: '#94a3b8',
                       cursor: 'pointer',
-                      fontSize: 12,
-                      fontWeight: 800,
+                      display: 'flex',
+                      alignItems: 'center',
                     }}
                   >
-                    ✕
+                    <span className="material-symbols-outlined" style={{ fontSize: 14 }}>close</span>
                   </button>
                 )}
               </div>
@@ -1277,12 +1325,13 @@ export default function StationEdgeConsolePage() {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              fontSize: 21,
                               flexShrink: 0,
                               boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
                             }}
                           >
-                            {a.icon}
+                            <span className="material-symbols-outlined" style={{ fontSize: 22, color: sev.color }}>
+                              {a.icon}
+                            </span>
                           </div>
                           <div style={{ minWidth: 0 }}>
                             <div
@@ -1316,7 +1365,7 @@ export default function StationEdgeConsolePage() {
                         <span
                           style={{
                             fontSize: 8.5,
-                            fontWeight: 900,
+                            fontWeight: 700,
                             padding: '2.5px 8px',
                             background: sev.badge,
                             color: sev.badgeFg,
@@ -1343,7 +1392,7 @@ export default function StationEdgeConsolePage() {
                         }}
                       >
                         <div style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
-                          <span>⏱️</span>
+                          <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#94a3b8' }}>timer</span>
                           <span>~{a.estimated_duration_s ?? 4}s</span>
                         </div>
 
@@ -1358,7 +1407,7 @@ export default function StationEdgeConsolePage() {
                               border: 'none',
                               color: '#ffffff',
                               fontSize: 10,
-                              fontWeight: 900,
+                              fontWeight: 700,
                               padding: '4px 10px',
                               borderRadius: 4,
                               cursor: 'pointer',
@@ -1371,7 +1420,7 @@ export default function StationEdgeConsolePage() {
                             onMouseEnter={(e) => (e.currentTarget.style.background = '#b91c1c')}
                             onMouseLeave={(e) => (e.currentTarget.style.background = '#dc2626')}
                           >
-                            <span>🛑</span>
+                            <span className="material-symbols-outlined" style={{ fontSize: 13 }}>stop_circle</span>
                             <span>STOP</span>
                           </button>
                         ) : (
@@ -1386,7 +1435,7 @@ export default function StationEdgeConsolePage() {
                               border: 'none',
                               color: '#ffffff',
                               fontSize: 10,
-                              fontWeight: 800,
+                              fontWeight: 700,
                               padding: '4px 11px',
                               borderRadius: 4,
                               cursor: 'pointer',
@@ -1399,7 +1448,7 @@ export default function StationEdgeConsolePage() {
                             onMouseEnter={(e) => (e.currentTarget.style.background = '#b91c1c')}
                             onMouseLeave={(e) => (e.currentTarget.style.background = '#dc2626')}
                           >
-                            <span>⚡</span>
+                            <span className="material-symbols-outlined" style={{ fontSize: 13 }}>bolt</span>
                             <span>INJECT NOW</span>
                           </button>
                         )}
@@ -1430,14 +1479,14 @@ export default function StationEdgeConsolePage() {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                    <span style={{ fontSize: 20 }}>🚨</span>
+                    <span className="material-symbols-outlined" style={{ fontSize: 22, color: '#dc2626' }}>emergency</span>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 900, color: '#991b1b', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: '#991b1b', display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span>ACTIVE ANOMALY: {currentActive.anomaly_name}</span>
                         <span
                           style={{
                             fontSize: 9,
-                            fontWeight: 800,
+                            fontWeight: 700,
                             background: '#fee2e2',
                             color: '#b91c1c',
                             border: '1px solid #fca5a5',
@@ -1463,7 +1512,7 @@ export default function StationEdgeConsolePage() {
                       padding: '8px 18px',
                       borderRadius: 6,
                       fontSize: 11,
-                      fontWeight: 900,
+                      fontWeight: 700,
                       cursor: 'pointer',
                       letterSpacing: '0.03em',
                       display: 'flex',
@@ -1476,7 +1525,7 @@ export default function StationEdgeConsolePage() {
                     onMouseEnter={(e) => (e.currentTarget.style.background = '#b91c1c')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = '#dc2626')}
                   >
-                    <span>🛑</span>
+                    <span className="material-symbols-outlined" style={{ fontSize: 15 }}>stop_circle</span>
                     <span>STOP / END ANOMALY</span>
                   </button>
                 </div>
@@ -1506,14 +1555,13 @@ export default function StationEdgeConsolePage() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: 16,
                     flexShrink: 0,
                   }}
                 >
-                  🛡️
+                  <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#0369a1' }}>shield</span>
                 </div>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 900, color: '#0b3b60', letterSpacing: '-0.01em' }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#0b3b60', letterSpacing: '-0.01em' }}>
                     ON-ICE SURVIVAL & LIFE-SUPPORT SUBSYSTEMS
                   </div>
                   <div style={{ fontSize: 10.5, color: '#64748b' }}>
@@ -1522,7 +1570,7 @@ export default function StationEdgeConsolePage() {
                 </div>
               </div>
 
-              <span style={{ fontSize: 10, color: '#047857', fontWeight: 800, background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '2px 8px', borderRadius: 3 }}>
+              <span style={{ fontSize: 10, color: '#047857', fontWeight: 700, background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '2px 8px', borderRadius: 3 }}>
                 ALL SYSTEMS NOMINAL
               </span>
             </div>
@@ -1532,7 +1580,10 @@ export default function StationEdgeConsolePage() {
               {/* Tile 1: Water Line */}
               <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6, padding: '10px 12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: '#0369a1' }}>💧 Water Supply</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#0369a1' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 14 }}>water_drop</span>
+                    <span>Water Supply</span>
+                  </span>
                   <button
                     onClick={() => setIsTraceHeatingOn((v) => !v)}
                     title="Click to toggle trace heating on/off"
@@ -1542,7 +1593,7 @@ export default function StationEdgeConsolePage() {
                       color: isTraceHeatingOn ? '#166534' : '#991b1b',
                       padding: '1px 6px',
                       borderRadius: 3,
-                      fontWeight: 800,
+                      fontWeight: 700,
                       border: 'none',
                       cursor: 'pointer',
                     }}
@@ -1550,7 +1601,7 @@ export default function StationEdgeConsolePage() {
                     {isTraceHeatingOn ? 'HEAT ON' : 'HEAT OFF'}
                   </button>
                 </div>
-                <div style={{ fontSize: 16, fontWeight: 900, color: '#0f172a' }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>
                   14,200 L <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>(71% Melt)</span>
                 </div>
                 <div style={{ fontSize: 10, color: '#475569', marginTop: 3 }}>
@@ -1561,7 +1612,10 @@ export default function StationEdgeConsolePage() {
               {/* Tile 2: Power Gen */}
               <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6, padding: '10px 12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: '#c2410c' }}>⚡ Power Generation</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#c2410c' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 14 }}>bolt</span>
+                    <span>Power Generation</span>
+                  </span>
                   <button
                     onClick={() => setActiveGenerator((g) => (g === 'DG1' ? 'DG2' : g === 'DG2' ? 'DG3' : 'DG1'))}
                     title="Click to switch generator (DG1 / DG2 / DG3)"
@@ -1571,7 +1625,7 @@ export default function StationEdgeConsolePage() {
                       color: '#3730a3',
                       padding: '1px 6px',
                       borderRadius: 3,
-                      fontWeight: 800,
+                      fontWeight: 700,
                       border: 'none',
                       cursor: 'pointer',
                     }}
@@ -1579,7 +1633,7 @@ export default function StationEdgeConsolePage() {
                     ACTIVE: {activeGenerator}
                   </button>
                 </div>
-                <div style={{ fontSize: 16, fontWeight: 900, color: '#0f172a' }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>
                   84.2 kW <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>(70% Load)</span>
                 </div>
                 <div style={{ fontSize: 10, color: '#475569', marginTop: 3 }}>
@@ -1590,12 +1644,15 @@ export default function StationEdgeConsolePage() {
               {/* Tile 3: Habitat Thermal */}
               <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6, padding: '10px 12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: '#be185d' }}>🌡️ Habitat Thermal</span>
-                  <span style={{ fontSize: 9.5, background: '#dcfce7', color: '#166534', padding: '1px 6px', borderRadius: 3, fontWeight: 800 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#be185d' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 14 }}>thermostat</span>
+                    <span>Habitat Thermal</span>
+                  </span>
+                  <span style={{ fontSize: 9.5, background: '#dcfce7', color: '#166534', padding: '1px 6px', borderRadius: 3, fontWeight: 700 }}>
                     BOILER #2
                   </span>
                 </div>
-                <div style={{ fontSize: 16, fontWeight: 900, color: '#15803d' }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#15803d' }}>
                   +21.4°C <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>(Indoor)</span>
                 </div>
                 <div style={{ fontSize: 10, color: '#475569', marginTop: 3 }}>
@@ -1606,12 +1663,15 @@ export default function StationEdgeConsolePage() {
               {/* Tile 4: Crew & Life Support */}
               <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6, padding: '10px 12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: '#7e22ce' }}>👥 Station Crew</span>
-                  <span style={{ fontSize: 9.5, background: '#dcfce7', color: '#166534', padding: '1px 6px', borderRadius: 3, fontWeight: 800 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#7e22ce' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 14 }}>groups</span>
+                    <span>Station Crew</span>
+                  </span>
+                  <span style={{ fontSize: 9.5, background: '#dcfce7', color: '#166534', padding: '1px 6px', borderRadius: 3, fontWeight: 700 }}>
                     O₂: 20.9%
                   </span>
                 </div>
-                <div style={{ fontSize: 16, fontWeight: 900, color: '#0f172a' }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>
                   25 on Ice <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>(All Healthy)</span>
                 </div>
                 <div style={{ fontSize: 10, color: '#475569', marginTop: 3 }}>
@@ -1651,7 +1711,7 @@ export default function StationEdgeConsolePage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#ffedd5', fontWeight: 700 }}>
-            <span>🔗</span>
+            <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#ffedd5' }}>link</span>
             <span>Official Government Portals:</span>
           </div>
 

@@ -239,13 +239,14 @@ export default function BlackoutSyncReportModal() {
                 padding: '12px 14px',
               }}
             >
-              <div style={{ fontSize: 11, fontWeight: 800, color: '#f87171', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 6 }}>
-                💥 Subsystem Telemetry Deviations:
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#f87171', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>warning</span>
+                <span>Subsystem Telemetry Deviations:</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 {(postBlackoutIncident.impacts || []).slice(0, 4).map((imp: string, idx: number) => (
                   <div key={idx} style={{ fontSize: 11, color: '#fca5a5', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-                    <span style={{ color: '#ef4444', fontWeight: 900 }}>•</span>
+                    <span style={{ color: '#ef4444', fontWeight: 700 }}>•</span>
                     <span>{imp}</span>
                   </div>
                 ))}

@@ -1,21 +1,21 @@
 {
   "station": "BHARATI",
-  "timestamp": "2026-09-30T01:55:41Z",
+  "timestamp": "2026-09-30T05:10:59Z",
   "environment": {
     "state": "CLEAR",
-    "katabatic_active": false,
-    "ambient_temperature_c": -15.05,
-    "wind_chill_c": -23.8,
+    "katabatic_active": true,
+    "ambient_temperature_c": -15.02,
+    "wind_chill_c": -23.77,
     "wind_speed_ms": 5.05,
     "pressure_hpa": 995.0,
-    "humidity_percent": 60.2,
+    "humidity_percent": 60.0,
     "solar_radiation_wm2": 0.0
   },
   "human": {
     "occupancy": 25,
     "pmv": -3.5,
-    "fatigue_index": 0.94,
-    "hrp": 0.01,
+    "fatigue_index": 0.61,
+    "hrp": 0.02,
     "co2_l_s": 0.2327,
     "latent_heat_w": 1334.9,
     "sensible_heat_w": 3114.8
@@ -27,52 +27,52 @@
         "speed_kmh": 0.0,
         "engine_load_kw": 0.0,
         "fuel_level_L": 250.0,
-        "engine_block_temp_c": 4.5,
-        "battery_temp_c": 2.4,
+        "engine_block_temp_c": 4.9,
+        "battery_temp_c": 4.3,
         "battery_soc_pct": 100.0,
-        "cca_available": 589,
+        "cca_available": 624,
         "oil_viscosity_cSt": 11.4,
         "fuel_viscosity_cSt": 3.5,
-        "cabin_temp_c": 3.4
+        "cabin_temp_c": 4.6
       },
       "PB-2": {
+        "state": "RUNNING",
+        "speed_kmh": 4.1,
+        "engine_load_kw": 23.8,
+        "fuel_level_L": 250.0,
+        "engine_block_temp_c": 4.9,
+        "battery_temp_c": 4.5,
+        "battery_soc_pct": 99.5,
+        "cca_available": 624,
+        "oil_viscosity_cSt": 11.4,
+        "fuel_viscosity_cSt": 2.1,
+        "cabin_temp_c": 4.7
+      },
+      "SM-1": {
         "state": "OFF_PLUGGED_IN",
         "speed_kmh": 0.0,
         "engine_load_kw": 0.0,
-        "fuel_level_L": 250.0,
-        "engine_block_temp_c": 4.5,
-        "battery_temp_c": 2.4,
+        "fuel_level_L": 40.0,
+        "engine_block_temp_c": 4.3,
+        "battery_temp_c": 4.3,
         "battery_soc_pct": 100.0,
-        "cca_available": 589,
+        "cca_available": 187,
         "oil_viscosity_cSt": 11.4,
         "fuel_viscosity_cSt": 3.5,
-        "cabin_temp_c": 3.4
-      },
-      "SM-1": {
-        "state": "RUNNING",
-        "speed_kmh": 31.8,
-        "engine_load_kw": 8.8,
-        "fuel_level_L": 40.0,
-        "engine_block_temp_c": 8.5,
-        "battery_temp_c": 3.1,
-        "battery_soc_pct": 99.5,
-        "cca_available": 179,
-        "oil_viscosity_cSt": 11.1,
-        "fuel_viscosity_cSt": 2.1,
-        "cabin_temp_c": 3.5
+        "cabin_temp_c": 4.6
       },
       "SM-2": {
         "state": "OFF_PLUGGED_IN",
         "speed_kmh": 0.0,
         "engine_load_kw": 0.0,
         "fuel_level_L": 40.0,
-        "engine_block_temp_c": 2.4,
-        "battery_temp_c": 2.4,
+        "engine_block_temp_c": 4.3,
+        "battery_temp_c": 4.3,
         "battery_soc_pct": 100.0,
-        "cca_available": 176,
-        "oil_viscosity_cSt": 11.6,
+        "cca_available": 187,
+        "oil_viscosity_cSt": 11.4,
         "fuel_viscosity_cSt": 3.5,
-        "cabin_temp_c": 3.4
+        "cabin_temp_c": 4.6
       }
     },
     "total_block_heater_kw": 0.0,
@@ -81,10 +81,10 @@
   "hvac": {
     "total_heat_demand_kw": 0.0,
     "total_electrical_demand_kw": 0.0,
-    "glycol_supply_temp_c": 14.8,
-    "glycol_return_temp_c": 13.8,
+    "glycol_supply_temp_c": 15.0,
+    "glycol_return_temp_c": 14.0,
     "glycol_pressure_bar": 2.47,
-    "dhw_tank_temp_c": 59.9,
+    "dhw_tank_temp_c": 60.0,
     "legionella_risk": false,
     "ventilation_loss_kw": 0.0,
     "humidification_load_kw": 0.0,
@@ -95,8 +95,8 @@
     },
     "zones": {
       "LIVING": {
-        "temp_c": 19.99,
-        "perceived_temp_c": 19.99,
+        "temp_c": 20.0,
+        "perceived_temp_c": 20.0,
         "heat_demand_kw": 0.0,
         "ahu": {
           "fan_rpm": 0,
@@ -108,8 +108,8 @@
         }
       },
       "GARAGE": {
-        "temp_c": 4.96,
-        "perceived_temp_c": 4.96,
+        "temp_c": 4.99,
+        "perceived_temp_c": 4.99,
         "heat_demand_kw": 0.0,
         "ahu": {
           "fan_rpm": 0,
@@ -134,16 +134,16 @@
         }
       },
       "SERVER": {
-        "temp_c": 17.85,
-        "perceived_temp_c": 17.85,
+        "temp_c": 17.94,
+        "perceived_temp_c": 17.94,
         "heat_demand_kw": 0.0,
         "ahu": {
           "fan_rpm": 0,
           "filter_health_pct": 100.0,
           "damper_open_pct": 0.0,
           "glycol_flow_kg_s": 0.0,
-          "supply_air_temp_c": 17.8,
-          "return_air_temp_c": 17.8
+          "supply_air_temp_c": 17.9,
+          "return_air_temp_c": 17.9
         }
       }
     }
@@ -159,11 +159,11 @@
       "CHP-1": {
         "state": "WARM_UP",
         "load_kw": 0.0,
-        "rpm": 1500,
+        "rpm": 300,
         "voltage": 0.0,
-        "oil_pressure_bar": 4.5,
+        "oil_pressure_bar": 1.5,
         "oil_viscosity_pct": 100.0,
-        "coolant_temp_c": 22.0,
+        "coolant_temp_c": 15.0,
         "thermostat_open_pct": 0.0,
         "fuel_flow_L_hr": 0.0,
         "fuel_rail_pressure_bar": 0,
@@ -176,13 +176,13 @@
         "operating_hours": 0.0
       },
       "CHP-2": {
-        "state": "WARM_UP",
+        "state": "CRANKING",
         "load_kw": 0.0,
-        "rpm": 1500,
+        "rpm": 300,
         "voltage": 0.0,
-        "oil_pressure_bar": 4.5,
+        "oil_pressure_bar": 1.5,
         "oil_viscosity_pct": 100.0,
-        "coolant_temp_c": 21.5,
+        "coolant_temp_c": 15.0,
         "thermostat_open_pct": 0.0,
         "fuel_flow_L_hr": 0.0,
         "fuel_rail_pressure_bar": 0,
@@ -195,13 +195,13 @@
         "operating_hours": 0.0
       },
       "CHP-3": {
-        "state": "WARM_UP",
+        "state": "CRANKING",
         "load_kw": 0.0,
-        "rpm": 1500,
+        "rpm": 300,
         "voltage": 0.0,
-        "oil_pressure_bar": 4.5,
+        "oil_pressure_bar": 1.5,
         "oil_viscosity_pct": 100.0,
-        "coolant_temp_c": 21.0,
+        "coolant_temp_c": 15.0,
         "thermostat_open_pct": 0.0,
         "fuel_flow_L_hr": 0.0,
         "fuel_rail_pressure_bar": 0,
@@ -234,7 +234,7 @@
     "electrical_demand_kw": 0.0
   },
   "water": {
-    "tank_level_L": 14999.5,
+    "tank_level_L": 14999.9,
     "is_running": false,
     "intake_pipe_temp_c": -1.8,
     "intake_blocked": false,
@@ -247,18 +247,18 @@
     "electrical_demand_kw": 0.0
   },
   "wastewater": {
-    "greywater_tank_L": 1000.4,
-    "technical_water_tank_L": 1999.8,
-    "blackwater_tank_L": 500.2,
+    "greywater_tank_L": 1000.1,
+    "technical_water_tank_L": 2000.0,
+    "blackwater_tank_L": 500.0,
     "mbr_tank_L": 2000.0,
-    "mbr_temp_c": 14.7,
-    "discharge_pipe_temp_c": 4.8,
-    "bacteria_health_pct": 90.5,
+    "mbr_temp_c": 14.9,
+    "discharge_pipe_temp_c": 5.0,
+    "bacteria_health_pct": 97.5,
     "sludge_tank_L": 0.0,
     "sludge_bags_available": 100,
     "effluent_cod_mgL": 40.0,
     "effluent_ammonia_mgL": 1.0,
-    "uv_intensity_pct": 5.0,
+    "uv_intensity_pct": 75.0,
     "pathogen_alarm": true,
     "chemical_alarm": false,
     "discharge_frozen": false,
@@ -270,7 +270,7 @@
     "geo_link_status": "ONLINE",
     "geo_bandwidth_mbps": 150.0,
     "leo_pass_active": false,
-    "leo_timer_s": 7181,
+    "leo_timer_s": 7195,
     "leo_incoming_gbps": 0.0,
     "tracking_accuracy_pct": 100.0,
     "radome_ice_thickness_mm": 0.0,
@@ -278,10 +278,10 @@
     "san_capacity_gb": 50000,
     "san_utilization_pct": 10.0,
     "total_data_dropped_gb": 0,
-    "ups_charge_pct": 99.6,
+    "ups_charge_pct": 99.9,
     "server_core_temp_c": 40.0,
     "electrical_demand_kw": 0.0,
-    "heat_dissipation_kw": 11.1
+    "heat_dissipation_kw": 11.0
   },
   "inventory": {
     "food_stock_kg": 15000.0,

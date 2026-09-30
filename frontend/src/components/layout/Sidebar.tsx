@@ -1,8 +1,8 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStation } from '../../context/StationContext'
-import emblemOfIndia from '../../assets/emblem_of_india.svg'
 import AnomalyInjector from '../dashboard/AnomalyInjector'
+import emblemOfIndia from '../../assets/emblem_of_india.svg'
 
 export default function Sidebar({
   activeStation: _activeStation,
@@ -14,8 +14,7 @@ export default function Sidebar({
   const navigate = useNavigate()
   const location = useLocation()
   const { t } = useLanguage()
-  const { openBlackBox, stationId } = useStation()
-  const currentStation = stationId
+  const { stationId, openBlackBox } = useStation()
 
   const navItems = [
     { icon: 'dashboard', label: t('nav.dashboard'), sub: t('nav.dashboard_sub'), path: '/' },
@@ -175,7 +174,7 @@ export default function Sidebar({
       >
         {/* Anomaly Injector Simulator */}
         <div className="sidebar-anomaly-wrapper" style={{ width: '100%' }}>
-          <AnomalyInjector activeStation={currentStation} variant="sidebar" />
+          <AnomalyInjector activeStation={stationId} variant="sidebar" />
         </div>
 
         {/* Polar Black Box Flight Telemetry Recorder Button */}
