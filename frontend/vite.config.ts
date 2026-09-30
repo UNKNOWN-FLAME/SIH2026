@@ -16,12 +16,4 @@ export default defineConfig({
       },
     },
   },
-  build: {
-    // Treat missing optional PDF packages (collaborator's pdfGenerator.ts) as
-    // external so Rolldown doesn't hard-fail the bundle. The module is only
-    // invoked at runtime when the user clicks "Download PDF".
-    rolldownOptions: {
-      external: ['jspdf', 'jspdf-autotable', 'html2canvas'],
-    },
-  },
 })
