@@ -11,10 +11,18 @@ from __future__ import annotations
 
 import os
 import math
-import joblib
+try:
+    import joblib
+except ImportError:
+    joblib = None
+
 import structlog
 import numpy as np
-import pandas as pd
+
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 import httpx

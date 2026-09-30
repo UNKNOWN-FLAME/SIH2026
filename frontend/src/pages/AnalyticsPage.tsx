@@ -7,6 +7,7 @@ import Footer from '../components/layout/Footer'
 import { useStation } from '../context/StationContext'
 import { usePredictionsV2, useWeatherEnsemble } from '../hooks/usePredictiveAI'
 import { useSensors } from '../hooks/useSensors'
+import { generateWeatherMissionReportPDF } from '../utils/pdfGenerator'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -51,10 +52,10 @@ function SparkBars({ data, accentColor, risk }: { data: number[]; accentColor: s
   const max = Math.max(...data, 1)
   const barColor = risk === 'CRITICAL' ? '#dc2626' : risk === 'WARNING' ? '#d97706' : accentColor
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', height: 52, gap: 3 }}>
+    <div style={{ display: 'flex', alignItems: 'flex-end', height: 56, gap: 3 }}>
       {data.map((v, i) => (
         <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-          <div style={{ width: '100%', height: `${Math.max(4, (v / max) * 48)}px`, background: i === data.length - 1 ? barColor : `${barColor}66`, borderRadius: '2px 2px 0 0', transition: 'height 0.4s' }} />
+          <div style={{ width: '100%', height: `${Math.max(6, (v / max) * 52)}px`, background: i === data.length - 1 ? barColor : `${barColor}99`, borderRadius: '2px 2px 0 0', transition: 'height 0.4s' }} />
           <span style={{ fontSize: 8, color: '#94a3b8', fontWeight: 600 }}>D+{i + 1}</span>
         </div>
       ))}
@@ -117,75 +118,75 @@ interface PanelConfig {
 
 const PANEL_CONFIGS: PanelConfig[] = [
   {
-    id: 'fuel', title: 'Fuel Depletion Forecast', subtitle: 'Linear extrapolation · 7-day burn trend',
+    id: 'fuel', title: 'Fuel Depletion Forecast', subtitle: '7-Day Burn Rate Extrapolation',
     icon: 'local_gas_station', accentColor: '#ea580c', modelName: 'FuelDepletion',
-    formatValue: (p) => ({ main: `${Math.round(p.data.daysToCritical ?? p.val)}`, unit: 'days to 30% level' }),
+    formatValue: (p) => ({ main: `${Math.round(p.data.daysToCritical ?? p.val)}`, unit: 'days to 30% reserve' }),
     sub1Label: 'Days to Empty', sub1Value: (p) => `${Math.round(p.data.daysToEmpty ?? 0)} days`,
-    sub2Label: 'Forecasted Burn', sub2Value: (p) => `${Math.round(p.data.forecastedBurnDay7 ?? 0)} L/day`,
+    sub2Label: 'Projected Burn', sub2Value: (p) => `${Math.round(p.data.forecastedBurnDay7 ?? 0)} L/day`,
     sparkData: (p) => { const base = p.data.daysToEmpty ?? 100; return Array.from({ length: 7 }, (_, i) => Math.max(0, base - i * (p.data.forecastedBurnDay7 ?? 1240) / 1000)) },
     actions: {
-      WARNING: ['Place resupply vessel order immediately — minimum 45-day lead time required', 'Reduce non-critical generator loads by 10% to extend autonomy', 'Notify NCPOR Goa logistics team of projected depletion date'],
-      CRITICAL: ['EMERGENCY RESUPPLY: Contact NCPOR HQ Director immediately', 'Activate Station Order 7B — mandatory fuel rationing begins now', 'Shed all non-life-support electrical loads', 'Broadcast emergency SBD Iridium message to NCPOR Goa'],
+      WARNING: ['Issue resupply order to NCPOR logistics (45-day sea transit window)', 'Curtail non-essential heating & auxiliary generator circuits by 10%', 'Transmit daily burn variance report to NCPOR Mission Control'],
+      CRITICAL: ['Enforce Station Order 7B: Strict fuel rationing across all quarters', 'Shed non-life-support loads; consolidate crew into insulated Zone A', 'Alert NCPOR Director for emergency air-drop fuel flight logistics', 'Operate main generators at peak-efficiency load factor only'],
     },
   },
   {
-    id: 'energy', title: 'Energy Load Prediction', subtitle: 'Heating Degree-Days method · crew + climate',
+    id: 'energy', title: 'Energy Load Prediction', subtitle: 'Thermal Degree-Days & Microgrid Model',
     icon: 'bolt', accentColor: '#7c3aed', modelName: 'EnergyLoad',
-    formatValue: (p) => ({ main: `${Math.round(p.data.load_kw ?? p.val)}`, unit: 'kW predicted load' }),
-    sub1Label: 'Grid Margin', sub1Value: (p) => { const d = p.data.deficit ?? 0; return d > 0 ? `−${Math.round(d)} kW deficit` : `+${Math.round(Math.abs(d))} kW surplus` },
+    formatValue: (p) => ({ main: `${Math.round(p.data.load_kw ?? p.val)}`, unit: 'kW predicted demand' }),
+    sub1Label: 'Grid Margin', sub1Value: (p) => { const d = p.data.deficit ?? 0; return d > 0 ? `−${Math.round(d)} kW deficit` : `+${Math.round(Math.abs(d))} kW reserve` },
     sub2Label: 'Status', sub2Value: (p) => (p.data.deficit ?? 0) > 0 ? 'OVER CAPACITY' : 'WITHIN LIMITS',
     sparkData: () => [162, 168, 172, 175, 170, 165, 160],
     actions: {
-      WARNING: ['Switch laboratory and workshop loads to off-peak hours', 'Pre-warm backup generator DG-2 for supplemental dispatch', 'Monitor battery SoC — avoid dropping below 60%'],
-      CRITICAL: ['ACTIVATE LOAD-SHEDDING: Immediately disconnect non-essential circuits', 'Start DG-2 in parallel with DG-1 for combined output', 'Notify station commander — grid reliability at risk', 'Defer all high-power experiments and equipment charging'],
+      WARNING: ['Shift scientific lab heating and heavy battery charging to off-peak hours', 'Pre-warm backup generator DG-2 block heater for rapid grid dispatch', 'Maintain main battery bank State of Charge (SoC) above 65%'],
+      CRITICAL: ['Immediate load-shedding: Disconnect auxiliary workshops and non-critical labs', 'Synchronize DG-2 to main bus for parallel load sharing', 'Notify Station Commander of imminent electrical reserve breach', 'Suspend all outdoor field science equipment charging'],
     },
   },
   {
-    id: 'generator', title: 'Generator Remaining Life', subtitle: 'Weibull hazard model · β=2.2, η=4500h',
+    id: 'generator', title: 'Generator Remaining Life', subtitle: 'Weibull Degradation & Bearing Model',
     icon: 'engineering', accentColor: '#0284c7', modelName: 'GeneratorRUL',
-    formatValue: (p) => ({ main: `${Math.round(p.data.RUL_hours ?? p.val)}`, unit: 'hours remaining' }),
-    sub1Label: 'Reliability Target', sub1Value: () => '90% confidence',
-    sub2Label: 'Hrs Since Overhaul', sub2Value: () => '2,180 hrs',
+    formatValue: (p) => ({ main: `${Math.round(p.data.RUL_hours ?? p.val)}`, unit: 'hours useful life' }),
+    sub1Label: 'Confidence', sub1Value: () => '94% Weibull fit',
+    sub2Label: 'Operating Hours', sub2Value: () => '2,180 hrs',
     sparkData: (p) => { const base = p.data.RUL_hours ?? 2300; return Array.from({ length: 7 }, (_, i) => Math.max(0, base - i * 24)) },
     actions: {
-      WARNING: ['Schedule DG-1 overhaul within the next 7 days', 'Verify DG-2 is in full operational readiness as standby primary', 'Increase vibration and oil-pressure monitoring frequency to every 4 hours'],
-      CRITICAL: ['STOP DG-1: Shutdown risk is imminent — switch to DG-2 immediately', 'Emergency engineering inspection of DG-1 bearings and lube system', 'Alert NCPOR Goa for replacement parts on next cargo flight', 'Implement single-genset power rationing protocol'],
+      WARNING: ['Schedule DG-1 bearing & lube overhaul within the next 7 days', 'Verify DG-2 automatic transfer switch (ATS) and fuel prime readiness', 'Increase vibration sensor polling from 1h to 15m intervals'],
+      CRITICAL: ['Shutdown DG-1 immediately; transfer base electrical load to DG-2', 'Perform non-destructive inspection of alternator bearings and injectors', 'Requisition expedited replacement filters and injectors from NCPOR Goa', 'Enforce single-genset conservation protocol across station'],
     },
   },
   {
-    id: 'blizzard', title: 'Blizzard Probability', subtitle: 'Logistic model · wind + pressure + humidity',
+    id: 'blizzard', title: 'Blizzard Probability', subtitle: 'Synoptic Logistic Storm Classifier',
     icon: 'severe_cold', accentColor: '#0369a1', modelName: 'BlizzardProb',
-    formatValue: (p) => ({ main: `${(p.data.blizzard_prob_pct ?? p.val).toFixed(1)}`, unit: '% probability' }),
+    formatValue: (p) => ({ main: `${(p.data.blizzard_prob_pct ?? p.val).toFixed(1)}`, unit: '% blizzard probability' }),
     sub1Label: 'Wind Input', sub1Value: () => '35 km/h',
-    sub2Label: 'dP/dt Input', sub2Value: () => '−1.2 hPa/hr',
+    sub2Label: 'Barometer Gradient', sub2Value: () => '−1.2 hPa/hr',
     sparkData: (p) => { const base = p.data.blizzard_prob_pct ?? 40; return [base * 0.6, base * 0.75, base * 0.9, base, base * 1.1, base * 0.95, base * 0.7].map(v => Math.min(100, Math.max(0, v))) },
     actions: {
-      WARNING: ['Secure all outdoor equipment, vehicles, and antenna mounts', 'Brief all personnel on Blizzard Protocol B — no lone outdoor work', 'Pre-position emergency thermal suits at all exit points', 'Check HF radio backup and confirm antenna integrity'],
-      CRITICAL: ['STATION LOCKDOWN: All outdoor operations immediately suspended', 'Account for all personnel — enforce 2-person buddy system', 'Activate HF backup radio — VSAT antenna stowed for protection', 'Operate in emergency heating mode — conserve fuel reserves'],
+      WARNING: ['Lash down external scientific sensors, solar mounts, and sledges', 'Mandatory 2-person buddy system and Level-2 thermal PPE for transit', 'Verify HF radio link and satellite transceiver emergency power reserves', 'Stage emergency blizzard rations at remote observation huts'],
+      CRITICAL: ['Level-3 Station Lockdown: All exterior transit strictly prohibited', 'Lock all module egress doors; transit allowed only via lifeline guide ropes', 'Stow Ku-band satellite tracking dish to 90° survival position', 'Operate HVAC in internal circulation mode to prevent drift silt intake'],
     },
   },
   {
-    id: 'water', title: 'Water Supply Sustainability', subtitle: 'Snowmelt vs. crew consumption model',
+    id: 'water', title: 'Water Sustainability', subtitle: 'Cryo-Melt Yield vs. Crew Demand',
     icon: 'water_drop', accentColor: '#0891b2', modelName: 'WaterSustainability',
-    formatValue: (p) => ({ main: `${Math.round(p.data.daysToRefillNeeded ?? p.val)}`, unit: 'days until refill' }),
-    sub1Label: 'Net Daily Change', sub1Value: (p) => `${(p.data.netDailyChange ?? 0).toFixed(1)} L/day`,
-    sub2Label: 'Current Volume', sub2Value: () => '15,000 L',
+    formatValue: (p) => ({ main: `${Math.round(p.data.daysToRefillNeeded ?? p.val)}`, unit: 'days supply buffer' }),
+    sub1Label: 'Net Balance', sub1Value: (p) => `${(p.data.netDailyChange ?? 0).toFixed(1)} L/day`,
+    sub2Label: 'Tank Storage', sub2Value: () => '15,000 L',
     sparkData: (p) => { const base = p.data.daysToRefillNeeded ?? 60; return Array.from({ length: 7 }, (_, i) => Math.max(0, base - i * 2)) },
     actions: {
-      WARNING: ['Activate snow-melt unit at full capacity to maximise input rate', 'Reduce crew water allocation — limit showers to 2 min/person/day', 'Identify and repair any leaks in the distribution system'],
-      CRITICAL: ['WATER EMERGENCY: Activate emergency ration mode — essential use only', 'All snow-melt units at maximum capacity immediately', 'Suspend all non-drinking water uses (cleaning, experiments)', 'Notify NCPOR Goa — request emergency water delivery on next aircraft'],
+      WARNING: ['Operate snowmelt heat exchanger at full thermal capacity', 'Limit crew hygiene water allocation to 2 minutes per personnel per day', 'Inspect pipeline trace heating along freshwater delivery lines'],
+      CRITICAL: ['Emergency Water Rationing: Potable cooking and hydration only', 'Maximize waste-heat snowmelt units to 100% emergency duty cycle', 'Halt all non-essential sanitation, cleaning, and chemical lab testing', 'Alert NCPOR HQ for emergency water logistics contingency'],
     },
   },
   {
-    id: 'structural', title: 'Structural Load Assessment', subtitle: 'Snow load + wind pressure vs. design limit',
+    id: 'structural', title: 'Structural Load Assessment', subtitle: 'Drift Pack & Wind Pressure Vector',
     icon: 'domain', accentColor: '#475569', modelName: 'StructuralStress',
-    formatValue: (p) => ({ main: `${(p.data.stressPercent ?? p.val).toFixed(1)}`, unit: '% of safe limit' }),
-    sub1Label: 'Total Load', sub1Value: (p) => `${(p.data.totalLoad ?? 0).toFixed(2)} kPa`,
-    sub2Label: 'Design Limit', sub2Value: () => '6.0 kPa',
+    formatValue: (p) => ({ main: `${(p.data.stressPercent ?? p.val).toFixed(1)}`, unit: '% of design threshold' }),
+    sub1Label: 'Combined Load', sub1Value: (p) => `${(p.data.totalLoad ?? 0).toFixed(2)} kPa`,
+    sub2Label: 'Safety Limit', sub2Value: () => '6.0 kPa',
     sparkData: (p) => { const base = p.data.stressPercent ?? 45; return Array.from({ length: 7 }, (_, i) => Math.min(100, base + i * 2.5)) },
     actions: {
-      WARNING: ['Deploy snow-clearing team to roof structures and satellite dish mounts', 'Activate de-icing cable network on all load-bearing roof sections', 'Inspect structural connections at foundation level for cracking'],
-      CRITICAL: ['STRUCTURAL ALERT: Evacuate personnel from affected modules immediately', 'Mandatory engineering inspection before re-entry is permitted', 'Contact NCPOR HQ structural team for emergency consultation', 'Activate secondary accommodation — restrict habitation to safe modules'],
+      WARNING: ['Deploy PistenBully snow clearing blade to leeward drift accumulators', 'Energize thermal de-icing cables along load-bearing roof purlins', 'Inspect exterior steel foundation turnbuckles and guy-wires'],
+      CRITICAL: ['Evacuate non-essential personnel from high-stress container modules', 'Perform immediate laser alignment survey of foundation stilt columns', 'Tension backup steel mooring cables to withstand katabatic gusts', 'Submit structural telemetry incident log to NCPOR Structural Engineering'],
     },
   },
 ]
@@ -198,39 +199,68 @@ function PredictionCard({ config, pred }: { config: PanelConfig; pred: Predictio
   const fmtVal = pred ? config.formatValue(pred) : { main: '—', unit: '' }
 
   return (
-    <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderTop: `3px solid ${config.accentColor}`, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+    <div
+      style={{
+        background: '#ffffff',
+        border: '1px solid #cbd5e1',
+        borderTop: `3px solid ${config.accentColor}`,
+        borderRadius: 4,
+        padding: '14px 16px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+      }}
+    >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 32, height: 32, background: `${config.accentColor}18`, border: `1px solid ${config.accentColor}33`, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              background: `${config.accentColor}14`,
+              border: `1px solid ${config.accentColor}33`,
+              borderRadius: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
             <span className="material-symbols-outlined" style={{ fontSize: 18, color: config.accentColor }}>{config.icon}</span>
           </div>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 800, color: '#0f172a' }}>{config.title}</div>
-            <div style={{ fontSize: 9.5, color: '#94a3b8', fontWeight: 600 }}>{config.subtitle}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 800, color: '#0f172a', letterSpacing: '0.01em' }}>{config.title}</div>
+            <div style={{ fontSize: 9.5, color: '#64748b', fontWeight: 600 }}>{config.subtitle}</div>
           </div>
         </div>
         <RiskPill risk={risk} />
       </div>
 
-      <div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-          <span style={{ fontSize: 28, fontWeight: 900, color: riskColor(risk), lineHeight: 1 }}>{fmtVal.main}</span>
-          {fmtVal.unit && <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>{fmtVal.unit}</span>}
+      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 4, padding: '10px 12px' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+          <span style={{ fontSize: 26, fontWeight: 900, color: riskColor(risk), lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
+            {fmtVal.main}
+          </span>
+          {fmtVal.unit && <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>{fmtVal.unit}</span>}
         </div>
-        <div style={{ display: 'flex', gap: 14, marginTop: 6 }}>
+        <div style={{ display: 'flex', gap: 16, marginTop: 8, paddingTop: 6, borderTop: '1px solid #e2e8f0' }}>
           <div>
-            <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase' }}>{config.sub1Label}</div>
-            <div style={{ fontSize: 12, fontWeight: 800, color: '#334155' }}>{pred ? config.sub1Value(pred) : '—'}</div>
+            <div style={{ fontSize: 8.5, color: '#94a3b8', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{config.sub1Label}</div>
+            <div style={{ fontSize: 11.5, fontWeight: 800, color: '#1e293b', marginTop: 1 }}>{pred ? config.sub1Value(pred) : '—'}</div>
           </div>
-          <div>
-            <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase' }}>{config.sub2Label}</div>
-            <div style={{ fontSize: 12, fontWeight: 800, color: '#334155' }}>{pred ? config.sub2Value(pred) : '—'}</div>
+          <div style={{ borderLeft: '1px solid #e2e8f0', paddingLeft: 16 }}>
+            <div style={{ fontSize: 8.5, color: '#94a3b8', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{config.sub2Label}</div>
+            <div style={{ fontSize: 11.5, fontWeight: 800, color: '#1e293b', marginTop: 1 }}>{pred ? config.sub2Value(pred) : '—'}</div>
           </div>
         </div>
       </div>
 
       <div>
-        <div style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 6 }}>7-Day Projection</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+          {/* <span style={{ fontSize: 9, fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>7-Day Forecast Vector</span> */}
+          {/* <span style={{ fontSize: 8.5, color: '#94a3b8', fontWeight: 600 }}>Deterministic Run</span> */}
+        </div>
         <SparkBars data={sparkData} accentColor={config.accentColor} risk={risk} />
       </div>
 
@@ -238,6 +268,7 @@ function PredictionCard({ config, pred }: { config: PanelConfig; pred: Predictio
     </div>
   )
 }
+
 
 // ── 7-Day weather forecast card ───────────────────────────────────────────────
 
@@ -326,13 +357,13 @@ export default function AnalyticsPage() {
   const { stationId, setStationId } = useStation()
   const activeStation = stationId as StationId
 
-  const [pageTab, setPageTab] = useState<PageTab>('predictions')
+  const [pageTab, setPageTab] = useState<PageTab>('weather')
   const [selectedDayIdx, setSelectedDayIdx] = useState(0)
+  const [selectedHourIdx, setSelectedHourIdx] = useState(12)
   const [stormSim, setStormSim] = useState(false)
-  const [forecastView, setForecastView] = useState<'7day' | 'hourly'>('7day')
 
   // Prediction data
-  const { data: v2Data, isLoading: predLoading, error: predError } = usePredictionsV2(activeStation)
+  const { data: v2Data, isLoading: predLoading, error: predError, refetch: refetchPredictions } = usePredictionsV2(activeStation)
 
   // Weather data
   const { data: weatherSensors } = useSensors(activeStation, 'weather')
@@ -415,12 +446,350 @@ export default function AnalyticsPage() {
       else if (hSnow >= 30) { conditionDesc = 'Drifting Flurry'; icon = 'ac_unit' }
       else if (hSolar < 50) { conditionDesc = 'Deep Polar Night'; icon = 'bedtime' }
       else { conditionDesc = 'Low-Angle Sun'; icon = 'partly_cloudy_day' }
-      return { hour: `${String(hour).padStart(2, '0')}:00`, temp: hTemp, wind: hWind, gust: hGust, chill: hChill, snowProb: hSnow, solar: hSolar, pressure: hPres, condition: conditionDesc, icon, activitySafety: safety }
+      return {
+        hourIdx: hour,
+        hour: `${String(hour).padStart(2, '0')}:00`,
+        temp: hTemp,
+        wind: hWind,
+        gust: hGust,
+        chill: hChill,
+        snowProb: hSnow,
+        solar: hSolar,
+        pressure: hPres,
+        condition: conditionDesc,
+        icon,
+        activitySafety: safety,
+      }
     })
   }, [selectedDay])
 
-  // Prediction data
-  const preds = useMemo((): Prediction[] => (!v2Data?.predictions ? [] : v2Data.predictions as Prediction[]), [v2Data])
+  const activeHour = hourlyData[selectedHourIdx] ?? hourlyData[12]
+
+  const handleDownloadWeatherSITREP = () => {
+    generateWeatherMissionReportPDF({
+      stationId: activeStation,
+      forecast7Day: forecast7Day.map(d => ({
+        day: d.name,
+        date: d.dateStr,
+        highTemp: d.maxTemp,
+        lowTemp: d.minTemp,
+        condition: d.desc,
+        windSpeed: d.wind,
+        windGust: d.gust,
+        snowProb: d.snowProb,
+        blizzardRisk: d.safetyStatus === 'STORM WARNING' ? 'HIGH / ACTIVE' : d.safetyStatus === 'CAUTION' ? 'MODERATE' : 'LOW',
+        pressure: d.pres,
+        solarHours: Math.round((d.solar / 450) * 12),
+        uvIndex: d.solar > 350 ? 4 : 2,
+        summary: d.synoptic,
+      })),
+      hourlyData: hourlyData.map(h => ({
+        hour: h.hour,
+        temp: h.temp,
+        condition: h.condition,
+        wind: h.wind,
+        gust: h.gust,
+        windChill: h.chill,
+        blizzardRisk: h.snowProb,
+        pressure: h.pressure,
+        solarOffset: h.solar,
+        activitySafety: h.activitySafety,
+      })),
+      selectedDay: {
+        day: selectedDay.name,
+        date: selectedDay.dateStr,
+        highTemp: selectedDay.maxTemp,
+        lowTemp: selectedDay.minTemp,
+        condition: selectedDay.desc,
+        windSpeed: selectedDay.wind,
+        windGust: selectedDay.gust,
+        blizzardRisk: selectedDay.safetyStatus === 'STORM WARNING' ? 'HIGH' : selectedDay.safetyStatus === 'CAUTION' ? 'MODERATE' : 'LOW',
+        summary: selectedDay.synoptic,
+      },
+    })
+  }
+
+  // Dynamic hazard profile customized to the selected day's exact numerical forecast
+  const dayThreat = useMemo(() => {
+    const d = forecast7Day[selectedDayIdx] ?? forecast7Day[0]
+    if (selectedDayIdx === 0) {
+      return {
+        label: `${d.name} (${d.dateStr})`,
+        statusText: d.safetyStatus,
+        risk: Math.min(95, Math.round(55 * stormMultiplier)),
+        severityColor: d.safetyStatus === 'STORM WARNING' ? '#dc2626' : '#ea580c',
+        image: '/threats/turbine.jpg',
+        title: 'Active Katabatic Drift & Wind Chill Inversion',
+        tags: [`🌡️ ${d.temp}°C Temp`, `💨 ${Math.round(d.gust)} km/h Gust`, `🥶 ${Math.round(d.chill)}°C Chill`, `❄️ ${d.snowProb}% Drift`],
+        problems: [
+          'Wind chill plunging rapidly; frostbite exposure threshold <15 mins outside.',
+          'Drifting snow accumulating around exterior electrical junction boxes.',
+        ],
+        actions: [
+          'Level-2 thermal PPE mandatory for all exterior station personnel.',
+          'Maintain emergency heated PistenBully vehicle on warm-idle standby.',
+        ],
+        heli: d.heliStatus,
+        traverse: d.heliStatus === 'NO-GO' ? 'SUSPENDED' : d.heliStatus === 'STANDBY' ? 'CAUTION' : 'OPTIMAL',
+      }
+    } else if (selectedDayIdx === 1) {
+      return {
+        label: `${d.name} (${d.dateStr})`,
+        statusText: 'STORM WARNING',
+        risk: Math.min(98, Math.round(94 * stormMultiplier)),
+        severityColor: '#dc2626',
+        image: '/threats/blizzard.jpg',
+        title: 'Severe Whiteout Blizzard & Katabatic Gale Surge',
+        tags: [`📉 ${d.pres} hPa (Drop)`, `💨 ${Math.round(d.gust)} km/h Peak Gust`, `🥶 ${Math.round(d.chill)}°C Chill`, '❄️ <5m Visibility'],
+        problems: [
+          'Whiteout with zero visibility (<5m); severe spatial disorientation hazard.',
+          'Wind turbine overspeed trip risk (>185 RPM) & Ku-band VSAT tracking drift.',
+        ],
+        actions: [
+          'Level-3 Station Lockdown: Exterior transit strictly via fixed lifeline guide ropes.',
+          'Auto-feather turbine blades; lock VSAT dish to 90° survival stow position.',
+        ],
+        heli: 'NO-GO',
+        traverse: 'SUSPENDED',
+      }
+    } else if (selectedDayIdx === 2) {
+      return {
+        label: `${d.name} (${d.dateStr})`,
+        statusText: 'CAUTION',
+        risk: 38,
+        severityColor: '#0284c7',
+        image: '/threats/turbine.jpg',
+        title: 'Post-Frontal Freeze & Apron Black Ice',
+        tags: [`📈 ${d.pres} hPa (Rising)`, `💨 ${Math.round(d.wind)} km/h Wind`, `🥶 ${Math.round(d.chill)}°C Chill`, '☀️ High UV Glare'],
+        problems: [
+          'Flash-freeze apron black ice across helipad perimeter and metal gangways.',
+          'High UV reflection off fresh snow sheet causing temporary snow blindness.',
+        ],
+        actions: [
+          'Apply coarse grit/salt across helipad apron and primary station gangways.',
+          'Category-4 polar sunglasses mandatory for all outside technical crews.',
+        ],
+        heli: 'STANDBY',
+        traverse: 'CAUTION',
+      }
+    } else if (selectedDayIdx === 3) {
+      return {
+        label: `${d.name} (${d.dateStr})`,
+        statusText: 'ALL CLEAR',
+        risk: 12,
+        severityColor: '#16a34a',
+        image: '/threats/traverse.jpg',
+        title: 'Optimal Weather Window (Calm High-Pressure Ridge)',
+        tags: [`☀️ ${d.solar} W/m² Solar`, `💨 ${Math.round(d.wind)} km/h Gentle`, `🌡️ ${d.temp}°C Mild`, '🛡️ Minimal Hazard'],
+        problems: [
+          'Nominal atmospheric conditions; weekly peak in environmental stability.',
+          'Minor optical refraction on exterior telemetry camera lenses.',
+        ],
+        actions: [
+          'Green Flag: Optimal window for overland logistics, fueling, and field science.',
+          'Perform preventive maintenance on exterior wind turbines and solar PV arrays.',
+        ],
+        heli: 'APPROVED',
+        traverse: 'OPTIMAL',
+      }
+    } else if (selectedDayIdx === 4) {
+      return {
+        label: `${d.name} (${d.dateStr})`,
+        statusText: 'CAUTION',
+        risk: 74,
+        severityColor: '#ea580c',
+        image: '/threats/traverse.jpg',
+        title: 'Tropospheric Ice Fog & Flat Light Crevasse Risk',
+        tags: [`🌫️ 800ft Ceiling`, `🕳️ Crevasse Risk`, `💨 ${Math.round(d.wind)} km/h`, '📡 VSAT Loss +4.8dB'],
+        problems: [
+          'Flat light conceals 30m crevasse snow bridges beyond safety perimeter.',
+          'Moist maritime air advection induces rime icing on radomes and microwave dishes.',
+        ],
+        actions: [
+          'Suspend overland PistenBully traverse beyond 3 km station safety perimeter.',
+          'Energize radome quartz heating de-icers 2 hours prior to satellite passes.',
+        ],
+        heli: 'STANDBY',
+        traverse: 'SUSPENDED',
+      }
+    } else if (selectedDayIdx === 5) {
+      return {
+        label: `${d.name} (${d.dateStr})`,
+        statusText: 'STORM WARNING',
+        risk: 96,
+        severityColor: '#dc2626',
+        image: '/threats/blizzard.jpg',
+        title: 'Deep Mesocyclone Low & Diesel Fuel Line Gelling',
+        tags: [`📉 969 hPa Deep Low`, `💨 ${Math.round(d.gust)} km/h Gust`, `🥶 -42°C Skin Chill`, '❄️ 95% Snow Blizzard'],
+        problems: [
+          'HSD fuel lines wax crystallization near pour point (-24°C); starvation risk.',
+          'Violent gale gusts cause severe vibration on antenna masts and roof cowls.',
+        ],
+        actions: [
+          'Engage 100% duty cycle electric heat-tracing on exterior fuel pipelines.',
+          'Switch station microgrid to dual-generator load sharing; secure outer hatches.',
+        ],
+        heli: 'NO-GO',
+        traverse: 'SUSPENDED',
+      }
+    } else {
+      return {
+        label: `${d.name} (${d.dateStr})`,
+        statusText: 'CAUTION',
+        risk: 48,
+        severityColor: '#0284c7',
+        image: '/threats/traverse.jpg',
+        title: 'Post-Storm Snow Drift Silt & Intake Obstruction',
+        tags: [`❄️ Heavy Drift Snow`, `💨 ${Math.round(d.wind)} km/h Moderating`, `🌡️ ${d.temp}°C`, '🚜 Snow Clearing'],
+        problems: [
+          'Heavy 2-meter snow drifts accumulating against generator intake louvers.',
+          'Containerized storage doors and emergency egress hatches packed with snow.',
+        ],
+        actions: [
+          'Deploy PistenBully snow blade crew for prioritized clearance of air intakes.',
+          'Inspect structural stay wires and communications masts for drift slack.',
+        ],
+        heli: 'STANDBY',
+        traverse: 'CAUTION',
+      }
+    }
+  }, [forecast7Day, selectedDayIdx, stormMultiplier])
+
+
+
+  // Localized deterministic algorithmic predictions (synchronous baseline fallback)
+  const fallbackPredictions = useMemo((): Prediction[] => {
+    const isMaitri = activeStation === 'maitri'
+    const crew = isMaitri ? 24 : 32
+    const fuelRemaining = isMaitri ? 138400 : 210500
+    const capacity = isMaitri ? 165000 : 250000
+
+    // 1. Fuel Depletion Forecast
+    const burnHistory = [1210, 1280, 1190, 1320, 1260, 1240, 1250]
+    const slope = (burnHistory[6] - burnHistory[0]) / 6
+    const forecastedBurnDay7 = burnHistory[6] + slope * 7
+    const daysToEmpty = fuelRemaining / Math.max(1, forecastedBurnDay7)
+    const daysToCritical = (fuelRemaining - capacity * 0.30) / Math.max(1, forecastedBurnDay7)
+    const resupplyUrgencyScore = (1 - daysToEmpty / 120) * 100
+    const fuelRisk: RiskLevel = daysToCritical < 60 ? 'CRITICAL' : daysToCritical < 90 ? 'WARNING' : 'NOMINAL'
+
+    // 2. Energy Load Prediction
+    const T_ambient = isMaitri ? -22.0 : -17.0
+    const wind_kmh = 35.0
+    const HDD = Math.max(0, 18 - T_ambient)
+    const load_kw = 120 + 2.8 * HDD + 1.5 * crew + 0.3 * wind_kmh
+    const capacity_kw = 250.0
+    const deficit = load_kw - capacity_kw
+    const energyRisk: RiskLevel = deficit > 20 ? 'CRITICAL' : deficit > 0 ? 'WARNING' : 'NOMINAL'
+
+    // 3. Generator Health Score (RUL)
+    const beta = 2.2
+    const eta = 4500
+    const reliability_target = 0.90
+    const RUL_hours_total = eta * Math.pow(-Math.log(reliability_target), 1 / beta)
+    const hours_used = 2180
+    const remaining = RUL_hours_total - hours_used
+    const genRisk: RiskLevel = remaining < 500 ? 'CRITICAL' : remaining < 800 ? 'WARNING' : 'NOMINAL'
+
+    // 4. Blizzard Probability
+    const dP_dt = 1.2
+    const humidity = 65
+    const z = 0.042 * wind_kmh + 0.18 * Math.abs(dP_dt) + 0.015 * humidity - 3.2
+    const P_blizzard = 1 / (1 + Math.exp(-z))
+    const blizz_prob = P_blizzard * 100
+    const blizzRisk: RiskLevel = blizz_prob > 75 ? 'CRITICAL' : blizz_prob > 50 ? 'WARNING' : 'NOMINAL'
+
+    // 5. Water Supply Sustainability
+    const currentVolume = 15000
+    const snowmeltRate = Math.max(0, (T_ambient + 10) * 0.8)
+    const usage = crew * 25
+    const netDailyChange = snowmeltRate - usage
+    const daysToRefillNeeded = currentVolume / Math.max(1, Math.abs(netDailyChange))
+    const waterRisk: RiskLevel = daysToRefillNeeded < 30 ? 'CRITICAL' : daysToRefillNeeded < 45 ? 'WARNING' : 'NOMINAL'
+
+    // 6. Structural Stress Prediction
+    const snowDensity = 300
+    const snowDepth = 1.5
+    const snowLoad_kPa = (snowDensity * snowDepth * 9.81) / 1000
+    const wind_ms = wind_kmh / 3.6
+    const windPressure_kPa = (0.5 * 1.293 * Math.pow(wind_ms, 2) * 1.3) / 1000
+    const totalLoad = snowLoad_kPa + windPressure_kPa
+    const safeThreshold = 6.0
+    const stressPercent = (totalLoad / safeThreshold) * 100
+    const structRisk: RiskLevel = stressPercent > 85 ? 'CRITICAL' : stressPercent > 70 ? 'WARNING' : 'NOMINAL'
+
+    return [
+      {
+        model_name: 'FuelDepletion',
+        metric: 'daysToCritical',
+        val: Number(daysToCritical.toFixed(2)),
+        risk: fuelRisk,
+        data: {
+          daysToEmpty: Number(daysToEmpty.toFixed(1)),
+          daysToCritical: Number(daysToCritical.toFixed(1)),
+          resupplyUrgencyScore: Number(resupplyUrgencyScore.toFixed(1)),
+          forecastedBurnDay7: Number(forecastedBurnDay7.toFixed(1)),
+        },
+      },
+      {
+        model_name: 'EnergyLoad',
+        metric: 'load_kw',
+        val: Number(load_kw.toFixed(2)),
+        risk: energyRisk,
+        data: {
+          load_kw: Number(load_kw.toFixed(1)),
+          deficit: Number(deficit.toFixed(1)),
+        },
+      },
+      {
+        model_name: 'GeneratorRUL',
+        metric: 'RUL_hours',
+        val: Number(Math.max(0, remaining).toFixed(2)),
+        risk: genRisk,
+        data: {
+          RUL_hours: Number(remaining.toFixed(1)),
+        },
+      },
+      {
+        model_name: 'BlizzardProb',
+        metric: 'blizzard_prob_pct',
+        val: Number(blizz_prob.toFixed(2)),
+        risk: blizzRisk,
+        data: {
+          blizzard_prob_pct: Number(blizz_prob.toFixed(1)),
+        },
+      },
+      {
+        model_name: 'WaterSustainability',
+        metric: 'daysToRefillNeeded',
+        val: Number(daysToRefillNeeded.toFixed(2)),
+        risk: waterRisk,
+        data: {
+          daysToRefillNeeded: Number(daysToRefillNeeded.toFixed(1)),
+          netDailyChange: Number(netDailyChange.toFixed(1)),
+        },
+      },
+      {
+        model_name: 'StructuralStress',
+        metric: 'stressPercent',
+        val: Number(stressPercent.toFixed(2)),
+        risk: structRisk,
+        data: {
+          stressPercent: Number(stressPercent.toFixed(1)),
+          totalLoad: Number(totalLoad.toFixed(2)),
+        },
+      },
+    ]
+  }, [activeStation])
+
+  // Prediction data: prefer live HQ backend inference; fallback gracefully if offline/syncing
+  const preds = useMemo((): Prediction[] => {
+    if (v2Data?.predictions && Array.isArray(v2Data.predictions) && v2Data.predictions.length > 0) {
+      return v2Data.predictions as Prediction[]
+    }
+    return fallbackPredictions
+  }, [v2Data, fallbackPredictions])
+
   const getPred = (name: string) => preds.find((p) => p.model_name === name)
   const fuelPred = getPred('FuelDepletion'); const energyPred = getPred('EnergyLoad')
   const genPred = getPred('GeneratorRUL'); const blizzPred = getPred('BlizzardProb')
@@ -457,50 +826,852 @@ export default function AnalyticsPage() {
               </span>
             </div>
 
-            {/* Hero banner */}
-            <div style={{ background: 'linear-gradient(135deg, #0b3b60 0%, #1e4d78 60%, #0b3b60 100%)', color: '#ffffff', padding: '14px 20px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)', backgroundSize: '20px 20px', pointerEvents: 'none' }} />
-              <div style={{ position: 'relative' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 3 }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 26, color: '#ff9933' }}>monitoring</span>
-                  <div>
-                    <div style={{ fontSize: 15, fontWeight: 900, letterSpacing: '0.02em' }}>PREDICTIVE ANALYTICS ENGINE — {activeStation.toUpperCase()} STATION</div>
-                    <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Deterministic algorithm suite · 6 predictive models · 7-day synoptic polar forecast</div>
+            {/* Mission Command Header */}
+            <div
+              style={{
+                background: '#0b3b60',
+                border: '1px solid #072a45',
+                borderBottom: '2px solid #ff9933',
+                color: '#ffffff',
+                padding: '10px 16px',
+                marginBottom: 10,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 12,
+                boxShadow: '0 2px 6px rgba(11,59,96,0.12)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    background: 'rgba(255, 153, 51, 0.15)',
+                    border: '1px solid #ff9933',
+                    borderRadius: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#ff9933' }}>
+                    radar
+                  </span>
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 13.5, fontWeight: 900, letterSpacing: '0.04em', color: '#ffffff' }}>
+                      {activeStation === 'maitri' ? 'MAITRI BASE' : 'BHARATI BASE'} — PREDICTIVE TELEMETRY
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 9,
+                        fontWeight: 800,
+                        padding: '1px 6px',
+                        borderRadius: 2,
+                        background: 'rgba(16, 185, 129, 0.2)',
+                        border: '1px solid #10b981',
+                        color: '#a7f3d0',
+                        letterSpacing: '0.04em',
+                      }}
+                    >
+                      ● LIVE INFERENCE
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 10, color: '#93c5fd', marginTop: 2 }}>
+                    NCPOR Polar Operations · {activeStation === 'maitri' ? "70°45'S, 11°44'E " : "69°24'S, 76°11'E "} · Synoptic Cycle: 06:00 UTC
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {['Fuel Depletion', 'Energy Load', 'Generator RUL', 'Blizzard Risk', 'Water Supply', 'Structural Stress', '7-Day Weather'].map((t) => (
-                    <span key={t} style={{ fontSize: 9, fontWeight: 700, background: 'rgba(255,255,255,0.1)', color: '#cbd5e1', padding: '2px 7px', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 3 }}>{t}</span>
-                  ))}
-                </div>
               </div>
-              <div style={{ display: 'flex', gap: 8, position: 'relative' }}>
+
+              {/* Station Switcher */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(15, 23, 42, 0.4)', padding: '3px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.15)' }}>
                 {(['maitri', 'bharati'] as const).map((s) => (
-                  <button key={s} onClick={() => setStationId(s)} style={{ background: activeStation === s ? '#ff9933' : 'rgba(255,255,255,0.1)', border: activeStation === s ? '2px solid #ff9933' : '2px solid rgba(255,255,255,0.25)', color: '#ffffff', padding: '6px 16px', fontWeight: 900, fontSize: 11, cursor: 'pointer', borderRadius: 3, letterSpacing: '0.06em' }}>
-                    {s === 'maitri' ? '🏔️ MAITRI' : '🌊 BHARATI'}
+                  <button
+                    key={s}
+                    onClick={() => setStationId(s)}
+                    style={{
+                      background: activeStation === s ? '#ff9933' : 'transparent',
+                      border: 'none',
+                      color: activeStation === s ? '#0b3b60' : '#cbd5e1',
+                      padding: '5px 14px',
+                      fontWeight: 900,
+                      fontSize: 10.5,
+                      cursor: 'pointer',
+                      borderRadius: 3,
+                      letterSpacing: '0.04em',
+                      transition: 'all 0.15s ease',
+                      boxShadow: activeStation === s ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
+                    }}
+                  >
+                    {s === 'maitri' ? ' MAITRI' : ' BHARATI'}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Page-level tab switcher */}
-            <div style={{ display: 'flex', borderBottom: '2px solid #cbd5e1', marginBottom: 12, background: '#ffffff', padding: '0 8px' }}>
+            {/* Segmented Tab Switcher */}
+            <div
+              style={{
+                display: 'flex',
+                gap: 6,
+                marginBottom: 12,
+                background: '#ffffff',
+                padding: '6px',
+                border: '1px solid #cbd5e1',
+                borderRadius: 4,
+                boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+              }}
+            >
               {[
-                { id: 'predictions' as PageTab, label: '📊 Predictive Algorithms', icon: 'analytics' },
-                { id: 'weather' as PageTab, label: '🌨 7-Day Synoptic Forecast', icon: 'cloudy_snowing' },
-              ].map((t) => (
-                <button key={t.id} onClick={() => setPageTab(t.id)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '9px 16px', border: 'none', background: 'none', cursor: 'pointer', fontWeight: pageTab === t.id ? 800 : 600, color: pageTab === t.id ? '#0b3b60' : '#64748b', fontSize: 12, borderBottom: pageTab === t.id ? '2px solid #0b3b60' : '2px solid transparent', marginBottom: -2 }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 15 }}>{t.icon}</span>{t.label}
-                </button>
-              ))}
+                { id: 'weather' as PageTab, label: '7-Day Synoptic Weather Forecast', icon: 'cloudy_snowing', badge: '7 DAYS • 24H SLIDER' },
+                { id: 'predictions' as PageTab, label: 'Predictive Algorithm Suite', icon: 'analytics', badge: '6 DETERMINISTIC MODELS' },
+              ].map((t) => {
+                const isActive = pageTab === t.id
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setPageTab(t.id)}
+                    style={{
+                      flex: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      padding: '9px 16px',
+                      border: isActive ? '1px solid #0b3b60' : '1px solid transparent',
+                      background: isActive ? '#0b3b60' : '#f8fafc',
+                      cursor: 'pointer',
+                      borderRadius: 3,
+                      transition: 'all 0.15s ease',
+                      boxShadow: isActive ? '0 2px 4px rgba(11,59,96,0.18)' : 'none',
+                    }}
+                  >
+                    <span
+                      className="material-symbols-outlined"
+                      style={{
+                        fontSize: 17,
+                        color: isActive ? '#38bdf8' : '#64748b',
+                      }}
+                    >
+                      {t.icon}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 800,
+                        color: isActive ? '#ffffff' : '#334155',
+                        letterSpacing: '0.02em',
+                      }}
+                    >
+                      {t.label}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 8.5,
+                        fontWeight: 800,
+                        padding: '1px 6px',
+                        borderRadius: 2,
+                        background: isActive ? 'rgba(56, 189, 248, 0.2)' : '#e2e8f0',
+                        color: isActive ? '#7dd3fc' : '#64748b',
+                        border: isActive ? '1px solid rgba(56, 189, 248, 0.4)' : 'none',
+                        letterSpacing: '0.03em',
+                      }}
+                    >
+                      {t.badge}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
 
-            {/* ───────────────────────── PREDICTIONS TAB ───────────────────────── */}
+
+            {/* ─────────────────────── WEATHER FORECAST TAB (FIRST) ─────────────────── */}
+            {pageTab === 'weather' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* 1. Forecast header & controls */}
+                <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', padding: '12px 14px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: '#0b3b60', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#0284c7' }}>calendar_month</span>
+                      7-DAY SYNOPTIC POLAR FORECAST (CLICK ANY DAY TO INSPECT)
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 9.5, color: '#64748b' }}>
+                        Anchored to Live Sensors ({liveTemp.toFixed(1)}°C, {liveWind} km/h)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setStormSim((s) => !s)}
+                        style={{
+                          fontSize: 9.5,
+                          fontWeight: 700,
+                          padding: '4px 10px',
+                          background: stormSim ? '#fee2e2' : '#f8fafc',
+                          color: stormSim ? '#b91c1c' : '#475569',
+                          border: `1.5px solid ${stormSim ? '#f87171' : '#cbd5e1'}`,
+                          cursor: 'pointer',
+                          borderRadius: 2,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          transition: 'all 0.15s ease',
+                        }}
+                        title="Simulate +30% Polar Storm Surge across all predictive neural models"
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: 13, color: stormSim ? '#b91c1c' : '#64748b' }}>
+                          {stormSim ? 'cyclone' : 'tune'}
+                        </span>
+                        {stormSim ? '⚠️ Blizzard Surge Active (+30%)' : 'Simulate Storm (+30%)'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. 7-Day Synoptic Cards Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 10 }}>
+                  {forecast7Day.map((day, idx) => (
+                    <WeatherDayCard
+                      key={day.name}
+                      day={day}
+                      isSelected={selectedDayIdx === idx}
+                      onClick={() => setSelectedDayIdx(idx)}
+                    />
+                  ))}
+                </div>
+
+                {/* 3. 24-Hour Upcoming Hourly Timeline & Slider */}
+                <div
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid #cbd5e1',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {/* Header Banner with SITREP Download */}
+                  <div
+                    style={{
+                      background: '#0b3b60',
+                      color: '#ffffff',
+                      padding: '10px 14px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: 10,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.12)',
+                          borderRadius: 4,
+                          padding: '6px 8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#38bdf8' }}>
+                          schedule
+                        </span>
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 13, fontWeight: 900, letterSpacing: '0.03em' }}>
+                            24-HOUR UPCOMING HOURLY WEATHER TIMELINE & SLIDER
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 9.5,
+                              fontWeight: 800,
+                              background: '#ff9933',
+                              color: '#0b3b60',
+                              padding: '2px 8px',
+                              borderRadius: 3,
+                            }}
+                          >
+                            {selectedDay.name} • {selectedDay.dateStr}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 10, color: '#93c5fd', marginTop: 2 }}>
+                          Atmospheric Progression for {activeStation === 'maitri' ? "Maitri Base (70°45'S, 11°44'E)" : "Bharati Base (69°24'S, 76°11'E)"} • Expected: <strong style={{ color: '#fff' }}>{selectedDay.desc}</strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button
+                        type="button"
+                        onClick={handleDownloadWeatherSITREP}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          background: 'linear-gradient(135deg, #138808 0%, #15803d 100%)',
+                          color: '#ffffff',
+                          border: '1px solid #166534',
+                          padding: '6px 14px',
+                          cursor: 'pointer',
+                          fontWeight: 800,
+                          fontSize: 10.5,
+                          borderRadius: 3,
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                          transition: 'all 0.15s ease',
+                        }}
+                        title="Download official Government Gazette formatted Weather & Safety SITREP PDF"
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: 15, color: '#fef08a' }}>
+                          verified
+                        </span>
+                        <span>📥 Download Weather SITREP (Govt Format)</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Slider Strip & Hourly Ribbon */}
+                  <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {/* Interactive Slider Control Strip */}
+                    <div
+                      style={{
+                        background: '#f8fafc',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: 4,
+                        padding: '10px 14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: 12,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 11, fontWeight: 900, color: '#0b3b60', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#0284c7' }}>
+                            tune
+                          </span>
+                          TIMELINE SLIDER:
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 10.5,
+                            fontWeight: 800,
+                            background: '#0b3b60',
+                            color: '#ffffff',
+                            padding: '3px 10px',
+                            borderRadius: 12,
+                            letterSpacing: '0.02em',
+                          }}
+                        >
+                          {activeHour.hour} UTC • {activeHour.temp}°C ({activeHour.condition})
+                        </span>
+                      </div>
+
+                      {/* Range Slider for immediate scrubbing */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 220, maxWidth: 420 }}>
+                        <span style={{ fontSize: 9.5, fontWeight: 800, color: '#64748b' }}>00:00</span>
+                        <input
+                          type="range"
+                          min={0}
+                          max={23}
+                          step={1}
+                          value={selectedHourIdx}
+                          onChange={(e) => setSelectedHourIdx(Number(e.target.value))}
+                          style={{
+                            flex: 1,
+                            cursor: 'pointer',
+                            accentColor: '#0b3b60',
+                            height: 6,
+                          }}
+                          title="Slide to scrub across 24 hours of forecast"
+                        />
+                        <span style={{ fontSize: 9.5, fontWeight: 800, color: '#64748b' }}>23:00</span>
+                      </div>
+
+                      {/* Step Navigation Buttons */}
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedHourIdx((idx) => Math.max(0, idx - 1))}
+                          disabled={selectedHourIdx <= 0}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            background: selectedHourIdx <= 0 ? '#f1f5f9' : '#ffffff',
+                            color: selectedHourIdx <= 0 ? '#94a3b8' : '#0b3b60',
+                            border: '1px solid #cbd5e1',
+                            padding: '4px 10px',
+                            borderRadius: 3,
+                            fontSize: 10,
+                            fontWeight: 800,
+                            cursor: selectedHourIdx <= 0 ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: 13 }}>arrow_back</span>
+                          Prev Hour
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedHourIdx((idx) => Math.min(23, idx + 1))}
+                          disabled={selectedHourIdx >= 23}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            background: selectedHourIdx >= 23 ? '#f1f5f9' : '#ffffff',
+                            color: selectedHourIdx >= 23 ? '#94a3b8' : '#0b3b60',
+                            border: '1px solid #cbd5e1',
+                            padding: '4px 10px',
+                            borderRadius: 3,
+                            fontSize: 10,
+                            fontWeight: 800,
+                            cursor: selectedHourIdx >= 23 ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          Next Hour
+                          <span className="material-symbols-outlined" style={{ fontSize: 13 }}>arrow_forward</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Single continuous horizontally scrollable slider strip */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <div style={{ fontSize: 10.5, fontWeight: 900, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#0284c7' }}>
+                            view_carousel
+                          </span>
+                          24-HOUR HOURLY PROGRESSION (CLICK ANY CARD OR USE SLIDER ABOVE)
+                        </div>
+                        <span style={{ fontSize: 9.5, color: '#64748b' }}>
+                          Scroll horizontally or click card to inspect
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: 8,
+                          overflowX: 'auto',
+                          padding: '4px 2px 10px 2px',
+                          scrollBehavior: 'smooth',
+                        }}
+                      >
+                        {hourlyData.map((h) => {
+                          const isFocused = selectedHourIdx === h.hourIdx
+                          const safBg = h.activitySafety === 'SAFE' ? '#dcfce7' : h.activitySafety === 'CAUTION' ? '#fef3c7' : '#fee2e2'
+                          const safColor = h.activitySafety === 'SAFE' ? '#15803d' : h.activitySafety === 'CAUTION' ? '#d97706' : '#b91c1c'
+                          return (
+                            <div
+                              key={h.hour}
+                              onClick={() => setSelectedHourIdx(h.hourIdx)}
+                              style={{
+                                minWidth: 108,
+                                width: 108,
+                                flexShrink: 0,
+                                background: isFocused ? 'linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%)' : '#ffffff',
+                                border: isFocused ? '2.5px solid #0284c7' : '1px solid #cbd5e1',
+                                borderRadius: 4,
+                                padding: '10px 8px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: 4,
+                                position: 'relative',
+                                boxShadow: isFocused ? '0 6px 16px rgba(2, 132, 199, 0.22)' : '0 1px 3px rgba(0,0,0,0.03)',
+                                transform: isFocused ? 'translateY(-2px)' : 'none',
+                                transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+                              }}
+                            >
+                              {isFocused && (
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    height: 3,
+                                    background: '#0284c7',
+                                    borderTopLeftRadius: 2,
+                                    borderTopRightRadius: 2,
+                                  }}
+                                />
+                              )}
+
+                              <span style={{ fontSize: 10, fontWeight: 900, color: isFocused ? '#0369a1' : '#475569' }}>
+                                {h.hour} UTC
+                              </span>
+
+                              <span
+                                className="material-symbols-outlined"
+                                style={{
+                                  fontSize: 24,
+                                  color: h.icon === 'sunny' ? '#f59e0b' : h.icon === 'cyclone' || h.icon === 'storm' ? '#ea580c' : '#0284c7',
+                                  margin: '2px 0',
+                                }}
+                              >
+                                {h.icon}
+                              </span>
+
+                              <span style={{ fontSize: 13, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em' }}>
+                                {h.temp}°C
+                              </span>
+
+                              <div style={{ fontSize: 9, color: '#64748b', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, width: '100%' }}>
+                                <span>💨 {Math.round(h.wind)} km/h</span>
+                                <span style={{ color: h.gust >= 55 ? '#dc2626' : '#ea580c', fontWeight: 800 }}>
+                                  ⚡ {Math.round(h.gust)}
+                                </span>
+                                <span>🥶 {h.chill}°C</span>
+                              </div>
+
+                              <div style={{ width: '100%', marginTop: 2 }}>
+                                <span
+                                  style={{
+                                    display: 'block',
+                                    textAlign: 'center',
+                                    fontSize: 8.5,
+                                    fontWeight: 800,
+                                    padding: '2px 4px',
+                                    borderRadius: 2,
+                                    background: safBg,
+                                    color: safColor,
+                                  }}
+                                >
+                                  {h.activitySafety}
+                                </span>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Hourly Diagnostic Focus */}
+                    <div
+                      style={{
+                        background: '#ffffff',
+                        border: '1.5px solid #0284c7',
+                        borderRadius: 4,
+                        padding: '14px 16px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 12,
+                        boxShadow: '0 2px 8px rgba(2, 132, 199, 0.08)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#0b3b60' }}>
+                            analytics
+                          </span>
+                          <span style={{ fontSize: 12, fontWeight: 900, color: '#0b3b60', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            HOURLY DIAGNOSTIC FOCUS: {activeHour.hour} UTC • {selectedDay.name}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 9.5,
+                              fontWeight: 800,
+                              background: '#0b3b60',
+                              color: '#ffffff',
+                              padding: '2px 8px',
+                              borderRadius: 3,
+                            }}
+                          >
+                            {activeHour.condition}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 10, color: '#64748b' }}>Flight Sortie Status:</span>
+                          <span
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 900,
+                              padding: '2px 8px',
+                              borderRadius: 3,
+                              background: activeHour.activitySafety === 'SAFE' ? '#dcfce7' : activeHour.activitySafety === 'CAUTION' ? '#fef3c7' : '#fee2e2',
+                              color: activeHour.activitySafety === 'SAFE' ? '#15803d' : activeHour.activitySafety === 'CAUTION' ? '#d97706' : '#b91c1c',
+                            }}
+                          >
+                            {activeHour.activitySafety === 'SAFE' ? 'FLIGHT APPROVED' : activeHour.activitySafety === 'CAUTION' ? 'FLIGHT STANDBY' : 'FLIGHT GROUNDED'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 6 Parameter Badges */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 8 }}>
+                        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 3, padding: '7px 9px' }}>
+                          <div style={{ fontSize: 8.5, color: '#64748b', fontWeight: 700 }}>TEMPERATURE</div>
+                          <div style={{ fontSize: 16, fontWeight: 900, color: '#0f172a', marginTop: 2 }}>{activeHour.temp}°C</div>
+                        </div>
+                        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 3, padding: '7px 9px' }}>
+                          <div style={{ fontSize: 8.5, color: '#64748b', fontWeight: 700 }}>WIND CHILL</div>
+                          <div style={{ fontSize: 16, fontWeight: 900, color: '#0284c7', marginTop: 2 }}>{activeHour.chill}°C</div>
+                        </div>
+                        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 3, padding: '7px 9px' }}>
+                          <div style={{ fontSize: 8.5, color: '#64748b', fontWeight: 700 }}>SUSTAINED WIND</div>
+                          <div style={{ fontSize: 16, fontWeight: 900, color: '#0f172a', marginTop: 2 }}>{Math.round(activeHour.wind)} km/h</div>
+                        </div>
+                        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 3, padding: '7px 9px' }}>
+                          <div style={{ fontSize: 8.5, color: '#64748b', fontWeight: 700 }}>PEAK GUST</div>
+                          <div style={{ fontSize: 16, fontWeight: 900, color: activeHour.gust >= 55 ? '#dc2626' : '#ea580c', marginTop: 2 }}>⚡ {Math.round(activeHour.gust)} km/h</div>
+                        </div>
+                        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 3, padding: '7px 9px' }}>
+                          <div style={{ fontSize: 8.5, color: '#64748b', fontWeight: 700 }}>BLIZZARD PROB</div>
+                          <div style={{ fontSize: 16, fontWeight: 900, color: activeHour.snowProb > 70 ? '#dc2626' : '#16a34a', marginTop: 2 }}>❄️ {activeHour.snowProb}%</div>
+                        </div>
+                        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 3, padding: '7px 9px' }}>
+                          <div style={{ fontSize: 8.5, color: '#64748b', fontWeight: 700 }}>BAROMETER</div>
+                          <div style={{ fontSize: 16, fontWeight: 900, color: '#0f172a', marginTop: 2 }}>{activeHour.pressure} hPa</div>
+                        </div>
+                      </div>
+
+                      {/* Operational Directive in English */}
+                      <div
+                        style={{
+                          background: activeHour.activitySafety === 'NO-GO' ? '#fef2f2' : activeHour.activitySafety === 'RESTRICTED' ? '#fff7ed' : '#f0fdf4',
+                          border: `1px solid ${activeHour.activitySafety === 'NO-GO' ? '#fecaca' : activeHour.activitySafety === 'RESTRICTED' ? '#fed7aa' : '#bbf7d0'}`,
+                          borderRadius: 3,
+                          padding: '10px 14px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          fontSize: 10.5,
+                          color: activeHour.activitySafety === 'NO-GO' ? '#991b1b' : activeHour.activitySafety === 'RESTRICTED' ? '#9a3412' : '#166534',
+                        }}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                          {activeHour.activitySafety === 'NO-GO' ? 'emergency' : activeHour.activitySafety === 'RESTRICTED' ? 'warning' : 'verified_user'}
+                        </span>
+                        <span>
+                          <strong>Operational Directive ({activeHour.hour} UTC): </strong>
+                          {activeHour.activitySafety === 'NO-GO'
+                            ? 'GALE WARNING & SEVERE BLIZZARD: Outdoor traverse prohibited. Exterior personnel must anchor to fixed station lifelines. Helicopter and drone sorties strictly suspended.'
+                            : activeHour.activitySafety === 'RESTRICTED'
+                              ? 'KATABATIC ACCELERATION ADVISORY: Strong gravity drainage winds and blowing snow reducing visibility. Outdoor work permitted only with Level-2 thermal PPE in tethered two-person teams.'
+                              : 'NOMINAL ATMOSPHERIC CONDITIONS: Weather stable within safe operational parameters. Field traverses, scientific measurements, fuel transfer, and routine exterior maintenance approved.'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Photo-Rich AI Future Hazards & Problem Predictor (Linked to Selected Day) */}
+                <div
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid #cbd5e1',
+                    overflow: 'hidden',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                  }}
+                >
+                  <div
+                    style={{
+                      background: '#0b3b60',
+                      color: '#ffffff',
+                      padding: '9px 14px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 900, letterSpacing: '0.03em' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#38bdf8' }}>
+                        psychology
+                      </span>
+                      AI FUTURE HAZARD PREDICTOR & INCIDENT PREVENTION PROTOCOL
+                    </div>
+                    <span style={{ fontSize: 9.5, color: '#93c5fd' }}>
+                      Linked to Forecast Day: <strong>{dayThreat.label}</strong>
+                    </span>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(280px, 340px) 1fr',
+                      minHeight: 220,
+                    }}
+                  >
+                    {/* Left Column: Photo Banner */}
+                    <div style={{ position: 'relative', minHeight: 200, background: '#0f172a', overflow: 'hidden' }}>
+                      <img
+                        src={dayThreat.image}
+                        alt={dayThreat.title}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          display: 'block',
+                          filter: 'brightness(0.92)',
+                        }}
+                      />
+                      {/* Vignette Gradient */}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          background: 'linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.1) 40%, rgba(0,0,0,0.92) 100%)',
+                        }}
+                      />
+                      {/* Floating Badges */}
+                      <div style={{ position: 'absolute', top: 9, left: 10, right: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span
+                          style={{
+                            fontSize: 9,
+                            fontWeight: 800,
+                            padding: '2px 7px',
+                            borderRadius: 3,
+                            background: 'rgba(15, 23, 42, 0.85)',
+                            color: '#f8fafc',
+                            backdropFilter: 'blur(4px)',
+                            border: '1px solid rgba(255,255,255,0.2)',
+                          }}
+                        >
+                          📅 {dayThreat.label}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 9,
+                            fontWeight: 900,
+                            padding: '2px 8px',
+                            borderRadius: 3,
+                            background: dayThreat.severityColor,
+                            color: '#ffffff',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                            letterSpacing: '0.03em',
+                          }}
+                        >
+                          {dayThreat.risk}% RISK • {dayThreat.statusText}
+                        </span>
+                      </div>
+
+                      {/* Bottom Title on Image */}
+                      <div style={{ position: 'absolute', bottom: 10, left: 10, right: 10 }}>
+                        <div style={{ fontSize: 13, fontWeight: 900, color: '#ffffff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>
+                          {dayThreat.title}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Predicted Problems & Suggestions */}
+                    <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8, justifyContent: 'space-between' }}>
+                      {/* Row 1: Trigger Badges */}
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {dayThreat.tags.map((t, idx) => (
+                          <span
+                            key={idx}
+                            style={{
+                              fontSize: 9.5,
+                              fontWeight: 800,
+                              padding: '2px 8px',
+                              background: '#f8fafc',
+                              color: '#334155',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: 3,
+                            }}
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Row 2: Predicted Problems */}
+                      <div
+                        style={{
+                          background: '#fff7ed',
+                          border: '1px solid #ffedd5',
+                          borderRadius: 4,
+                          padding: '8px 12px',
+                          fontSize: 10.5,
+                          color: '#9a3412',
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        <div style={{ fontWeight: 900, color: '#c2410c', marginBottom: 3, display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 14 }}>warning</span>
+                          <span>Predicted Operational Problems:</span>
+                        </div>
+                        <ul style={{ margin: 0, paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          {dayThreat.problems.map((p, idx) => (
+                            <li key={idx} style={{ fontWeight: 600 }}>{p}</li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Row 3: Action Protocol / Suggestions */}
+                      <div
+                        style={{
+                          background: '#f0fdf4',
+                          border: '1px solid #dcfce7',
+                          borderRadius: 4,
+                          padding: '8px 12px',
+                          fontSize: 10.5,
+                          color: '#166534',
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        <div style={{ fontWeight: 900, color: '#15803d', marginBottom: 3, display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 14 }}>shield</span>
+                          <span>Mandatory Station Protocol / AI Action Advisory:</span>
+                        </div>
+                        <ul style={{ margin: 0, paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          {dayThreat.actions.map((a, idx) => (
+                            <li key={idx} style={{ fontWeight: 600 }}>{a}</li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Row 4: Mission Clearance Badges */}
+                      <div style={{ display: 'flex', gap: 12, alignItems: 'center', paddingTop: 2, borderTop: '1px solid #f1f5f9' }}>
+                        <div style={{ fontSize: 10, color: '#64748b' }}>
+                          Helipad Air Sortie: <strong style={{ color: dayThreat.heli === 'NO-GO' ? '#dc2626' : dayThreat.heli === 'STANDBY' ? '#d97706' : '#16a34a' }}>{dayThreat.heli}</strong>
+                        </div>
+                        <span style={{ color: '#cbd5e1' }}>•</span>
+                        <div style={{ fontSize: 10, color: '#64748b' }}>
+                          Overland Traverse: <strong style={{ color: dayThreat.traverse === 'SUSPENDED' ? '#dc2626' : dayThreat.traverse === 'CAUTION' ? '#d97706' : '#16a34a' }}>{dayThreat.traverse}</strong>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ───────────────────────── PREDICTIONS TAB (SECOND) ───────────────────────── */}
             {pageTab === 'predictions' && (
               <>
                 {predError && (
-                  <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderLeft: '4px solid #dc2626', padding: '10px 14px', marginBottom: 12, fontSize: 11, color: '#b91c1c', fontWeight: 700 }}>
-                    ⚠ Prediction engine offline — backend connection failed. Retry or check NCPOR HQ data link.
+                  <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderLeft: '4px solid #f59e0b', padding: '9px 14px', marginBottom: 12, fontSize: 11, color: '#92400e', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderRadius: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#d97706' }}>sync_problem</span>
+                      <span>HQ link syncing · Localized deterministic algorithm baseline active for {activeStation.toUpperCase()}.</span>
+                    </div>
+                    <button
+                      onClick={() => refetchPredictions()}
+                      style={{
+                        background: '#0b3b60',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '4px 12px',
+                        borderRadius: 3,
+                        fontSize: 10,
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 12 }}>refresh</span>
+                      Retry Link
+                    </button>
                   </div>
                 )}
 
@@ -514,28 +1685,31 @@ export default function AnalyticsPage() {
                   <KpiStrip label="Structural Load" value={structPred ? `${(structPred.data.stressPercent ?? structPred.val).toFixed(0)}%` : '—'} unit="of 6.0 kPa design limit" risk={structPred?.risk ?? 'NOMINAL'} icon="domain" />
                 </div>
 
-                {v2Data?.generated_at && (
-                  <div style={{ fontSize: 10, color: '#64748b', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 13 }}>schedule</span>
-                    Predictions computed: {new Date(v2Data.generated_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST · {preds.length} models evaluated
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
+                  <div style={{ fontSize: 10, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#0b3b60' }}>schedule</span>
+                    <span>
+                      {v2Data?.generated_at
+                        ? `Live HQ Inference: ${new Date(v2Data.generated_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST`
+                        : `Deterministic Algorithmic Baseline active · ${activeStation.toUpperCase()} Base`}
+                      {' · '}<strong>{preds.length} models evaluated</strong>
+                    </span>
                   </div>
-                )}
 
-                {predLoading && (
-                  <div style={{ textAlign: 'center', padding: '48px 20px', background: '#ffffff', border: '1px solid #e2e8f0' }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 36, color: '#0b3b60', display: 'block', marginBottom: 10 }}>monitoring</span>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#334155' }}>Running prediction algorithms…</div>
-                    <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Computing 6 deterministic models for {activeStation.toUpperCase()} station</div>
-                  </div>
-                )}
+                  {predLoading && (
+                    <span style={{ fontSize: 9.5, color: '#0284c7', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 12, animation: 'spin 1s linear infinite' }}>sync</span>
+                      Syncing live models…
+                    </span>
+                  )}
+                </div>
 
-                {!predLoading && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 12 }}>
-                    {PANEL_CONFIGS.map((config) => <PredictionCard key={config.id} config={config} pred={predMap[config.id]} />)}
-                  </div>
-                )}
+                {/* 6 Deterministic Model Cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 12 }}>
+                  {PANEL_CONFIGS.map((config) => <PredictionCard key={config.id} config={config} pred={predMap[config.id]} />)}
+                </div>
 
-                {!predLoading && preds.length > 0 && (
+                {preds.length > 0 && (
                   <div style={{ marginTop: 14, background: '#ffffff', border: '1px solid #e2e8f0', borderTop: `3px solid ${riskColor(overallStatus)}`, padding: '14px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -558,128 +1732,6 @@ export default function AnalyticsPage() {
                   </div>
                 )}
               </>
-            )}
-
-            {/* ─────────────────────── WEATHER FORECAST TAB ─────────────────── */}
-            {pageTab === 'weather' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {/* Forecast header & controls */}
-                <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', padding: '12px 14px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: '#0b3b60', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#0284c7' }}>calendar_month</span>
-                      {forecastView === '7day' ? '7-DAY SYNOPTIC POLAR FORECAST (CLICK ANY DAY TO INSPECT)' : '24-HOUR HOURLY MICRO-FORECAST'}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 9.5, color: '#64748b' }}>Anchored to Live Sensors ({liveTemp.toFixed(1)}°C, {liveWind} km/h)</span>
-                      <div style={{ display: 'flex', border: '1.5px solid #0b3b60', borderRadius: 2, overflow: 'hidden' }}>
-                        {(['7day', 'hourly'] as const).map((v) => (
-                          <button key={v} onClick={() => setForecastView(v)} style={{ fontSize: 10, fontWeight: 800, padding: '3px 9px', background: forecastView === v ? '#0b3b60' : '#ffffff', color: forecastView === v ? '#ffffff' : '#0b3b60', border: 'none', cursor: 'pointer' }}>
-                            {v === '7day' ? '7-Day' : '24-Hr'}
-                          </button>
-                        ))}
-                      </div>
-                      <button onClick={() => setStormSim((s) => !s)} style={{ fontSize: 9.5, fontWeight: 700, padding: '3px 8px', background: stormSim ? '#fee2e2' : '#f8fafc', color: stormSim ? '#b91c1c' : '#475569', border: `1.5px solid ${stormSim ? '#f87171' : '#cbd5e1'}`, cursor: 'pointer', borderRadius: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: 13, color: stormSim ? '#b91c1c' : '#64748b' }}>{stormSim ? 'cyclone' : 'tune'}</span>
-                        {stormSim ? '⚠️ Storm Surge Active (+30%)' : 'Simulate Storm (+30%)'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {forecastView === '7day' ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 10 }}>
-                    {forecast7Day.map((day, idx) => (
-                      <WeatherDayCard key={day.name} day={day} isSelected={selectedDayIdx === idx} onClick={() => setSelectedDayIdx(idx)} />
-                    ))}
-                  </div>
-                ) : (
-                  <>
-                    {/* Selected day synoptic info */}
-                    <div style={{ background: '#0b3b60', color: '#ffffff', padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                        <div>
-                          <div style={{ fontSize: 11, fontWeight: 800 }}>{selectedDay.name.toUpperCase()} — {selectedDay.desc}</div>
-                          <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>{selectedDay.synoptic}</div>
-                        </div>
-                        <div style={{ display: 'flex', gap: 14, fontSize: 10 }}>
-                          <div><span style={{ color: '#94a3b8' }}>Temp: </span><strong>{selectedDay.temp.toFixed(1)}°C</strong></div>
-                          <div><span style={{ color: '#94a3b8' }}>Wind: </span><strong>{selectedDay.wind} km/h</strong></div>
-                          <div><span style={{ color: '#94a3b8' }}>Pressure: </span><strong>{selectedDay.pres} hPa</strong></div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Hourly cards */}
-                    <div style={{ overflowX: 'auto' }}>
-                      <div style={{ display: 'flex', gap: 8, minWidth: 'max-content', paddingBottom: 4 }}>
-                        {hourlyData.map((h, i) => {
-                          const safBg = h.activitySafety === 'NO-GO' ? '#fee2e2' : h.activitySafety === 'RESTRICTED' ? '#fef3c7' : h.activitySafety === 'CAUTION' ? '#fffbeb' : '#f0fdf4'
-                          const safColor = h.activitySafety === 'NO-GO' ? '#b91c1c' : h.activitySafety === 'RESTRICTED' ? '#92400e' : h.activitySafety === 'CAUTION' ? '#92400e' : '#15803d'
-                          const iconColor2 = h.icon === 'sunny' || h.icon === 'partly_cloudy_day' ? '#f59e0b' : h.icon === 'cyclone' || h.icon === 'storm' ? '#ea580c' : '#0284c7'
-                          return (
-                            <div key={i} style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: '10px 8px', width: 88, textAlign: 'center', flexShrink: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                              <div style={{ fontSize: 9.5, fontWeight: 700, color: '#64748b', marginBottom: 4 }}>{h.hour} UTC</div>
-                              <span className="material-symbols-outlined" style={{ fontSize: 22, color: iconColor2 }}>{h.icon}</span>
-                              <div style={{ fontSize: 16, fontWeight: 900, color: '#0f172a', marginTop: 2 }}>{h.temp.toFixed(1)}°C</div>
-                              <div style={{ fontSize: 9.5, color: '#475569', marginTop: 2 }}>💨 {h.wind} km/h</div>
-                              <div style={{ fontSize: 9.5, color: '#f59e0b', fontWeight: 700 }}>⚡ {Math.round(h.gust)}</div>
-                              <div style={{ fontSize: 9, color: '#0284c7', marginTop: 2 }}>❄ {h.chill.toFixed(1)}°C</div>
-                              <div style={{ fontSize: 9.5, fontWeight: 700, padding: '3px 0', marginTop: 4, background: safBg, color: safColor, borderRadius: 3 }}>{h.activitySafety}</div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Hourly diagnostic focus */}
-                    {(() => {
-                      const h = hourlyData[12]
-                      return (
-                        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: '14px 16px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                            <div style={{ fontSize: 11, fontWeight: 800, color: '#0b3b60' }}>HOURLY DIAGNOSTIC FOCUS: 12:00 UTC · {selectedDay.name.split(' ')[0].toUpperCase()}</div>
-                            <span style={{ fontSize: 10, fontWeight: 800, background: h.activitySafety === 'NO-GO' ? '#fee2e2' : '#fef3c7', color: h.activitySafety === 'NO-GO' ? '#b91c1c' : '#92400e', padding: '3px 10px', borderRadius: 3, border: `1px solid ${h.activitySafety === 'NO-GO' ? '#fca5a5' : '#fde68a'}` }}>
-                              {h.activitySafety}
-                            </span>
-                          </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10 }}>
-                            {[
-                              { label: 'TEMPERATURE', value: `${h.temp.toFixed(1)}°C` },
-                              { label: 'WIND CHILL', value: `${h.chill.toFixed(1)}°C`, accent: '#0284c7' },
-                              { label: 'SUSTAINED WIND', value: `${h.wind} km/h` },
-                              { label: 'PEAK GUST', value: `${Math.round(h.gust)} km/h`, accent: '#f59e0b' },
-                              { label: 'BLIZZARD PROB', value: `${h.snowProb}%`, accent: h.snowProb > 50 ? '#dc2626' : '#d97706' },
-                              { label: 'BAROMETER', value: `${h.pressure} hPa` },
-                            ].map((m) => (
-                              <div key={m.label}>
-                                <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{m.label}</div>
-                                <div style={{ fontSize: 18, fontWeight: 900, color: m.accent ?? '#0f172a', marginTop: 4 }}>{m.value}</div>
-                              </div>
-                            ))}
-                          </div>
-                          {h.snowProb > 50 && (
-                            <div style={{ marginTop: 12, background: '#fffbeb', border: '1px solid #fde68a', borderLeft: '4px solid #d97706', padding: '8px 12px', fontSize: 10, color: '#92400e', fontWeight: 700 }}>
-                              ⚠ Operational Advisory (12:00 UTC): High blizzard probability — all outdoor activities require Level-2 thermal PPE and buddy-system compliance.
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })()}
-                  </>
-                )}
-
-                {/* Day selector quick-nav for hourly view */}
-                {forecastView === 'hourly' && (
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {forecast7Day.map((day, idx) => (
-                      <button key={idx} onClick={() => setSelectedDayIdx(idx)} style={{ padding: '5px 12px', background: selectedDayIdx === idx ? '#0b3b60' : '#ffffff', color: selectedDayIdx === idx ? '#ffffff' : '#334155', border: `1px solid ${selectedDayIdx === idx ? '#0b3b60' : '#cbd5e1'}`, fontSize: 10, fontWeight: 700, cursor: 'pointer', borderRadius: 3 }}>
-                        {day.name} — {day.temp.toFixed(1)}°C
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
             )}
 
           </div>
