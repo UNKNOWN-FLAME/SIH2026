@@ -317,25 +317,25 @@ async def main() -> None:
             alerts_seed = [
                 # (alert_id, station_id, severity, domain, asset_id, description, ack_state, minutes_ago, black_box)
                 ("maitri-energy-001", "maitri", "CRITICAL", "energy", "maitri.generator.gen2",
-                 "Generator #2 Fault — Automatic Shutdown Triggered", "OPEN", 45, True),
+                 "Generator #2 Fault — Automatic Shutdown Triggered", "ACKNOWLEDGED", 45, True),
                 ("maitri-energy-002", "maitri", "HIGH",     "energy", "maitri.tank.fuel_main",
-                 "Fuel Tank Level Below 70% Threshold — Resupply Advisory", "OPEN", 120, False),
+                 "Fuel Tank Level Below 70% Threshold — Resupply Advisory", "ACKNOWLEDGED", 120, False),
                 ("maitri-weather-001","maitri", "HIGH",     "weather","maitri.weather.aws1",
                  "Wind Speed Exceeding 60 km/h — Outdoor Operations Suspended", "ACKNOWLEDGED", 180, False),
                 ("maitri-energy-003", "maitri", "MEDIUM",   "energy", "maitri.power.grid",
-                 "Grid Voltage Fluctuation Detected — ±8% Variation", "OPEN", 30, False),
+                 "Grid Voltage Fluctuation Detected — ±8% Variation", "ACKNOWLEDGED", 30, False),
                 ("bharati-energy-001","bharati","CRITICAL","energy",  "bharati.generator.gen1",
-                 "Generator #1 Overload — Load Shedding Initiated", "OPEN", 15, True),
+                 "Generator #1 Overload — Load Shedding Initiated", "ACKNOWLEDGED", 15, True),
                 ("bharati-weather-001","bharati","HIGH",   "weather", "bharati.weather.aws1",
-                 "Blizzard Warning — Wind Speed 87 km/h, Visibility <50m", "OPEN", 60, False),
+                 "Blizzard Warning — Wind Speed 87 km/h, Visibility <50m", "ACKNOWLEDGED", 60, False),
                 ("bharati-energy-002","bharati","MEDIUM",  "energy",  "bharati.tank.fuel_main",
                  "Bharati Fuel Reserve Below 60% — 127 Days Until Critical", "ACKNOWLEDGED", 240, False),
                 ("maitri-seismic-001","maitri","LOW",     "seismic",  "maitri.seismic.sta1",
                  "Micro-seismic Activity ML 1.2 Recorded — Monitoring", "RESOLVED", 300, False),
                 ("bharati-weather-002","bharati","LOW",   "weather",  "bharati.weather.aws1",
-                 "Atmospheric Pressure Drop 12 hPa in 3h — Monitoring", "OPEN", 90, False),
+                 "Atmospheric Pressure Drop 12 hPa in 3h — Monitoring", "ACKNOWLEDGED", 90, False),
                 ("maitri-energy-004", "maitri", "MEDIUM", "energy",  "maitri.generator.gen1",
-                 "Generator #1 Running >72h Continuous — Scheduled Maintenance Due", "OPEN", 20, False),
+                 "Generator #1 Running >72h Continuous — Scheduled Maintenance Due", "ACKNOWLEDGED", 20, False),
             ]
 
             for a in alerts_seed:

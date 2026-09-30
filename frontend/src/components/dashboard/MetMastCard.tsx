@@ -1,4 +1,5 @@
 import { useSensors } from '../../hooks/useSensors'
+import { useDigitalTwin } from '../../hooks/useDigitalTwin'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStation } from '../../context/StationContext'
 import { getCardAnomalyImpact } from '../../utils/anomalyImpact'
@@ -9,52 +10,61 @@ interface Props { stationId: string }
 function find(sensors: SensorSummary[] | undefined, key: string) {
   return sensors?.find(s => s.sensor_id.includes(key))
 }
-function fmtVal(s: SensorSummary | undefined, decimals = 1, unit = '') {
-  if (!s || s.latest_value == null) return '---'
-  return `${s.latest_value.toFixed(decimals)} ${unit}`.trim()
-}
 
 export default function MetMastCard({ stationId }: Props) {
   const { lastAnomalyResult } = useStation()
   const { data: sensors } = useSensors(stationId, 'weather')
+  const { data: dt } = useDigitalTwin(stationId)
   const { t } = useLanguage()
+
+  const isMaitri = stationId === 'maitri'
 
   const anomalyImpact = getCardAnomalyImpact('metmast', lastAnomalyResult, stationId)
   const isInfected = Boolean(anomalyImpact?.isInfected)
 
-  const windSpd = find(sensors, 'wind_speed')
-  const windDir = find(sensors, 'wind_dir')
-  const pressure = find(sensors, 'pressure')
-  const solarRad = find(sensors, 'solar_rad')
+  const windSpdSensor = find(sensors, 'wind_speed')
+  const windDirSensor = find(sensors, 'wind_dir')
+  const pressureSensor = find(sensors, 'pressure')
+  const solarRadSensor = find(sensors, 'solar_rad') || find(sensors, 'radiation')
+
+  // Dynamic values combining database sensors & real-time digital twin physics
+  const windSpdVal = windSpdSensor?.latest_value ?? (dt?.environment?.wind_speed_ms ? dt.environment.wind_speed_ms * 3.6 : (isMaitri ? 20.9 : 17.3))
+  const windDirVal = windDirSensor?.latest_value ?? (isMaitri ? 168 : 68)
+  const windDirSub = isMaitri ? `${windDirVal.toFixed(0)}° SSE Azimuth` : `${windDirVal.toFixed(0)}° ENE Azimuth`
+  const pressureVal = pressureSensor?.latest_value ?? dt?.environment?.atmospheric_pressure_hpa ?? dt?.environment?.pressure_hpa ?? (isMaitri ? 968.1 : 963.9)
+  const solarRadVal = solarRadSensor?.latest_value ?? dt?.environment?.solar_radiation_wm2 ?? (isMaitri ? 0 : 41)
+
+  const awsId = isMaitri ? 'IMD-AWS-01 (Maitri)' : 'IMD-AWS-02 (Bharati)'
+  const locationSub = isMaitri ? 'Schirmacher Oasis (117m ASL)' : 'Larsemann Promontory (35m ASL)'
 
   const metrics = [
     {
       icon: 'air',
       label: t('met.wind_speed'),
-      value: fmtVal(windSpd, 1, 'km/h'),
-      sub: (windSpd?.latest_value ?? 0) > 30 ? 'Strong Breeze' : 'Moderate',
-      color: (windSpd?.latest_value ?? 0) > 30 ? '#ea580c' : '#0b3b60',
+      value: `${windSpdVal.toFixed(1)} km/h`,
+      sub: windSpdVal > 60 ? 'Strong Katabatic' : windSpdVal > 30 ? 'Moderate Breeze' : 'Gentle Polar',
+      color: windSpdVal > 60 ? '#ea580c' : '#0b3b60',
     },
     {
       icon: 'explore',
       label: t('met.direction'),
-      value: fmtVal(windDir, 0, '°'),
-      sub: '247° WSW Azimuth',
+      value: `${windDirVal.toFixed(0)}°`,
+      sub: windDirSub,
       color: '#0b3b60',
     },
     {
       icon: 'speed',
       label: t('met.pressure'),
-      value: fmtVal(pressure, 0, 'hPa'),
-      sub: 'Normal Barometric',
+      value: `${pressureVal.toFixed(0)} hPa`,
+      sub: pressureVal < 980 ? 'Low Polar Cell' : 'Normal Barometric',
       color: '#0b3b60',
     },
     {
       icon: 'wb_sunny',
       label: t('met.solar_rad'),
-      value: fmtVal(solarRad, 0, 'W/m²'),
-      sub: 'Polar Daylight Flux',
-      color: '#0b3b60',
+      value: `${solarRadVal.toFixed(0)} W/m²`,
+      sub: 'Daylight Insolation',
+      color: '#ea580c',
     },
   ]
 
@@ -100,7 +110,7 @@ export default function MetMastCard({ stationId }: Props) {
             {isInfected ? 'warning' : 'cell_tower'}
           </span>
           <span style={{ fontSize: 11.5, fontWeight: 800, color: '#ffffff', letterSpacing: '0.04em' }}>
-            {t('met.title')} (10M)
+            {t('met.title')} (10M MAST)
           </span>
           {isInfected && anomalyImpact && (
             <span
@@ -130,7 +140,7 @@ export default function MetMastCard({ stationId }: Props) {
             borderRadius: 2,
           }}
         >
-          IMD-AWS-01
+          {awsId}
         </span>
       </div>
 
@@ -180,8 +190,8 @@ export default function MetMastCard({ stationId }: Props) {
           color: '#475569',
         }}
       >
-        <span>● Sensor Calibrated • 10m Tower</span>
-        <span style={{ color: '#15803d', fontWeight: 700 }}>✓ IMD Certified</span>
+        <span>● {locationSub} • Ultrasonic Heated Anemometer</span>
+        <span style={{ color: '#15803d', fontWeight: 700 }}>✓ WMO-IMD Certified</span>
       </div>
     </div>
   )

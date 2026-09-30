@@ -38,15 +38,8 @@ class AssetReliability:
         # Normally F(t) is lifetime probability, so instantaneous hazard rate is better,
         # but for simplicity in discrete simulation, we check if a random draw falls under a scaled F(t)
         # Hazard rate h(t) = (beta/eta) * (t/eta)^(beta-1)
-        if self.effective_age_hours > 0:
-            h_t = (self.beta / self.eta) * math.pow(self.effective_age_hours / self.eta, self.beta - 1)
-            failure_prob_this_tick = h_t * (dt_seconds / 3600.0)
-            
-            if random.random() < failure_prob_this_tick:
-                self.is_failed = True
-                self.fault_manager.trigger(self.fault_to_trigger, severity=1.0)
-                logging.critical(f"RELIABILITY ENGINE: {self.asset_id} suffered stochastic Weibull failure! (t_eff={self.effective_age_hours:.1f}h, h(t)={h_t:.6f})")
-                return True
+        # Stochastic auto-trigger disabled: All anomaly/fault injections are strictly manual per operational design
+        # Faults are triggered solely via explicit operator action through the Anomaly Injection Simulator
         return False
         
     def repair(self):

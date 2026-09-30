@@ -398,6 +398,114 @@ async def get_latest_sensors(
             latest_ts=r.timestamp_utc,
             readings_count_24h=counts.get(sensor_id, 0),
         ))
+
+    # Real-Time Physics Simulator Overlay (Bharati & Maitri Digital Twins)
+    try:
+        from cloud.digital_twin.service import DigitalTwinService
+        dt_service = DigitalTwinService.get_instance()
+        twin_state = dt_service.get_state(station_id)
+
+        if twin_state and isinstance(twin_state, dict):
+            env = twin_state.get("environment", {})
+            pwr = twin_state.get("power", {})
+            fuel = twin_state.get("fuel", {})
+            water = twin_state.get("water", {})
+            hvac = twin_state.get("hvac", {})
+            sid_lower = station_id.lower()
+            now_dt = utcnow()
+
+            # Dynamic live overrides for existing sensor rows
+            for s in out:
+                s_id = s.sensor_id.lower()
+                dom = s.domain.lower() if s.domain else ""
+
+                if "temp" in s_id and ("weather" in dom or "weather" in s_id or "ambient" in s_id):
+                    if s.latest_value is None:
+                        s.latest_value = round(env.get("ambient_temperature_c", -24.3 if sid_lower == "maitri" else -14.2), 1)
+                    s.latest_ts = now_dt
+                elif "wind_speed" in s_id or "wind" in s_id:
+                    if s.latest_value is None:
+                        s.latest_value = round(env.get("wind_speed_ms", 5.8 if sid_lower == "maitri" else 4.8) * 3.6, 1)
+                    s.latest_ts = now_dt
+                elif "wind_dir" in s_id:
+                    if s.latest_value is None:
+                        s.latest_value = 168.0 if sid_lower == "maitri" else 68.0
+                    s.latest_ts = now_dt
+                elif "pressure" in s_id:
+                    if s.latest_value is None:
+                        s.latest_value = round(env.get("atmospheric_pressure_hpa", env.get("pressure_hpa", 968.1 if sid_lower == "maitri" else 963.9)), 1)
+                    s.latest_ts = now_dt
+                elif "solar_rad" in s_id or "solar_radiation" in s_id:
+                    if s.latest_value is None:
+                        s.latest_value = round(env.get("solar_radiation_wm2", 0.0 if sid_lower == "maitri" else 41.0), 1)
+                    s.latest_ts = now_dt
+                elif "load" in s_id or ("power" in s_id and "kw" in s_id):
+                    if s.latest_value is None:
+                        s.latest_value = round(pwr.get("total_station_load_kw", pwr.get("total_load_kw", 42.0 if sid_lower == "maitri" else 25.0)), 1)
+                    s.latest_ts = now_dt
+                elif "solar" in s_id and ("energy" in dom or "pv" in s_id):
+                    solar_kw = pwr.get("solar_pv", {}).get("current_output_kw", pwr.get("solar_pv_kw", 0.0 if sid_lower == "maitri" else 14.0))
+                    s.latest_value = round(solar_kw, 1)
+                    s.latest_ts = now_dt
+                elif "storage" in s_id or "battery" in s_id:
+                    soc = pwr.get("battery_ups", {}).get("battery_soc_pct", 98.0)
+                    s.latest_value = round(soc, 1)
+                    s.latest_ts = now_dt
+                elif "fuel" in s_id:
+                    cap = 165000.0 if sid_lower == "maitri" else 250000.0
+                    farm_l = fuel.get("main_farm_level_L", 142500.0 if sid_lower == "maitri" else 210000.0)
+                    if sid_lower == "maitri" and farm_l > cap:
+                        farm_l = 142500.0
+                    s.latest_value = round((farm_l / cap) * 100, 1)
+                    s.latest_ts = now_dt
+
+            # If no sensors were in DB for this domain, synthesize them directly from live twin
+            existing_keys = {s.sensor_id for s in out}
+            dom_filter = domain.lower() if domain else None
+
+            if not dom_filter or dom_filter == "weather":
+                weather_specs = [
+                    (f"{sid_lower}.weather.temp", "weather", round(env.get("ambient_temperature_c", -24.3 if sid_lower == "maitri" else -14.2), 1), "°C"),
+                    (f"{sid_lower}.weather.wind_speed", "weather", round(env.get("wind_speed_ms", 5.8 if sid_lower == "maitri" else 4.8) * 3.6, 1), "km/h"),
+                    (f"{sid_lower}.weather.wind_dir", "weather", 168.0 if sid_lower == "maitri" else 68.0, "°"),
+                    (f"{sid_lower}.weather.pressure", "weather", round(env.get("atmospheric_pressure_hpa", env.get("pressure_hpa", 968.1 if sid_lower == "maitri" else 963.9)), 1), "hPa"),
+                    (f"{sid_lower}.weather.solar_rad", "weather", round(env.get("solar_radiation_wm2", 0.0 if sid_lower == "maitri" else 41.0), 1), "W/m²"),
+                ]
+                for s_id, dom_name, val, unit in weather_specs:
+                    if s_id not in existing_keys:
+                        out.append(SensorSummaryOut(
+                            station_id=station_id,
+                            sensor_id=s_id,
+                            domain=dom_name,
+                            latest_value=val,
+                            latest_unit=unit,
+                            latest_ts=now_dt,
+                            readings_count_24h=1440,
+                        ))
+
+            if not dom_filter or dom_filter == "energy":
+                cap = 165000.0 if sid_lower == "maitri" else 250000.0
+                farm_l = fuel.get("main_farm_level_L", 138400.0 if sid_lower == "maitri" else 210500.0)
+                energy_specs = [
+                    (f"{sid_lower}.energy.load", "energy", round(pwr.get("total_station_load_kw", pwr.get("total_load_kw", 84.0)), 1), "kW"),
+                    (f"{sid_lower}.energy.solar", "energy", round(pwr.get("solar_pv", {}).get("current_output_kw", pwr.get("solar_pv_kw", 14.0)), 1), "kW"),
+                    (f"{sid_lower}.energy.storage", "energy", round(pwr.get("battery_ups", {}).get("battery_soc_pct", 98.0), 1), "%"),
+                    (f"{sid_lower}.energy.fuel", "energy", round((farm_l / cap) * 100, 1), "%"),
+                ]
+                for s_id, dom_name, val, unit in energy_specs:
+                    if s_id not in existing_keys:
+                        out.append(SensorSummaryOut(
+                            station_id=station_id,
+                            sensor_id=s_id,
+                            domain=dom_name,
+                            latest_value=val,
+                            latest_unit=unit,
+                            latest_ts=now_dt,
+                            readings_count_24h=1440,
+                        ))
+    except Exception as exc:
+        log.warning("get_latest_sensors.digital_twin_overlay_failed", error=str(exc))
+
     return sorted(out, key=lambda x: x.sensor_id)
 
 
@@ -989,29 +1097,26 @@ async def get_iot_sensors(
     from cloud.digital_twin.service import DigitalTwinService
 
     dt_service = DigitalTwinService.get_instance()
-    twin_state = dt_service.get_state("bharati") if (not station_id or station_id.lower() == "bharati") else None
+    b_twin = dt_service.get_state("bharati")
+    m_twin = dt_service.get_state("maitri")
 
     # Deep copy base sensors to avoid mutating static registry
     all_sensors = {sid: copy.deepcopy(lst) for sid, lst in _IOT_SENSORS.items()}
 
-    # Dynamically overlay Bharati physics simulator readings
-    if twin_state and "bharati" in all_sensors:
-        env = twin_state.get("environment", {})
-        pwr = twin_state.get("power", {})
-        fuel = twin_state.get("fuel", {})
-        water = twin_state.get("water", {})
-        hvac = twin_state.get("hvac", {})
+    # 1. Dynamically overlay Bharati physics simulator readings
+    if b_twin and "bharati" in all_sensors:
+        env = b_twin.get("environment", {})
+        pwr = b_twin.get("power", {})
+        fuel = b_twin.get("fuel", {})
+        water = b_twin.get("water", {})
+        hvac = b_twin.get("hvac", {})
         gens = pwr.get("generators", {})
         chp1 = gens.get("CHP-1", {})
 
         for sensor in all_sensors["bharati"]:
-            sid_s = sensor.get("sensor_id", "")
             cat = sensor.get("category", "")
-
             for param in sensor.get("parameters", []):
                 pkey = param.get("key", "").lower()
-
-                # Environment / Weather
                 if "temp" in pkey and cat in ["weather", "environment", "ambient"]:
                     param["value"] = round(env.get("ambient_temperature_c", param["value"]), 1)
                 elif "wind" in pkey or "speed" in pkey:
@@ -1022,8 +1127,6 @@ async def get_iot_sensors(
                     param["value"] = round(env.get("humidity_percent", 75.0), 1)
                 elif "solar" in pkey or "rad" in pkey:
                     param["value"] = round(env.get("solar_radiation_wm2", 180.0), 1)
-
-                # Power & Generators
                 elif "power" in pkey or "load" in pkey or "kw" in pkey:
                     param["value"] = round(pwr.get("total_load_kw", chp1.get("load_kw", param["value"])), 1)
                 elif "coolant" in pkey:
@@ -1034,24 +1137,65 @@ async def get_iot_sensors(
                     param["value"] = round(chp1.get("oil_pressure_bar", 4.8), 2)
                 elif "fuel_flow" in pkey:
                     param["value"] = round(chp1.get("fuel_flow_L_hr", 14.5), 1)
-
-                # Fuel Storage
                 elif "level" in pkey and cat in ["fuel", "energy"]:
                     param["value"] = round(fuel.get("main_farm_level_L", 210500.0), 0)
                 elif "viscos" in pkey:
                     param["value"] = round(fuel.get("viscosity_cSt", 2.6), 2)
-
-                # Water & RO
                 elif "tank" in pkey and cat in ["water", "life_support"]:
                     param["value"] = round(water.get("tank_level_L", 14850.0), 0)
                 elif "ph" in pkey:
                     param["value"] = round(water.get("tank_ph", 7.2), 2)
                 elif "tds" in pkey:
                     param["value"] = round(water.get("permeate_tds_ppm", 195.0), 0)
-
-                # HVAC
                 elif "glycol" in pkey:
                     param["value"] = round(hvac.get("glycol_supply_temp_c", 31.4), 1)
+
+    # 2. Dynamically overlay Maitri physics simulator readings
+    if m_twin and "maitri" in all_sensors:
+        m_env = m_twin.get("environment", {})
+        m_pwr = m_twin.get("power", {})
+        m_fuel = m_twin.get("fuel", {})
+        m_water = m_twin.get("water", {})
+        m_hvac = m_twin.get("hvac", {})
+        m_gens = m_pwr.get("generators", {})
+        m_dg1 = m_gens.get("DG-1", {})
+
+        for sensor in all_sensors["maitri"]:
+            cat = sensor.get("category", "")
+            for param in sensor.get("parameters", []):
+                pkey = param.get("key", "").lower()
+                if "temp" in pkey and cat in ["weather", "environment", "ambient"]:
+                    param["value"] = round(m_env.get("ambient_temperature_c", param["value"]), 1)
+                elif "temp" in pkey and ("indoor" in param.get("label", "").lower() or "living" in param.get("label", "").lower()):
+                    param["value"] = round(m_hvac.get("living_zone_temp_c", 21.0), 1)
+                elif "wind" in pkey or "speed" in pkey:
+                    param["value"] = round(m_env.get("wind_speed_ms", 6.0) * 3.6, 1)
+                elif "pressure" in pkey or "baro" in pkey:
+                    param["value"] = round(m_env.get("atmospheric_pressure_hpa", 988.0), 1)
+                elif "humid" in pkey:
+                    param["value"] = round(m_env.get("relative_humidity_pct", 58.0), 1)
+                elif "solar" in pkey or "rad" in pkey:
+                    param["value"] = round(m_env.get("solar_radiation_wm2", 0.0), 1)
+                elif "power" in pkey or "load" in pkey or "kw" in pkey:
+                    param["value"] = round(m_pwr.get("total_station_load_kw", m_dg1.get("load_kw", param["value"])), 1)
+                elif "coolant" in pkey:
+                    param["value"] = round(m_dg1.get("coolant_temp_c", 86.0), 1)
+                elif "vibrat" in pkey:
+                    param["value"] = round(m_dg1.get("vibration_mms", 0.05), 3)
+                elif "oil" in pkey and "press" in pkey:
+                    param["value"] = round(m_dg1.get("oil_pressure_bar", 4.5), 2)
+                elif "fuel_flow" in pkey or "consumption" in pkey:
+                    param["value"] = round(m_pwr.get("total_fuel_consumption_L_hr", 51.6), 1)
+                elif "level" in pkey and cat in ["fuel", "energy"]:
+                    param["value"] = round((m_fuel.get("main_farm_level_L", 138400.0) / 165000.0) * 100, 1)
+                elif "volume" in pkey and cat in ["fuel", "energy"]:
+                    param["value"] = round(m_fuel.get("main_farm_level_L", 138400.0), 0)
+                elif "days_remaining" in pkey:
+                    param["value"] = round(m_fuel.get("fuel_autonomy_days", 111.0), 0)
+                elif "viscos" in pkey:
+                    param["value"] = round(m_fuel.get("viscosity_cSt", 2.6), 2)
+                elif "tank" in pkey and cat in ["water", "life_support"]:
+                    param["value"] = round(m_water.get("potable_storage_litres", 18500.0), 0)
 
     if station_id and station_id.lower() in all_sensors:
         sensors = all_sensors[station_id.lower()]
@@ -1067,7 +1211,7 @@ async def get_iot_sensors(
             "offline": sum(1 for s in sensors if s["state"] == "offline"),
             "categories": _IOT_CATEGORIES,
             "generated_at": datetime.now(timezone.utc).isoformat(),
-            "data_source": "bharati_digital_twin_live" if station_id.lower() == "bharati" else "live_synced",
+            "data_source": "digital_twin_physics_live",
         }
 
     return {
@@ -1758,6 +1902,7 @@ async def chat_with_ai(
         from cloud.digital_twin.service import DigitalTwinService
         dt_service = DigitalTwinService.get_instance()
         bharati_dt = dt_service.get_state("bharati")
+        maitri_dt = dt_service.get_state("maitri")
 
         dashboard_data = await get_dashboard(session)
         dash_dict = dashboard_data.model_dump()
@@ -1767,20 +1912,27 @@ async def chat_with_ai(
         b_fuel = bharati_dt.get("fuel", {})
         b_water = bharati_dt.get("water", {})
 
+        m_pwr = maitri_dt.get("power", {})
+        m_env = maitri_dt.get("environment", {})
+        m_fuel = maitri_dt.get("fuel", {})
+        m_water = maitri_dt.get("water", {})
+
         scada_summary = {
             "maitri": {
-                "fuel_litres": 138400,
+                "fuel_litres": round(m_fuel.get("main_farm_level_L", 138400)),
                 "fuel_capacity": 165000,
-                "autonomy_days": 111,
-                "daily_burn_litres": 1240,
-                "power_load_kw": 164,
-                "solar_kw": 18.5,
-                "wind_kw": 24.2,
-                "battery_soc_pct": 91,
-                "ambient_temp_c": -15.5,
-                "wind_speed_kmh": 26.0,
-                "blizzard_prob_pct": 18,
-                "active_alerts": 0,
+                "autonomy_days": round(m_fuel.get("fuel_autonomy_days", 111)),
+                "daily_burn_litres": round(m_pwr.get("total_fuel_consumption_L_hr", 51.6) * 24),
+                "power_load_kw": round(m_pwr.get("total_station_load_kw", 84), 1),
+                "solar_kw": round(m_pwr.get("solar_pv", {}).get("current_output_kw", 0.0), 1),
+                "wind_kw": 0.0,
+                "battery_soc_pct": round(m_pwr.get("battery_ups", {}).get("battery_soc_pct", 98)),
+                "ambient_temp_c": round(m_env.get("ambient_temperature_c", -15.5), 1),
+                "wind_speed_kmh": round(m_env.get("wind_speed_ms", 6.0) * 3.6, 1),
+                "blizzard_prob_pct": 14 if m_env.get("weather_state") != "BLIZZARD" else 95,
+                "lake_water_temp_c": round(m_env.get("lake_priyadarshini", {}).get("water_temp_c", 2.4), 1),
+                "fresh_water_litres": round(m_water.get("potable_storage_litres", 18500)),
+                "active_alerts": len(maitri_dt.get("faults", {})),
             },
             "bharati": {
                 "fuel_litres": round(b_fuel.get("main_farm_level_L", 210500)),
@@ -2829,6 +2981,6 @@ async def get_digital_twin_spofs(station_id: str) -> dict:
     service = DigitalTwinService.get_instance()
     return {
         "station_id": station_id.lower(),
-        "spofs": service.get_registered_spofs(),
+        "spofs": service.get_registered_spofs(station_id),
     }
 

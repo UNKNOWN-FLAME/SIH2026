@@ -24,6 +24,7 @@ import { useAlerts } from '../hooks/useAlerts'
 import AnomalyInjector from '../components/dashboard/AnomalyInjector'
 import EmergencyWarningModal from '../components/dashboard/EmergencyWarningModal'
 import IncidentImpactModal from '../components/dashboard/IncidentImpactModal'
+import { useDigitalTwin } from '../hooks/useDigitalTwin'
 
 type StationId = 'maitri' | 'bharati'
 
@@ -362,6 +363,9 @@ export default function LiveTelemetryPage() {
   } = useStation()
   const incident = INCIDENTS[activeStation]
 
+  // Live Digital Twin Physics Telemetry Stream
+  const { data: twinState } = useDigitalTwin(activeStation)
+
   // Live query: fetch ALL alerts (open + acknowledged) so anomaly persists after ACK
   const { data: allAlertsData } = useAlerts({ station_id: activeStation, page_size: 25 })
   const allAlerts = useMemo(() => allAlertsData?.items ?? [], [allAlertsData?.items])
@@ -403,10 +407,30 @@ export default function LiveTelemetryPage() {
   const [timeRange, setTimeRange] = useState<TelemetryTimeRange>('15m')
 
   // Telemetry data stream incorporating active timeRange, active anomaly and completed anomaly dip
-  const telemetryData = useMemo(
-    () => generateTelemetryData(activeStation, incident, timeRange, activeAnomaly, completedAnomaly),
-    [activeStation, incident, timeRange, activeAnomaly, completedAnomaly],
-  )
+  const telemetryData = useMemo(() => {
+    const pts = generateTelemetryData(activeStation, incident, timeRange, activeAnomaly, completedAnomaly)
+    if (twinState && pts.length > 0) {
+      const last = pts[pts.length - 1]
+      const pwr = activeStation === 'maitri'
+        ? (twinState.power?.total_station_load_kw ?? twinState.power?.generators?.['DG-1']?.load_kw)
+        : (twinState.power?.total_load_kw ?? twinState.power?.generators?.['CHP-1']?.load_kw)
+      const coolant = activeStation === 'maitri'
+        ? twinState.power?.generators?.['DG-1']?.coolant_temp_c
+        : twinState.power?.generators?.['CHP-1']?.coolant_temp_c
+      const hab = activeStation === 'maitri'
+        ? twinState.hvac?.living_zone_temp_c
+        : twinState.hvac?.zones?.['LIVING']?.temp_c
+      const vib = activeStation === 'maitri'
+        ? twinState.power?.generators?.['DG-1']?.vibration_mms
+        : twinState.power?.generators?.['CHP-1']?.vibration_mms
+
+      if (pwr != null) last.powerKw = Number(pwr.toFixed(1))
+      if (coolant != null) last.coolantTempC = Number(coolant.toFixed(1))
+      if (hab != null) last.habitatTempC = Number(hab.toFixed(1))
+      if (vib != null) last.vibrationRms = Number(vib.toFixed(2))
+    }
+    return pts
+  }, [activeStation, incident, timeRange, activeAnomaly, completedAnomaly, twinState])
 
   // Injected anomaly points within current time range
   const injectedAnomalyPoints = useMemo(() => {
@@ -478,21 +502,45 @@ export default function LiveTelemetryPage() {
     if (!isLive) return
     const tickInterval = setInterval(() => {
       setLiveJitter({
-        power: Number(((Math.random() - 0.5) * 0.8).toFixed(1)),
-        fuel: Number(((Math.random() - 0.5) * 0.06).toFixed(2)),
-        coolant: Number(((Math.random() - 0.5) * 0.3).toFixed(1)),
+        power: Number(((Math.random() - 0.5) * 0.4).toFixed(1)),
+        fuel: Number(((Math.random() - 0.5) * 0.03).toFixed(2)),
+        coolant: Number(((Math.random() - 0.5) * 0.2).toFixed(1)),
         habitat: Number(((Math.random() - 0.5) * 0.1).toFixed(1)),
-        vibration: Number(((Math.random() - 0.5) * 0.08).toFixed(2)),
+        vibration: Number(((Math.random() - 0.5) * 0.04).toFixed(2)),
       })
     }, 2500)
     return () => clearInterval(tickInterval)
   }, [isLive])
 
-  const displayedPower = Number((currentPoint.powerKw + (isLive ? liveJitter.power : 0)).toFixed(1))
+  const liveTwinPower = activeStation === 'maitri'
+    ? (twinState?.power?.total_station_load_kw ?? twinState?.power?.generators?.['DG-1']?.load_kw)
+    : (twinState?.power?.total_load_kw ?? twinState?.power?.generators?.['CHP-1']?.load_kw)
+
+  const liveTwinCoolant = activeStation === 'maitri'
+    ? twinState?.power?.generators?.['DG-1']?.coolant_temp_c
+    : twinState?.power?.generators?.['CHP-1']?.coolant_temp_c
+
+  const liveTwinHabitat = activeStation === 'maitri'
+    ? twinState?.hvac?.living_zone_temp_c
+    : twinState?.hvac?.zones?.['LIVING']?.temp_c
+
+  const liveTwinVibration = activeStation === 'maitri'
+    ? twinState?.power?.generators?.['DG-1']?.vibration_mms
+    : twinState?.power?.generators?.['CHP-1']?.vibration_mms
+
+  const displayedPower = Number(
+    ((isLive && liveTwinPower != null ? liveTwinPower : currentPoint.powerKw) + (isLive ? liveJitter.power : 0)).toFixed(1)
+  )
   const displayedFuel = Number((currentPoint.fuelPressureBar + (isLive ? liveJitter.fuel : 0)).toFixed(2))
-  const displayedCoolant = Number((currentPoint.coolantTempC + (isLive ? liveJitter.coolant : 0)).toFixed(1))
-  const displayedHabitat = Number((currentPoint.habitatTempC + (isLive ? liveJitter.habitat : 0)).toFixed(1))
-  const displayedVibration = Number((currentPoint.vibrationRms + (isLive ? liveJitter.vibration : 0)).toFixed(2))
+  const displayedCoolant = Number(
+    ((isLive && liveTwinCoolant != null ? liveTwinCoolant : currentPoint.coolantTempC) + (isLive ? liveJitter.coolant : 0)).toFixed(1)
+  )
+  const displayedHabitat = Number(
+    ((isLive && liveTwinHabitat != null ? liveTwinHabitat : currentPoint.habitatTempC) + (isLive ? liveJitter.habitat : 0)).toFixed(1)
+  )
+  const displayedVibration = Number(
+    ((isLive && liveTwinVibration != null ? liveTwinVibration : currentPoint.vibrationRms) + (isLive ? liveJitter.vibration : 0)).toFixed(2)
+  )
   const isFireActive = activeAnomaly?.anomaly_id === 'fire_alarm'
   const displayedSmoke = Number((currentPoint.smokeDensityObsM ?? (isFireActive ? 0.88 : 0.02)).toFixed(2))
   const displayedCo = Number((currentPoint.coPpm ?? (isFireActive ? 48.5 : 2.0)).toFixed(1))

@@ -1,1 +1,311 @@
-{"station": "BHARATI", "timestamp": "2026-09-29T23:41:38Z", "environment": {"state": "CLEAR", "katabatic_active": false, "ambient_temperature_c": -15.0, "wind_chill_c": -23.71, "wind_speed_ms": 5.0, "pressure_hpa": 995.0, "humidity_percent": 60.0, "solar_radiation_wm2": 0.0}, "human": {"occupancy": 25, "pmv": -3.5, "fatigue_index": 1.0, "hrp": 0.01, "co2_l_s": 0.2327, "latent_heat_w": 1334.9, "sensible_heat_w": 3114.8}, "vehicles": {"fleet": {"PB-1": {"state": "OFF_PLUGGED_IN", "speed_kmh": 0.0, "engine_load_kw": 0.0, "fuel_level_L": 250.0, "engine_block_temp_c": 5.0, "battery_temp_c": 4.9, "battery_soc_pct": 100.0, "cca_available": 635, "oil_viscosity_cSt": 11.4, "fuel_viscosity_cSt": 3.4, "cabin_temp_c": 4.9}, "PB-2": {"state": "OFF_PLUGGED_IN", "speed_kmh": 0.0, "engine_load_kw": 0.0, "fuel_level_L": 250.0, "engine_block_temp_c": 5.0, "battery_temp_c": 4.9, "battery_soc_pct": 100.0, "cca_available": 635, "oil_viscosity_cSt": 11.4, "fuel_viscosity_cSt": 3.4, "cabin_temp_c": 4.9}, "SM-1": {"state": "OFF_PLUGGED_IN", "speed_kmh": 0.0, "engine_load_kw": 0.0, "fuel_level_L": 40.0, "engine_block_temp_c": 4.9, "battery_temp_c": 4.9, "battery_soc_pct": 100.0, "cca_available": 190, "oil_viscosity_cSt": 11.4, "fuel_viscosity_cSt": 3.4, "cabin_temp_c": 4.9}, "SM-2": {"state": "OFF_PLUGGED_IN", "speed_kmh": 0.0, "engine_load_kw": 0.0, "fuel_level_L": 40.0, "engine_block_temp_c": 4.9, "battery_temp_c": 4.9, "battery_soc_pct": 100.0, "cca_available": 190, "oil_viscosity_cSt": 11.4, "fuel_viscosity_cSt": 3.4, "cabin_temp_c": 4.9}}, "total_block_heater_kw": 6.0, "fuel_requested_L": 0.0}, "hvac": {"total_heat_demand_kw": 0.0, "total_electrical_demand_kw": 7.5, "glycol_supply_temp_c": 15.0, "glycol_return_temp_c": 14.0, "glycol_pressure_bar": 2.51, "dhw_tank_temp_c": 60.0, "legionella_risk": false, "ventilation_loss_kw": 0.0, "humidification_load_kw": 0.0, "heated_windows_kw": 7.5, "active_events": {"airlock_active": false, "fume_hood_active": false}, "zones": {"LIVING": {"temp_c": 20.0, "perceived_temp_c": 20.0, "heat_demand_kw": 0.0, "ahu": {"fan_rpm": 0, "filter_health_pct": 100.0, "damper_open_pct": 0.0, "glycol_flow_kg_s": 0.0, "supply_air_temp_c": 20.0, "return_air_temp_c": 20.0}}, "GARAGE": {"temp_c": 5.0, "perceived_temp_c": 5.0, "heat_demand_kw": 0.0, "ahu": {"fan_rpm": 0, "filter_health_pct": 100.0, "damper_open_pct": 0.0, "glycol_flow_kg_s": 0.0, "supply_air_temp_c": 5.0, "return_air_temp_c": 5.0}}, "MEDICAL": {"temp_c": 4.0, "perceived_temp_c": 4.0, "heat_demand_kw": 0.0, "ahu": {"fan_rpm": 0, "filter_health_pct": 100.0, "damper_open_pct": 0.0, "glycol_flow_kg_s": 0.0, "supply_air_temp_c": 4.0, "return_air_temp_c": 4.0}}, "SERVER": {"temp_c": 18.06, "perceived_temp_c": 18.06, "heat_demand_kw": 0.0, "ahu": {"fan_rpm": 0, "filter_health_pct": 100.0, "damper_open_pct": 0.0, "glycol_flow_kg_s": 0.0, "supply_air_temp_c": 18.1, "return_air_temp_c": 18.1}}}}, "power": {"grid_status": "BLACKOUT", "grid_voltage": 0.0, "grid_frequency": 0.0, "total_load_kw": 38.5, "total_thermal_supplied_kw": 0.0, "total_fuel_consumption_L_hr": 0.0, "generators": {"CHP-1": {"state": "CRANKING", "load_kw": 0.0, "rpm": 300, "voltage": 0.0, "oil_pressure_bar": 1.5, "oil_viscosity_pct": 100.0, "coolant_temp_c": 15.0, "thermostat_open_pct": 0.0, "fuel_flow_L_hr": 0.0, "fuel_rail_pressure_bar": 0, "boost_pressure_bar": 1.0, "air_to_fuel_ratio": 20.0, "exhaust_gas_temp_c": 20, "stator_temp_c": 20, "vibration_mms": 0.0, "thermal_output_kw": 0.0, "operating_hours": 0.0}, "CHP-2": {"state": "OFF", "load_kw": 0.0, "rpm": 0, "voltage": 0.0, "oil_pressure_bar": 0.0, "oil_viscosity_pct": 100.0, "coolant_temp_c": 15.0, "thermostat_open_pct": 0.0, "fuel_flow_L_hr": 0.0, "fuel_rail_pressure_bar": 0, "boost_pressure_bar": 1.0, "air_to_fuel_ratio": 20.0, "exhaust_gas_temp_c": 20, "stator_temp_c": 20, "vibration_mms": 0.0, "thermal_output_kw": 0.0, "operating_hours": 0.0}, "CHP-3": {"state": "OFF", "load_kw": 0.0, "rpm": 0, "voltage": 0.0, "oil_pressure_bar": 0.0, "oil_viscosity_pct": 100.0, "coolant_temp_c": 15.0, "thermostat_open_pct": 0.0, "fuel_flow_L_hr": 0.0, "fuel_rail_pressure_bar": 0, "boost_pressure_bar": 1.0, "air_to_fuel_ratio": 20.0, "exhaust_gas_temp_c": 20, "stator_temp_c": 20, "vibration_mms": 0.0, "thermal_output_kw": 0.0, "operating_hours": 0.0}}}, "fuel": {"main_farm_level_L": 200000.0, "day_tank_level_L": 2000.0, "autonomy_days": 0.0, "fuel_temp_c": -15.0, "viscosity_cSt": 2.61, "pumps": {"pump_a_active": false, "pump_b_active": false, "flow_rate_L_s": 0.0}, "separator": {"rpm": 0, "water_extracted_L": 0.0, "water_in_day_tank_ppm": 0}, "electrical_demand_kw": 0.0}, "water": {"tank_level_L": 15000.0, "is_running": false, "intake_pipe_temp_c": -1.8, "intake_blocked": false, "mmf_pressure_drop_bar": 0.5, "membrane_fouling_pct": 0.0, "hpp_pressure_bar": 0.0, "permeate_tds_ppm": 200, "tank_tds_ppm": 200, "tank_ph": 7.2, "electrical_demand_kw": 0.0}, "wastewater": {"greywater_tank_L": 1000.0, "technical_water_tank_L": 2000.0, "blackwater_tank_L": 500.0, "mbr_tank_L": 2000.0, "mbr_temp_c": 15.0, "discharge_pipe_temp_c": 5.0, "bacteria_health_pct": 99.5, "sludge_tank_L": 0.0, "sludge_bags_available": 100, "effluent_cod_mgL": 40.0, "effluent_ammonia_mgL": 1.0, "uv_intensity_pct": 95.0, "pathogen_alarm": false, "chemical_alarm": false, "discharge_frozen": false, "electrical_demand_kw": 0.0, "heat_demand_kw": 0.0}, "communication": {"status": "NOMINAL", "geo_link_status": "ONLINE", "geo_bandwidth_mbps": 150.0, "leo_pass_active": false, "leo_timer_s": 7199, "leo_incoming_gbps": 0.0, "tracking_accuracy_pct": 100.0, "radome_ice_thickness_mm": 0.0, "san_used_gb": 4999, "san_capacity_gb": 50000, "san_utilization_pct": 10.0, "total_data_dropped_gb": 0, "ups_charge_pct": 100.0, "server_core_temp_c": 40.0, "electrical_demand_kw": 0.0, "heat_dissipation_kw": 11.0}, "inventory": {"food_stock_kg": 15000.0, "pharma": {"INSULIN": {"concentration_pct": 100.0, "doses_available": 1000}, "ADRENALINE": {"concentration_pct": 100.0, "doses_available": 200}}, "spares": {"FUEL_PUMP_SEALS": 2, "RO_MEMBRANE_CARTRIDGES": 3, "HVAC_AIR_FILTERS": 10}, "reliability_effective_age_hours": {"CHP1_FUEL_PUMP": 0.0, "RO_MEMBRANE": 0.0, "HVAC_FILTERS": 0.0}, "active_repairs": []}, "faults": {}}
+{
+  "station": "BHARATI",
+  "timestamp": "2026-09-30T01:55:41Z",
+  "environment": {
+    "state": "CLEAR",
+    "katabatic_active": false,
+    "ambient_temperature_c": -15.05,
+    "wind_chill_c": -23.8,
+    "wind_speed_ms": 5.05,
+    "pressure_hpa": 995.0,
+    "humidity_percent": 60.2,
+    "solar_radiation_wm2": 0.0
+  },
+  "human": {
+    "occupancy": 25,
+    "pmv": -3.5,
+    "fatigue_index": 0.94,
+    "hrp": 0.01,
+    "co2_l_s": 0.2327,
+    "latent_heat_w": 1334.9,
+    "sensible_heat_w": 3114.8
+  },
+  "vehicles": {
+    "fleet": {
+      "PB-1": {
+        "state": "OFF_PLUGGED_IN",
+        "speed_kmh": 0.0,
+        "engine_load_kw": 0.0,
+        "fuel_level_L": 250.0,
+        "engine_block_temp_c": 4.5,
+        "battery_temp_c": 2.4,
+        "battery_soc_pct": 100.0,
+        "cca_available": 589,
+        "oil_viscosity_cSt": 11.4,
+        "fuel_viscosity_cSt": 3.5,
+        "cabin_temp_c": 3.4
+      },
+      "PB-2": {
+        "state": "OFF_PLUGGED_IN",
+        "speed_kmh": 0.0,
+        "engine_load_kw": 0.0,
+        "fuel_level_L": 250.0,
+        "engine_block_temp_c": 4.5,
+        "battery_temp_c": 2.4,
+        "battery_soc_pct": 100.0,
+        "cca_available": 589,
+        "oil_viscosity_cSt": 11.4,
+        "fuel_viscosity_cSt": 3.5,
+        "cabin_temp_c": 3.4
+      },
+      "SM-1": {
+        "state": "RUNNING",
+        "speed_kmh": 31.8,
+        "engine_load_kw": 8.8,
+        "fuel_level_L": 40.0,
+        "engine_block_temp_c": 8.5,
+        "battery_temp_c": 3.1,
+        "battery_soc_pct": 99.5,
+        "cca_available": 179,
+        "oil_viscosity_cSt": 11.1,
+        "fuel_viscosity_cSt": 2.1,
+        "cabin_temp_c": 3.5
+      },
+      "SM-2": {
+        "state": "OFF_PLUGGED_IN",
+        "speed_kmh": 0.0,
+        "engine_load_kw": 0.0,
+        "fuel_level_L": 40.0,
+        "engine_block_temp_c": 2.4,
+        "battery_temp_c": 2.4,
+        "battery_soc_pct": 100.0,
+        "cca_available": 176,
+        "oil_viscosity_cSt": 11.6,
+        "fuel_viscosity_cSt": 3.5,
+        "cabin_temp_c": 3.4
+      }
+    },
+    "total_block_heater_kw": 0.0,
+    "fuel_requested_L": 0.0
+  },
+  "hvac": {
+    "total_heat_demand_kw": 0.0,
+    "total_electrical_demand_kw": 0.0,
+    "glycol_supply_temp_c": 14.8,
+    "glycol_return_temp_c": 13.8,
+    "glycol_pressure_bar": 2.47,
+    "dhw_tank_temp_c": 59.9,
+    "legionella_risk": false,
+    "ventilation_loss_kw": 0.0,
+    "humidification_load_kw": 0.0,
+    "heated_windows_kw": 0.0,
+    "active_events": {
+      "airlock_active": false,
+      "fume_hood_active": false
+    },
+    "zones": {
+      "LIVING": {
+        "temp_c": 19.99,
+        "perceived_temp_c": 19.99,
+        "heat_demand_kw": 0.0,
+        "ahu": {
+          "fan_rpm": 0,
+          "filter_health_pct": 100.0,
+          "damper_open_pct": 0.0,
+          "glycol_flow_kg_s": 0.0,
+          "supply_air_temp_c": 20.0,
+          "return_air_temp_c": 20.0
+        }
+      },
+      "GARAGE": {
+        "temp_c": 4.96,
+        "perceived_temp_c": 4.96,
+        "heat_demand_kw": 0.0,
+        "ahu": {
+          "fan_rpm": 0,
+          "filter_health_pct": 100.0,
+          "damper_open_pct": 0.0,
+          "glycol_flow_kg_s": 0.0,
+          "supply_air_temp_c": 5.0,
+          "return_air_temp_c": 5.0
+        }
+      },
+      "MEDICAL": {
+        "temp_c": 4.0,
+        "perceived_temp_c": 4.0,
+        "heat_demand_kw": 0.0,
+        "ahu": {
+          "fan_rpm": 0,
+          "filter_health_pct": 100.0,
+          "damper_open_pct": 0.0,
+          "glycol_flow_kg_s": 0.0,
+          "supply_air_temp_c": 4.0,
+          "return_air_temp_c": 4.0
+        }
+      },
+      "SERVER": {
+        "temp_c": 17.85,
+        "perceived_temp_c": 17.85,
+        "heat_demand_kw": 0.0,
+        "ahu": {
+          "fan_rpm": 0,
+          "filter_health_pct": 100.0,
+          "damper_open_pct": 0.0,
+          "glycol_flow_kg_s": 0.0,
+          "supply_air_temp_c": 17.8,
+          "return_air_temp_c": 17.8
+        }
+      }
+    }
+  },
+  "power": {
+    "grid_status": "BLACKOUT",
+    "grid_voltage": 0.0,
+    "grid_frequency": 0.0,
+    "total_load_kw": 25.0,
+    "total_thermal_supplied_kw": 0.0,
+    "total_fuel_consumption_L_hr": 0.0,
+    "generators": {
+      "CHP-1": {
+        "state": "WARM_UP",
+        "load_kw": 0.0,
+        "rpm": 1500,
+        "voltage": 0.0,
+        "oil_pressure_bar": 4.5,
+        "oil_viscosity_pct": 100.0,
+        "coolant_temp_c": 22.0,
+        "thermostat_open_pct": 0.0,
+        "fuel_flow_L_hr": 0.0,
+        "fuel_rail_pressure_bar": 0,
+        "boost_pressure_bar": 1.0,
+        "air_to_fuel_ratio": 20.0,
+        "exhaust_gas_temp_c": 20,
+        "stator_temp_c": 20,
+        "vibration_mms": 0.0,
+        "thermal_output_kw": 0.0,
+        "operating_hours": 0.0
+      },
+      "CHP-2": {
+        "state": "WARM_UP",
+        "load_kw": 0.0,
+        "rpm": 1500,
+        "voltage": 0.0,
+        "oil_pressure_bar": 4.5,
+        "oil_viscosity_pct": 100.0,
+        "coolant_temp_c": 21.5,
+        "thermostat_open_pct": 0.0,
+        "fuel_flow_L_hr": 0.0,
+        "fuel_rail_pressure_bar": 0,
+        "boost_pressure_bar": 1.0,
+        "air_to_fuel_ratio": 20.0,
+        "exhaust_gas_temp_c": 20,
+        "stator_temp_c": 20,
+        "vibration_mms": 0.0,
+        "thermal_output_kw": 0.0,
+        "operating_hours": 0.0
+      },
+      "CHP-3": {
+        "state": "WARM_UP",
+        "load_kw": 0.0,
+        "rpm": 1500,
+        "voltage": 0.0,
+        "oil_pressure_bar": 4.5,
+        "oil_viscosity_pct": 100.0,
+        "coolant_temp_c": 21.0,
+        "thermostat_open_pct": 0.0,
+        "fuel_flow_L_hr": 0.0,
+        "fuel_rail_pressure_bar": 0,
+        "boost_pressure_bar": 1.0,
+        "air_to_fuel_ratio": 20.0,
+        "exhaust_gas_temp_c": 20,
+        "stator_temp_c": 20,
+        "vibration_mms": 0.0,
+        "thermal_output_kw": 0.0,
+        "operating_hours": 0.0
+      }
+    }
+  },
+  "fuel": {
+    "main_farm_level_L": 200000.0,
+    "day_tank_level_L": 2000.0,
+    "autonomy_days": 0.0,
+    "fuel_temp_c": -15.0,
+    "viscosity_cSt": 2.61,
+    "pumps": {
+      "pump_a_active": false,
+      "pump_b_active": false,
+      "flow_rate_L_s": 0.0
+    },
+    "separator": {
+      "rpm": 0,
+      "water_extracted_L": 0.0,
+      "water_in_day_tank_ppm": 0
+    },
+    "electrical_demand_kw": 0.0
+  },
+  "water": {
+    "tank_level_L": 14999.5,
+    "is_running": false,
+    "intake_pipe_temp_c": -1.8,
+    "intake_blocked": false,
+    "mmf_pressure_drop_bar": 0.5,
+    "membrane_fouling_pct": 0.0,
+    "hpp_pressure_bar": 0.0,
+    "permeate_tds_ppm": 200,
+    "tank_tds_ppm": 200,
+    "tank_ph": 7.2,
+    "electrical_demand_kw": 0.0
+  },
+  "wastewater": {
+    "greywater_tank_L": 1000.4,
+    "technical_water_tank_L": 1999.8,
+    "blackwater_tank_L": 500.2,
+    "mbr_tank_L": 2000.0,
+    "mbr_temp_c": 14.7,
+    "discharge_pipe_temp_c": 4.8,
+    "bacteria_health_pct": 90.5,
+    "sludge_tank_L": 0.0,
+    "sludge_bags_available": 100,
+    "effluent_cod_mgL": 40.0,
+    "effluent_ammonia_mgL": 1.0,
+    "uv_intensity_pct": 5.0,
+    "pathogen_alarm": true,
+    "chemical_alarm": false,
+    "discharge_frozen": false,
+    "electrical_demand_kw": 0.0,
+    "heat_demand_kw": 0.0
+  },
+  "communication": {
+    "status": "NOMINAL",
+    "geo_link_status": "ONLINE",
+    "geo_bandwidth_mbps": 150.0,
+    "leo_pass_active": false,
+    "leo_timer_s": 7181,
+    "leo_incoming_gbps": 0.0,
+    "tracking_accuracy_pct": 100.0,
+    "radome_ice_thickness_mm": 0.0,
+    "san_used_gb": 4999,
+    "san_capacity_gb": 50000,
+    "san_utilization_pct": 10.0,
+    "total_data_dropped_gb": 0,
+    "ups_charge_pct": 99.6,
+    "server_core_temp_c": 40.0,
+    "electrical_demand_kw": 0.0,
+    "heat_dissipation_kw": 11.1
+  },
+  "inventory": {
+    "food_stock_kg": 15000.0,
+    "pharma": {
+      "INSULIN": {
+        "concentration_pct": 100.0,
+        "doses_available": 1000
+      },
+      "ADRENALINE": {
+        "concentration_pct": 100.0,
+        "doses_available": 200
+      }
+    },
+    "spares": {
+      "FUEL_PUMP_SEALS": 2,
+      "RO_MEMBRANE_CARTRIDGES": 3,
+      "HVAC_AIR_FILTERS": 10
+    },
+    "reliability_effective_age_hours": {
+      "CHP1_FUEL_PUMP": 0.0,
+      "RO_MEMBRANE": 0.0,
+      "HVAC_FILTERS": 0.0
+    },
+    "active_repairs": []
+  },
+  "faults": {}
+}

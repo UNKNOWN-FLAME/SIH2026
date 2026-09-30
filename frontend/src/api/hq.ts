@@ -804,17 +804,23 @@ export interface DigitalTwinStateOut {
     ambient_temperature_c: number
     wind_chill_c: number
     wind_speed_ms: number
-    pressure_hpa: number
-    humidity_percent: number
+    pressure_hpa?: number
+    atmospheric_pressure_hpa?: number
+    humidity_percent?: number
+    relative_humidity_pct?: number
     solar_radiation_wm2: number
+    lake_priyadarshini?: Record<string, any>
   }
   power: {
     grid_status: string
-    grid_voltage: number
-    grid_frequency: number
-    total_load_kw: number
-    total_thermal_supplied_kw: number
+    grid_voltage?: number
+    grid_frequency?: number
+    total_load_kw?: number
+    total_station_load_kw?: number
+    total_thermal_supplied_kw?: number
     total_fuel_consumption_L_hr?: number
+    solar_pv?: Record<string, any>
+    battery_ups?: Record<string, any>
     generators: Record<string, {
       state: string
       load_kw: number
@@ -833,15 +839,19 @@ export interface DigitalTwinStateOut {
   }
   fuel: {
     main_farm_level_L: number
-    day_tank_level_L: number
-    autonomy_days: number
+    day_tank_level_L?: number
+    day_tank_litres?: number
+    autonomy_days?: number
+    fuel_autonomy_days?: number
     fuel_temp_c?: number
     viscosity_cSt?: number
     pumps?: Record<string, any>
     electrical_demand_kw?: number
   }
   water: {
-    tank_level_L: number
+    tank_level_L?: number
+    potable_storage_litres?: number
+    pipeline_250m?: Record<string, any>
     is_running?: boolean
     intake_pipe_temp_c?: number
     intake_blocked?: boolean
@@ -866,6 +876,9 @@ export interface DigitalTwinStateOut {
     glycol_return_temp_c?: number
     glycol_pressure_bar?: number
     dhw_tank_temp_c?: number
+    living_zone_temp_c?: number
+    boiler_firing_rate_pct?: number
+    primary_supply_temp_c?: number
     zones?: Record<string, {
       temp_c: number
       perceived_temp_c?: number

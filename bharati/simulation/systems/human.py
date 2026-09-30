@@ -185,10 +185,7 @@ class HumanAssetModel:
         self.hrp = max(0.01, 1.0 - thermal_penalty - fatigue_penalty)
         
         # 5. Fault Injection (Frostbite/Trauma)
-        if env.get("state") == "BLIZZARD" and env.get("wind_chill_c", 0.0) < -40.0:
-            if random.random() < (0.0001 * dt):
-                self.fault_manager.trigger("HUMAN_FROSTBITE", severity=1.0)
-                logging.critical("MEDICAL EMERGENCY: Crew member suffered Frostbite during Blizzard ops!")
+        # Automatic fault triggers disabled: Anomaly injections are strictly manual per operator command
                 
         # 6. Publish State
         state["human"] = {
