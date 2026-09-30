@@ -46,7 +46,7 @@ interface AnomalyDataModel {
   }[]
 }
 
-function getAnomalyModel(anomalyId: string, stationId: string): AnomalyDataModel {
+export function getAnomalyModel(anomalyId: string, stationId: string): AnomalyDataModel {
   const aid = (anomalyId || '').toLowerCase()
 
   if (aid.includes('generator') || aid.includes('power') || aid.includes('solar_inverter')) {

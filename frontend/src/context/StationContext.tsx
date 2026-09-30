@@ -42,6 +42,18 @@ interface StationContextType {
   completedIncidentResult: AnomalyInjectionResult | null
   anomalyHistory: InjectedAnomalyRecord[]
   clearAnomalyHistory: () => void
+  // Blackout modal
+  isBlackoutModalOpen: boolean
+  closeBlackoutModal: () => void
+  postBlackoutIncident: AnomalyInjectionResult | null
+  // Telemetry sync
+  isTelemetrySyncing: boolean
+  syncProgress: number
+  syncStage: string
+  // Additional actions
+  acknowledgeAnomalyAtHQ: () => void
+  clearCompletedIncident: () => void
+  endAnomalyOnConsole: (stationId?: string) => void
 }
 
 const StationContext = createContext<StationContextType | undefined>(undefined)
@@ -92,6 +104,23 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
   const [isImpactModalOpen, setIsImpactModalOpen] = useState<boolean>(false)
   const openImpactModal = useCallback(() => setIsImpactModalOpen(true), [])
   const closeImpactModal = useCallback(() => setIsImpactModalOpen(false), [])
+
+  // Blackout modal state
+  const [isBlackoutModalOpen, setIsBlackoutModalOpen] = useState<boolean>(false)
+  const [postBlackoutIncident, setPostBlackoutIncident] = useState<AnomalyInjectionResult | null>(null)
+  const closeBlackoutModal = useCallback(() => setIsBlackoutModalOpen(false), [])
+
+  // Telemetry sync state
+  const [isTelemetrySyncing, setIsTelemetrySyncing] = useState<boolean>(false)
+  const [syncProgress, setSyncProgress] = useState<number>(0)
+  const [syncStage, setSyncStage] = useState<string>('')
+
+  // Suppress unused-variable warnings for setters that are internal state only
+  void setIsTelemetrySyncing
+  void setSyncProgress
+  void setSyncStage
+  void setPostBlackoutIncident
+  void setIsBlackoutModalOpen
 
   const setLastAnomalyResult = useCallback((res: AnomalyInjectionResult | null) => {
     setLastAnomalyResultState((prev) => {
@@ -245,6 +274,19 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
 
   const isOnline = linkState === 'UP'
 
+  const acknowledgeAnomalyAtHQ = useCallback(() => {
+    dismissEmergencyAlert()
+  }, [dismissEmergencyAlert])
+
+  const clearCompletedIncident = useCallback(() => {
+    setCompletedIncidentResult(null)
+    try { localStorage.removeItem('himantar_last_completed_incident') } catch {}
+  }, [])
+
+  const endAnomalyOnConsole = useCallback((_stationId?: string) => {
+    setLastAnomalyResult(null)
+  }, [setLastAnomalyResult])
+
   return (
     <StationContext.Provider
       value={{
@@ -272,6 +314,15 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
         completedIncidentResult,
         anomalyHistory,
         clearAnomalyHistory,
+        isBlackoutModalOpen,
+        closeBlackoutModal,
+        postBlackoutIncident,
+        isTelemetrySyncing,
+        syncProgress,
+        syncStage,
+        acknowledgeAnomalyAtHQ,
+        clearCompletedIncident,
+        endAnomalyOnConsole,
       }}
     >
       {children}

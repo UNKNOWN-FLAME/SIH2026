@@ -2,6 +2,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStation } from '../../context/StationContext'
 import emblemOfIndia from '../../assets/emblem_of_india.svg'
+import AnomalyInjector from '../dashboard/AnomalyInjector'
 
 export default function Sidebar({
   activeStation: _activeStation,
@@ -13,7 +14,8 @@ export default function Sidebar({
   const navigate = useNavigate()
   const location = useLocation()
   const { t } = useLanguage()
-  const { openBlackBox } = useStation()
+  const { openBlackBox, stationId } = useStation()
+  const currentStation = stationId
 
   const navItems = [
     { icon: 'dashboard', label: t('nav.dashboard'), sub: t('nav.dashboard_sub'), path: '/' },

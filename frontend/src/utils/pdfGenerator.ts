@@ -110,7 +110,7 @@ export function savePdfFile(doc: jsPDF, filename: string): void {
   const safeFilename = filename.toLowerCase().endsWith('.pdf') ? filename : `${filename}.pdf`
   try {
     const pdfBlob = doc.output('blob')
-    const file = new File([pdfBlob], safeFilename, { type: 'application/pdf' })
+    const file = new File([pdfBlob as unknown as Blob], safeFilename, { type: 'application/pdf' })
     const url = URL.createObjectURL(file)
     const link = document.createElement('a')
     link.style.display = 'none'
@@ -1339,7 +1339,7 @@ export async function generateSitrepGazettePDF({
         scrollY: 0,
         windowWidth: docElem.scrollWidth || 1024,
         windowHeight: docElem.scrollHeight || 1400,
-        onclone: (clonedDoc) => {
+        onclone: (clonedDoc: Document) => {
           const el = clonedDoc.getElementById('printable-gazette-doc')
           if (el) {
             el.style.overflow = 'visible'

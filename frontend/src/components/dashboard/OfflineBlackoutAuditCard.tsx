@@ -424,14 +424,14 @@ export default function OfflineBlackoutAuditCard({ stationId }: Props) {
                       downtimeHours: completedModel.downtimeHours,
                       subsystem: completedModel.subsystem,
                     },
-                    departments: completedModel.impactsByDepartment.map((d) => ({
+                    departments: completedModel.impactsByDepartment.map((d: { dept: string; icon: string; color: string; badge: string; summary: string; details: string }) => ({
                       dept: d.dept,
                       badge: d.badge,
                       summary: d.summary,
                       details: d.details,
                     })),
                     actionChecklist: completedModel.actionChecklist,
-                    shipmentItems: completedModel.shipmentRecommendations.map((r) => ({
+                    shipmentItems: completedModel.shipmentRecommendations.map((r: { name: string; sku: string; category: string; quantity: number; unit: string; priority: string; reason: string }) => ({
                       name: r.name,
                       sku: r.sku,
                       category: r.category,
