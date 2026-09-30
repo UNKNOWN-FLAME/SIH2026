@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStation, type StationId } from '../../context/StationContext'
 import { useAuth } from '../../hooks/useAuth'
-import AnomalyInjector from '../dashboard/AnomalyInjector'
 
 export default function MobileBottomNav() {
   const navigate = useNavigate()
@@ -207,11 +206,6 @@ export default function MobileBottomNav() {
               >
                 <span>{isOnline ? 'SEVER VSAT' : 'RESTORE VSAT'}</span>
               </button>
-            </div>
-
-            {/* Anomaly Injector Simulator in Drawer */}
-            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 8 }}>
-              <AnomalyInjector activeStation={stationId} variant="sidebar" />
             </div>
           </div>
         </div>

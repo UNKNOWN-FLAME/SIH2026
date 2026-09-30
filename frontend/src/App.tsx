@@ -12,6 +12,7 @@ import AnalyticsPage from './pages/AnalyticsPage'
 import ReportsPage from './pages/ReportsPage'
 import LiveTelemetryPage from './pages/LiveTelemetryPage'
 import BlackBoxPage from './pages/BlackBoxPage'
+import StationEdgeConsolePage from './pages/StationEdgeConsolePage'
 import BlackBoxModal from './components/blackbox/BlackBoxModal'
 import { ChatBot } from './components/ui/ChatBot'
 import MobileBottomNav from './components/layout/MobileBottomNav'
@@ -28,6 +29,7 @@ export default function App() {
         <StationProvider>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/edge" element={<ProtectedRoute><StationEdgeConsolePage /></ProtectedRoute>} />
             <Route path="/blackbox" element={<ProtectedRoute><BlackBoxPage /></ProtectedRoute>} />
             <Route path="/telemetry" element={<ProtectedRoute><LiveTelemetryPage /></ProtectedRoute>} />
             <Route path="/stations" element={<Navigate to="/" replace />} />

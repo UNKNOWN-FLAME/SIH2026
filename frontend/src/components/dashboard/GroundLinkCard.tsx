@@ -11,14 +11,14 @@ interface Props {
 export default function GroundLinkCard({ stationId }: Props) {
   const navigate = useNavigate()
   const { lang } = useLanguage()
-  const { isOnline, edgeBufferCount, toggleLinkState, flushEdgeBuffer, lastAnomalyResult } = useStation()
+  const { isOnline, edgeBufferCount, toggleLinkState, flushEdgeBuffer, lastAnomalyResult, isTelemetrySyncing } = useStation()
 
   const anomalyImpact = getCardAnomalyImpact('groundlink', lastAnomalyResult, stationId)
   const isInfected = Boolean(anomalyImpact?.isInfected)
 
   // Real-time link state directly from global StationContext
   const [isSyncing, setIsSyncing] = useState(false)
-  const linkState = isSyncing ? 'SYNCING' : (!isOnline ? 'OFFLINE' : 'SYNCED')
+  const linkState = (isSyncing || isTelemetrySyncing) ? 'SYNCING' : (!isOnline ? 'OFFLINE' : 'SYNCED')
   const [syncProgress, setSyncProgress] = useState(0)
   const [lastHandshakeSec, setLastHandshakeSec] = useState(2)
 
@@ -146,13 +146,13 @@ export default function GroundLinkCard({ stationId }: Props) {
               linkState === 'SYNCED'
                 ? '#f0fdf4'
                 : linkState === 'SYNCING'
-                ? '#fefce8'
+                ? '#f0f9ff'
                 : '#fef2f2',
             border:
               linkState === 'SYNCED'
                 ? '1px solid #86efac'
                 : linkState === 'SYNCING'
-                ? '1px solid #fde047'
+                ? '1px solid #bae6fd'
                 : '1px solid #fecaca',
             padding: '6px 10px',
             borderRadius: 2,
@@ -171,7 +171,7 @@ export default function GroundLinkCard({ stationId }: Props) {
                     linkState === 'SYNCED'
                       ? '#22c55e'
                       : linkState === 'SYNCING'
-                      ? '#eab308'
+                      ? '#0284c7'
                       : '#ef4444',
                   opacity: 0.4,
                   animation: 'ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite',
@@ -186,7 +186,7 @@ export default function GroundLinkCard({ stationId }: Props) {
                     linkState === 'SYNCED'
                       ? '#16a34a'
                       : linkState === 'SYNCING'
-                      ? '#ca8a04'
+                      ? '#0b3b60'
                       : '#dc2626',
                 }}
               />
@@ -202,14 +202,14 @@ export default function GroundLinkCard({ stationId }: Props) {
                     linkState === 'SYNCED'
                       ? '#15803d'
                       : linkState === 'SYNCING'
-                      ? '#a16207'
+                      ? '#0b3b60'
                       : '#b91c1c',
                 }}
               >
                 {linkState === 'SYNCED'
                   ? '● SYNCED (ONLINE)'
                   : linkState === 'SYNCING'
-                  ? '🔄 SYNCING STORE-AND-FORWARD...'
+                  ? '🔄 GSAT-30 TELEMETRY SYNCHRONIZING...'
                   : '✖ OFFLINE (BUFFERING ON EDGE)'}
               </div>
               <div style={{ fontSize: 9, color: '#64748b' }}>
@@ -229,8 +229,9 @@ export default function GroundLinkCard({ stationId }: Props) {
               fontWeight: 800,
               padding: '2px 7px',
               borderRadius: 2,
-              background: linkState === 'SYNCED' ? '#dcfce7' : linkState === 'SYNCING' ? '#fef08a' : '#fee2e2',
-              color: linkState === 'SYNCED' ? '#166534' : linkState === 'SYNCING' ? '#854d0e' : '#991b1b',
+              background: linkState === 'SYNCED' ? '#dcfce7' : linkState === 'SYNCING' ? '#dcfce7' : '#fee2e2',
+              color: linkState === 'SYNCED' ? '#166534' : linkState === 'SYNCING' ? '#15803d' : '#991b1b',
+              border: `1px solid ${linkState === 'SYNCED' ? '#86efac' : linkState === 'SYNCING' ? '#86efac' : '#fca5a5'}`,
             }}
           >
             {linkState === 'SYNCED' ? '100% HEALTH' : linkState === 'SYNCING' ? `${syncProgress}%` : 'LINK DOWN'}
@@ -239,11 +240,11 @@ export default function GroundLinkCard({ stationId }: Props) {
 
         {/* Sync Progress Bar (Visible when syncing) */}
         {linkState === 'SYNCING' && (
-          <div style={{ width: '100%', background: '#e2e8f0', borderRadius: 2, height: 5, overflow: 'hidden' }}>
+          <div style={{ width: '100%', background: '#e2e8f0', borderRadius: 2, height: 6, overflow: 'hidden', border: '1px solid #cbd5e1' }}>
             <div
               style={{
                 width: `${syncProgress}%`,
-                background: '#ea580c',
+                background: 'linear-gradient(90deg, #ff9933 0%, #0b3b60 60%, #16a34a 100%)',
                 height: '100%',
                 transition: 'width 0.4s ease',
               }}

@@ -46,7 +46,7 @@ interface AnomalyDataModel {
   }[]
 }
 
-function getAnomalyModel(anomalyId: string, stationId: string): AnomalyDataModel {
+export function getAnomalyModel(anomalyId: string, stationId: string): AnomalyDataModel {
   const aid = (anomalyId || '').toLowerCase()
 
   if (aid.includes('generator') || aid.includes('power') || aid.includes('solar_inverter')) {
@@ -519,9 +519,7 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
   const {
     lastAnomalyResult,
     completedIncidentResult,
-    setLastAnomalyResult,
     stationId,
-    refreshLinkState,
   } = useStation()
 
   const incidentData = lastAnomalyResult || completedIncidentResult
@@ -534,6 +532,103 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
 
   const anomalyId = incidentData?.anomaly_id || 'generator_failure'
   const model = useMemo(() => getAnomalyModel(anomalyId, stationId), [anomalyId, stationId])
+
+  // Live real-time ticker while anomaly is active
+  const [nowTime, setNowTime] = useState<number>(Date.now())
+
+  useEffect(() => {
+    if (!isOpen || isResolved || !lastAnomalyResult) {
+      return
+    }
+
+    const timer = setInterval(() => {
+      setNowTime(Date.now())
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [isOpen, isResolved, lastAnomalyResult])
+
+  // Active elapsed seconds since anomaly injection or session start
+  const activeSeconds = useMemo(() => {
+    if (isResolved) return 0
+    if (incidentData?.injected_at) {
+      const start = new Date(incidentData.injected_at).getTime()
+      if (!isNaN(start) && start > 0) {
+        return Math.max(1, Math.floor((nowTime - start) / 1000))
+      }
+    }
+    // Fallback: 10 seconds base + elapsed
+    return Math.max(1, Math.floor((nowTime - 0) / 1000) % 3600)
+  }, [isResolved, incidentData?.injected_at, nowTime])
+
+  // Dynamic live loss metrics accumulating over time with realistic micro-jitter
+  const liveLosses = useMemo(() => {
+    if (isResolved || activeSeconds <= 0) {
+      return {
+        energyLossKwh: model.energyLossKwh,
+        powerSpikeKw: model.powerSpikeKw,
+        anomalyPowerKw: model.anomalyPowerKw,
+        fuelLossLitres: model.fuelLossLitres,
+        anomalyFuelBurnLh: model.anomalyFuelBurnLh,
+        financialLossInr: model.financialLossInr,
+        carbonFootprintKg: model.carbonFootprintKg,
+        dataLossMb: model.dataLossMb,
+        packetsDelayed: model.packetsDelayed,
+        tempVarianceC: model.tempVarianceC,
+        downtimeHours: model.downtimeHours,
+      }
+    }
+
+    // Micro-fluctuations for authentic sensor jitter
+    const powerJitter = Math.sin(activeSeconds * 1.3) * 0.9 + Math.cos(activeSeconds * 0.7) * 0.4
+    const livePowerKw = Number((model.anomalyPowerKw + powerJitter).toFixed(1))
+
+    // Accumulating Energy: ~0.38 kWh per second under severe overload
+    const extraEnergy = Number((activeSeconds * 0.38).toFixed(1))
+    const totalEnergy = Number((model.energyLossKwh + extraEnergy).toFixed(1))
+
+    // Accumulating Fuel: ~0.052 Litres per second
+    const extraFuel = Number((activeSeconds * 0.052).toFixed(1))
+    const totalFuel = Number((model.fuelLossLitres + extraFuel).toFixed(1))
+    const burnJitter = Math.sin(activeSeconds * 0.9) * 0.5
+    const liveBurnRate = Number((model.anomalyFuelBurnLh + burnJitter).toFixed(1))
+
+    // Accumulating Financial Loss: ₹45/sec
+    const extraCost = Math.round(activeSeconds * 45)
+    const totalCost = model.financialLossInr + extraCost
+
+    // Carbon Footprint: proportional to fuel burn
+    const extraCarbon = Number((activeSeconds * 0.14).toFixed(1))
+    const totalCarbon = Number((model.carbonFootprintKg + extraCarbon).toFixed(1))
+
+    // Edge Buffered Telemetry and Packets
+    const extraPackets = Math.floor(activeSeconds * 0.75)
+    const totalPackets = model.packetsDelayed + extraPackets
+    const totalDataMb = Number((model.dataLossMb + (extraPackets * 0.032)).toFixed(2))
+
+    // Habitat Thermal Stability: progressive thermal degradation
+    const thermalDrop = Math.min(3.5, Number((activeSeconds * 0.02).toFixed(1)))
+    const tempJitter = Math.sin(activeSeconds * 0.8) * 0.15
+    const liveTempVariance = Number((model.tempVarianceC - thermalDrop + tempJitter).toFixed(1))
+
+    // Downtime: gradual drift
+    const extraDowntime = Number((activeSeconds / 3600).toFixed(2))
+    const totalDowntime = Number((model.downtimeHours + extraDowntime).toFixed(1))
+
+    return {
+      energyLossKwh: totalEnergy,
+      powerSpikeKw: livePowerKw,
+      anomalyPowerKw: livePowerKw,
+      fuelLossLitres: totalFuel,
+      anomalyFuelBurnLh: liveBurnRate,
+      financialLossInr: totalCost,
+      carbonFootprintKg: totalCarbon,
+      dataLossMb: totalDataMb,
+      packetsDelayed: totalPackets,
+      tempVarianceC: liveTempVariance,
+      downtimeHours: totalDowntime,
+    }
+  }, [model, isResolved, activeSeconds])
 
   // Sync already added items from storage on mount
   useEffect(() => {
@@ -620,19 +715,19 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
       referenceId: incidentData.report_reference || incidentData.incident_id || 'INC-POLAR-99',
       injectedAt: incidentData.injected_at,
       losses: {
-        energyLossKwh: model.energyLossKwh,
-        powerSpikeKw: model.powerSpikeKw,
+        energyLossKwh: liveLosses.energyLossKwh,
+        powerSpikeKw: liveLosses.powerSpikeKw,
         normalPowerKw: model.normalPowerKw,
-        anomalyPowerKw: model.anomalyPowerKw,
-        fuelLossLitres: model.fuelLossLitres,
+        anomalyPowerKw: liveLosses.anomalyPowerKw,
+        fuelLossLitres: liveLosses.fuelLossLitres,
         normalFuelBurnLh: model.normalFuelBurnLh,
-        anomalyFuelBurnLh: model.anomalyFuelBurnLh,
-        financialLossInr: model.financialLossInr,
-        carbonFootprintKg: model.carbonFootprintKg,
-        dataLossMb: model.dataLossMb,
-        packetsDelayed: model.packetsDelayed,
-        tempVarianceC: model.tempVarianceC,
-        downtimeHours: model.downtimeHours,
+        anomalyFuelBurnLh: liveLosses.anomalyFuelBurnLh,
+        financialLossInr: liveLosses.financialLossInr,
+        carbonFootprintKg: liveLosses.carbonFootprintKg,
+        dataLossMb: liveLosses.dataLossMb,
+        packetsDelayed: liveLosses.packetsDelayed,
+        tempVarianceC: liveLosses.tempVarianceC,
+        downtimeHours: liveLosses.downtimeHours,
         subsystem: model.subsystem,
       },
       departments: model.impactsByDepartment.map((d) => ({
@@ -656,11 +751,6 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
       }),
     })
     setToastMessage('📄 Official Government Damage Assessment PDF Downloaded!')
-  }
-
-  function handleTerminateAnomaly() {
-    setLastAnomalyResult(null)
-    refreshLinkState()
   }
 
   function handleNavigateToLogistics() {
@@ -778,7 +868,7 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
               📊
             </span>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: '0.03em' }}>
                   INCIDENT DAMAGE, RESOURCE LOSS & SHIPMENT REQUISITION REPORT
                 </span>
@@ -799,6 +889,36 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                   <span>{isResolved ? '✓' : '⚠️'}</span>
                   <span>{isResolved ? 'ANOMALY RESOLVED & CLOSED' : model.severity}</span>
                 </span>
+
+                {!isResolved && (
+                  <span
+                    style={{
+                      background: 'rgba(0,0,0,0.35)',
+                      color: '#fef08a',
+                      fontSize: 8.5,
+                      fontWeight: 800,
+                      padding: '2px 7px',
+                      borderRadius: 3,
+                      border: '1px solid #facc15',
+                      letterSpacing: '0.04em',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        background: '#ef4444',
+                        boxShadow: '0 0 6px #ef4444',
+                        display: 'inline-block',
+                      }}
+                    />
+                    <span>LIVE IMPACT ESCALATING (T+{activeSeconds}s)</span>
+                  </span>
+                )}
               </div>
               <div style={{ fontSize: 10.5, color: '#fecaca', marginTop: 2 }}>
                 Station: <strong>{stationId.toUpperCase()}</strong> • Subsystem: <strong>{model.subsystem}</strong> • Event: <strong>{incidentData.anomaly_name || model.title}</strong>
@@ -828,29 +948,6 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
               <span>📄</span>
               <span>Download PDF Report</span>
             </button>
-
-            {!isResolved && (
-              <button
-                onClick={handleTerminateAnomaly}
-                style={{
-                  background: 'rgba(255,255,255,0.15)',
-                  color: '#ffffff',
-                  border: '1px solid rgba(255,255,255,0.3)',
-                  padding: '4px 10px',
-                  borderRadius: 4,
-                  fontSize: 10,
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 5,
-                }}
-                title="End and resolve this active anomaly"
-              >
-                <span>⏹</span>
-                <span>End Anomaly</span>
-              </button>
-            )}
             <button
               onClick={onClose}
               style={{
@@ -1000,6 +1097,53 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
           {/* TAB 1: Losses & Comparative Metrics */}
           {activeTab === 'losses' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {/* Real-time Dynamic Impact Accumulation Banner */}
+              {!isResolved && (
+                <div
+                  style={{
+                    background: 'linear-gradient(90deg, #fff1f2 0%, #fee2e2 50%, #fef2f2 100%)',
+                    border: '1px solid #fca5a5',
+                    borderRadius: 4,
+                    padding: '8px 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    boxShadow: '0 1px 3px rgba(220, 38, 38, 0.08)',
+                    gap: 10,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        background: '#dc2626',
+                        boxShadow: '0 0 8px #dc2626',
+                        display: 'inline-block',
+                      }}
+                    />
+                    <div>
+                      <span style={{ fontSize: 11, fontWeight: 900, color: '#991b1b', letterSpacing: '0.02em' }}>
+                        LIVE DYNAMIC IMPACT STREAM • ANOMALY UNCONTAINED (ACTIVE: {activeSeconds}s)
+                      </span>
+                      <div style={{ fontSize: 9.5, color: '#7f1d1d', marginTop: 1 }}>
+                        Telemetry excursion remains active. Energy surge, diesel depletion, and financial cost are accumulating dynamically in real-time.
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                    <span style={{ fontSize: 9, fontWeight: 900, color: '#991b1b', background: '#ffffff', border: '1px solid #fca5a5', padding: '2px 7px', borderRadius: 3 }}>
+                      BURN: {liveLosses.anomalyFuelBurnLh} L/h
+                    </span>
+                    <span style={{ fontSize: 9, fontWeight: 900, color: '#ffffff', background: '#dc2626', padding: '2px 7px', borderRadius: 3 }}>
+                      SURGE: {liveLosses.powerSpikeKw} kW
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {/* Top 4 Impact KPI Highlight Cards */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
                 {/* 1. Energy Lost */}
@@ -1019,14 +1163,14 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                       ⚡ Energy Wasted
                     </span>
                     <span style={{ fontSize: 8.5, fontWeight: 900, color: '#c2410c', background: '#fff7ed', padding: '1px 5px', borderRadius: 2 }}>
-                      +{Math.round(((model.anomalyPowerKw - model.normalPowerKw) / model.normalPowerKw) * 100)}% Surge
+                      +{Math.round(((liveLosses.anomalyPowerKw - model.normalPowerKw) / model.normalPowerKw) * 100)}% Surge
                     </span>
                   </div>
                   <div style={{ fontSize: 20, fontWeight: 900, color: '#c2410c', marginTop: 4 }}>
-                    {model.energyLossKwh} <span style={{ fontSize: 11, fontWeight: 600 }}>kWh</span>
+                    {liveLosses.energyLossKwh} <span style={{ fontSize: 11, fontWeight: 600 }}>kWh</span>
                   </div>
                   <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 2 }}>
-                    Spike: <strong>{model.powerSpikeKw} kW</strong> (Baseline {model.normalPowerKw} kW)
+                    Spike: <strong>{liveLosses.powerSpikeKw} kW</strong> (Baseline {model.normalPowerKw} kW)
                   </div>
                 </div>
 
@@ -1051,10 +1195,10 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                     </span>
                   </div>
                   <div style={{ fontSize: 20, fontWeight: 900, color: '#b91c1c', marginTop: 4 }}>
-                    {model.fuelLossLitres} <span style={{ fontSize: 11, fontWeight: 600 }}>Litres</span>
+                    {liveLosses.fuelLossLitres} <span style={{ fontSize: 11, fontWeight: 600 }}>Litres</span>
                   </div>
                   <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 2 }}>
-                    Burn rate: <strong>{model.anomalyFuelBurnLh} L/h</strong> (Normal {model.normalFuelBurnLh} L/h)
+                    Burn rate: <strong>{liveLosses.anomalyFuelBurnLh} L/h</strong> (Normal {model.normalFuelBurnLh} L/h)
                   </div>
                 </div>
 
@@ -1079,10 +1223,10 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                     </span>
                   </div>
                   <div style={{ fontSize: 20, fontWeight: 900, color: '#0369a1', marginTop: 4 }}>
-                    ₹{model.financialLossInr.toLocaleString()}
+                    ₹{liveLosses.financialLossInr.toLocaleString()}
                   </div>
                   <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 2 }}>
-                    Carbon: <strong>+{model.carbonFootprintKg} kg CO₂ eq</strong>
+                    Carbon: <strong>+{liveLosses.carbonFootprintKg} kg CO₂ eq</strong>
                   </div>
                 </div>
 
@@ -1107,10 +1251,10 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                     </span>
                   </div>
                   <div style={{ fontSize: 20, fontWeight: 900, color: '#6d28d9', marginTop: 4 }}>
-                    ~{model.downtimeHours} <span style={{ fontSize: 11, fontWeight: 600 }}>Hours</span>
+                    ~{liveLosses.downtimeHours} <span style={{ fontSize: 11, fontWeight: 600 }}>Hours</span>
                   </div>
                   <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 2 }}>
-                    Telemetry Buffer: <strong>{model.dataLossMb} MB</strong> ({model.packetsDelayed} packets)
+                    Telemetry Buffer: <strong>{liveLosses.dataLossMb} MB</strong> ({liveLosses.packetsDelayed} packets)
                   </div>
                 </div>
               </div>
@@ -1137,8 +1281,8 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                       <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                         <td style={{ padding: '8px 12px', fontWeight: 700, color: '#0f172a' }}>⚡ Station Power Grid Load</td>
                         <td style={{ padding: '8px 12px', color: '#16a34a', fontWeight: 700 }}>{model.normalPowerKw} kW</td>
-                        <td style={{ padding: '8px 12px', color: '#dc2626', fontWeight: 800 }}>{model.anomalyPowerKw} kW</td>
-                        <td style={{ padding: '8px 12px', color: '#b91c1c', fontWeight: 800 }}>+{Number((model.anomalyPowerKw - model.normalPowerKw).toFixed(1))} kW (+{Math.round(((model.anomalyPowerKw - model.normalPowerKw) / model.normalPowerKw) * 100)}%)</td>
+                        <td style={{ padding: '8px 12px', color: '#dc2626', fontWeight: 800 }}>{liveLosses.anomalyPowerKw} kW</td>
+                        <td style={{ padding: '8px 12px', color: '#b91c1c', fontWeight: 800 }}>+{Number((liveLosses.anomalyPowerKw - model.normalPowerKw).toFixed(1))} kW (+{Math.round(((liveLosses.anomalyPowerKw - model.normalPowerKw) / model.normalPowerKw) * 100)}%)</td>
                         <td style={{ padding: '8px 12px' }}>
                           <span style={{ background: '#fef2f2', color: '#b91c1c', border: '1px solid #fca5a5', padding: '1px 6px', borderRadius: 2, fontSize: 9, fontWeight: 800 }}>
                             EXCESS SURGE
@@ -1149,8 +1293,8 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                       <tr style={{ borderBottom: '1px solid #e2e8f0', background: '#fcfcfd' }}>
                         <td style={{ padding: '8px 12px', fontWeight: 700, color: '#0f172a' }}>⛽ Fuel Consumption Rate</td>
                         <td style={{ padding: '8px 12px', color: '#16a34a', fontWeight: 700 }}>{model.normalFuelBurnLh} L/h</td>
-                        <td style={{ padding: '8px 12px', color: '#dc2626', fontWeight: 800 }}>{model.anomalyFuelBurnLh} L/h</td>
-                        <td style={{ padding: '8px 12px', color: '#b91c1c', fontWeight: 800 }}>+{Number((model.anomalyFuelBurnLh - model.normalFuelBurnLh).toFixed(1))} L/h</td>
+                        <td style={{ padding: '8px 12px', color: '#dc2626', fontWeight: 800 }}>{liveLosses.anomalyFuelBurnLh} L/h</td>
+                        <td style={{ padding: '8px 12px', color: '#b91c1c', fontWeight: 800 }}>+{Number((liveLosses.anomalyFuelBurnLh - model.normalFuelBurnLh).toFixed(1))} L/h</td>
                         <td style={{ padding: '8px 12px' }}>
                           <span style={{ background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa', padding: '1px 6px', borderRadius: 2, fontSize: 9, fontWeight: 800 }}>
                             HIGH BURN
@@ -1161,8 +1305,8 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                       <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                         <td style={{ padding: '8px 12px', fontWeight: 700, color: '#0f172a' }}>🌡️ Habitat Thermal Stability</td>
                         <td style={{ padding: '8px 12px', color: '#16a34a', fontWeight: 700 }}>+21.0 °C (Nominal)</td>
-                        <td style={{ padding: '8px 12px', color: '#dc2626', fontWeight: 800 }}>{Number((21.0 + model.tempVarianceC).toFixed(1))} °C</td>
-                        <td style={{ padding: '8px 12px', color: '#b91c1c', fontWeight: 800 }}>{model.tempVarianceC} °C Deficit</td>
+                        <td style={{ padding: '8px 12px', color: '#dc2626', fontWeight: 800 }}>{Number((21.0 + liveLosses.tempVarianceC).toFixed(1))} °C</td>
+                        <td style={{ padding: '8px 12px', color: '#b91c1c', fontWeight: 800 }}>{liveLosses.tempVarianceC} °C Deficit</td>
                         <td style={{ padding: '8px 12px' }}>
                           <span style={{ background: '#fef2f2', color: '#b91c1c', border: '1px solid #fca5a5', padding: '1px 6px', borderRadius: 2, fontSize: 9, fontWeight: 800 }}>
                             COMPROMISED
@@ -1173,8 +1317,8 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
                       <tr style={{ borderBottom: '1px solid #e2e8f0', background: '#fcfcfd' }}>
                         <td style={{ padding: '8px 12px', fontWeight: 700, color: '#0f172a' }}>📡 Telemetry Buffer Hold</td>
                         <td style={{ padding: '8px 12px', color: '#16a34a', fontWeight: 700 }}>0 KB (Live Sync)</td>
-                        <td style={{ padding: '8px 12px', color: '#ea580c', fontWeight: 800 }}>{model.dataLossMb} MB Edge Cached</td>
-                        <td style={{ padding: '8px 12px', color: '#0284c7', fontWeight: 800 }}>{model.packetsDelayed} Packets Queued</td>
+                        <td style={{ padding: '8px 12px', color: '#ea580c', fontWeight: 800 }}>{liveLosses.dataLossMb} MB Edge Cached</td>
+                        <td style={{ padding: '8px 12px', color: '#0284c7', fontWeight: 800 }}>{liveLosses.packetsDelayed} Packets Queued</td>
                         <td style={{ padding: '8px 12px' }}>
                           <span style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', padding: '1px 6px', borderRadius: 2, fontSize: 9, fontWeight: 800 }}>
                             PROTECTED (VajraX)

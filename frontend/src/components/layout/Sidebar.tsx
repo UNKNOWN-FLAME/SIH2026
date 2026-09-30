@@ -1,7 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStation } from '../../context/StationContext'
-import AnomalyInjector from '../dashboard/AnomalyInjector'
 import emblemOfIndia from '../../assets/emblem_of_india.svg'
 
 export default function Sidebar({
@@ -14,11 +13,11 @@ export default function Sidebar({
   const navigate = useNavigate()
   const location = useLocation()
   const { t } = useLanguage()
-  const { stationId, openBlackBox } = useStation()
-  const currentStation = _activeStation || stationId || 'maitri'
+  const { openBlackBox } = useStation()
 
   const navItems = [
     { icon: 'dashboard', label: t('nav.dashboard'), sub: t('nav.dashboard_sub'), path: '/' },
+    { icon: 'terminal', label: 'On-Ice Console', sub: 'Maitri LAN (192.168.1.10)', path: '/edge' },
     { icon: 'sensors', label: t('nav.telemetry'), sub: t('nav.telemetry_sub'), path: '/telemetry' },
     { icon: 'bolt', label: t('nav.energy'), sub: t('nav.energy_sub'), path: '/energy' },
     { icon: 'local_shipping', label: t('nav.logistics'), sub: t('nav.logistics_sub'), path: '/logistics' },
@@ -110,7 +109,11 @@ export default function Sidebar({
               title={`${item.label} (${item.sub})`}
               onClick={(e) => {
                 e.preventDefault()
-                navigate(item.path)
+                if (item.path === '/edge') {
+                  window.open('/edge', '_blank', 'noopener,noreferrer')
+                } else {
+                  navigate(item.path)
+                }
               }}
               style={{
                 display: 'flex',
@@ -152,11 +155,6 @@ export default function Sidebar({
             </a>
           )
         })}
-
-        {/* Anomaly Injector button just below Official Reports */}
-        <div className="sidebar-anomaly-wrapper" style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid #e2e8f0' }}>
-          <AnomalyInjector activeStation={currentStation} variant="sidebar" />
-        </div>
       </nav>
 
       {/* ── PINNED AT END OF SIDEBAR: SQUARE BLACK BOX BUTTON ── */}
