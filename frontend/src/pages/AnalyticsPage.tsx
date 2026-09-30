@@ -9,17 +9,6 @@ import { usePredictionsV2 } from '../hooks/usePredictiveAI'
 
 type TabType = 'overview' | 'fuel' | 'energy' | 'generator' | 'blizzard' | 'water' | 'structural'
 
-const formulaStyle: React.CSSProperties = {
-  fontFamily: 'monospace',
-  fontSize: '11px',
-  color: '#64748b',
-  backgroundColor: '#f1f5f9',
-  padding: '4px 8px',
-  borderRadius: '4px',
-  display: 'inline-block',
-  marginTop: '4px'
-}
-
 const actionBoxStyle: React.CSSProperties = {
   borderLeft: '4px solid #ef4444',
   backgroundColor: '#fef2f2',
@@ -46,8 +35,8 @@ function TimelineChart({ data, color }: { data: number[], color: string }) {
         const heightPct = (v / max) * 100
         return (
           <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div style={{ width: '100%', height: `${heightPct}%`, backgroundColor: color, opacity: 0.8, borderTopLeftRadius: '2px', borderTopRightRadius: '2px' }} />
-            <div style={{ fontSize: '9px', color: '#94a3b8', marginTop: '4px' }}>D+{i+1}</div>
+            <div style={{ width: '100%', height: `${heightPct}%`, backgroundColor: color, opacity: 0.85, borderTopLeftRadius: '2px', borderTopRightRadius: '2px' }} />
+            <div style={{ fontSize: '9px', color: '#64748b', marginTop: '4px', fontWeight: 600 }}>Day {i + 1}</div>
           </div>
         )
       })}
@@ -159,11 +148,11 @@ export default function AnalyticsPage() {
   const structPred = getPred('StructuralStress')
 
   const tabs = [
-    { id: 'overview', label: 'OVERVIEW GRID' },
+    { id: 'overview', label: 'OVERVIEW' },
     { id: 'fuel', label: 'FUEL DEPLETION' },
-    { id: 'energy', label: 'ENERGY DEGREE-DAYS' },
-    { id: 'generator', label: 'GENERATOR WEIBULL' },
-    { id: 'blizzard', label: 'BLIZZARD LOGISTIC' },
+    { id: 'energy', label: 'ENERGY LOAD' },
+    { id: 'generator', label: 'GENERATOR RUL' },
+    { id: 'blizzard', label: 'BLIZZARD RISK' },
     { id: 'water', label: 'WATER SUSTAINABILITY' },
     { id: 'structural', label: 'STRUCTURAL LOAD' },
   ]
@@ -171,9 +160,9 @@ export default function AnalyticsPage() {
   const panels = [
     {
       id: 'fuel',
-      title: 'Fuel Depletion (Linear Extrapolation)',
-      formula: 'daysToCritical = (fuelRemaining - capacity * 0.30) / forecastedBurnDay7',
-      color: '#3b82f6',
+      title: 'Fuel Depletion',
+      subtitle: 'Forward consumption runway & reserve thresholds',
+      color: '#0284c7',
       pred: fuelPred,
       metric: fuelPred ? `${fuelPred.val.toFixed(1)} days to critical` : '--',
       chartData: [1210, 1280, 1190, 1320, 1260, 1240, 1250],
@@ -184,9 +173,9 @@ export default function AnalyticsPage() {
     },
     {
       id: 'energy',
-      title: 'Energy Degree-Days',
-      formula: 'load_kW = 120 + 2.8 * HDD + 1.5 * crew_count + 0.3 * wind_kmh',
-      color: '#8b5cf6',
+      title: 'Energy Consumption & Thermal Load',
+      subtitle: 'Heating degree-days balance and microgrid demand forecast',
+      color: '#7c3aed',
       pred: energyPred,
       metric: energyPred ? `${energyPred.val.toFixed(1)} kW load` : '--',
       chartData: [140, 145, 150, 160, 155, 142, 138],
@@ -197,9 +186,9 @@ export default function AnalyticsPage() {
     },
     {
       id: 'generator',
-      title: 'Generator RUL (Weibull)',
-      formula: 'RUL_hours = eta * (-Math.log(reliability_target)) ** (1/beta)',
-      color: '#10b981',
+      title: 'Generator Remaining Useful Life (RUL)',
+      subtitle: 'Cumulative operating hours & maintenance schedule',
+      color: '#059669',
       pred: genPred,
       metric: genPred ? `${genPred.val.toFixed(1)} hours remaining` : '--',
       chartData: [2100, 2050, 2000, 1950, 1900, 1850, 1800],
@@ -210,9 +199,9 @@ export default function AnalyticsPage() {
     },
     {
       id: 'blizzard',
-      title: 'Blizzard Logistic',
-      formula: 'P = 1 / (1 + Math.exp(-(0.042*v + 0.18*dP/dt + 0.015*h - 3.2)))',
-      color: '#f59e0b',
+      title: 'Blizzard & Severe Weather Risk',
+      subtitle: 'Barometric pressure variance and wind velocity projection',
+      color: '#d97706',
       pred: blizzPred,
       metric: blizzPred ? `${blizzPred.val.toFixed(1)}% probability` : '--',
       chartData: [10, 15, 20, 45, 80, 85, 30],
@@ -223,9 +212,9 @@ export default function AnalyticsPage() {
     },
     {
       id: 'water',
-      title: 'Water Sustainability',
-      formula: 'daysToRefill = currentVolume / Math.max(1, Math.abs(netDailyChange))',
-      color: '#06b6d4',
+      title: 'Water Supply Sustainability',
+      subtitle: 'Potable storage depletion rate vs lake intake yield',
+      color: '#0891b2',
       pred: waterPred,
       metric: waterPred ? `${waterPred.val.toFixed(1)} days to refill` : '--',
       chartData: [45, 42, 38, 35, 30, 25, 20],
@@ -236,9 +225,9 @@ export default function AnalyticsPage() {
     },
     {
       id: 'structural',
-      title: 'Structural Snow Load',
-      formula: 'totalLoad = (density * depth * g) + (0.5 * rho * v^2 * Cd)',
-      color: '#64748b',
+      title: 'Structural Snow & Wind Load',
+      subtitle: 'Roof snowpack pressure and katabatic shear force',
+      color: '#475569',
       pred: structPred,
       metric: structPred ? `${structPred.val.toFixed(1)}% of safe limit` : '--',
       chartData: [40, 45, 55, 60, 75, 82, 88],
@@ -260,25 +249,28 @@ export default function AnalyticsPage() {
         
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
           {/* Header */}
-          <div style={{ background: 'linear-gradient(90deg, #0f172a 0%, #1e293b 100%)', padding: '24px', borderRadius: '8px', color: 'white', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ background: 'linear-gradient(90deg, #0b3b60 0%, #1e293b 100%)', padding: '20px 24px', borderRadius: '8px', color: 'white', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.08)' }}>
             <div>
-              <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 700, letterSpacing: '0.05em' }}>
-                🔬 ALGORITHMIC PREDICTION ENGINE — {station.toUpperCase()}
-              </h1>
-              <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '8px' }}>
-                Last Computed: {v2Data?.generated_at ? new Date(v2Data.generated_at).toLocaleTimeString() : `${new Date().toLocaleTimeString()} (Live Deterministic Compute)`} | Pure Math Deterministic Models
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 22, color: '#38bdf8' }}>analytics</span>
+                <h1 style={{ margin: 0, fontSize: '18px', fontWeight: 800, letterSpacing: '0.04em' }}>
+                  PREDICTION ENGINE: {station.toUpperCase()}
+                </h1>
+              </div>
+              <div style={{ fontSize: '11.5px', color: '#94a3b8', marginTop: '6px' }}>
+                Last Updated: {v2Data?.generated_at ? new Date(v2Data.generated_at).toLocaleTimeString() : new Date().toLocaleTimeString()} • Station Telemetry Feed
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button 
                 onClick={() => setStation('maitri')}
-                style={{ background: station === 'maitri' ? '#f97316' : '#334155', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: 600 }}
+                style={{ background: station === 'maitri' ? '#f97316' : '#334155', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, fontSize: '12px' }}
               >
                 MAITRI
               </button>
               <button 
                 onClick={() => setStation('bharati')}
-                style={{ background: station === 'bharati' ? '#f97316' : '#334155', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: 600 }}
+                style={{ background: station === 'bharati' ? '#f97316' : '#334155', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, fontSize: '12px' }}
               >
                 BHARATI
               </button>
@@ -304,12 +296,13 @@ export default function AnalyticsPage() {
                 style={{
                   background: 'none',
                   border: 'none',
-                  borderBottom: activeTab === t.id ? '2px solid #0f172a' : '2px solid transparent',
+                  borderBottom: activeTab === t.id ? '2px solid #0b3b60' : '2px solid transparent',
                   padding: '12px 16px',
                   cursor: 'pointer',
-                  fontWeight: activeTab === t.id ? 700 : 500,
-                  color: activeTab === t.id ? '#0f172a' : '#64748b',
-                  fontSize: '13px'
+                  fontWeight: activeTab === t.id ? 800 : 600,
+                  color: activeTab === t.id ? '#0b3b60' : '#64748b',
+                  fontSize: '12.5px',
+                  letterSpacing: '0.02em'
                 }}
               >
                 {t.label}
@@ -318,26 +311,26 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Panels */}
-          <div style={{ display: 'grid', gridTemplateColumns: activeTab === 'overview' ? 'repeat(2, 1fr)' : '1fr', gap: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: activeTab === 'overview' ? 'repeat(2, 1fr)' : '1fr', gap: '20px' }}>
             {activePanels.map((p, idx) => (
-              <div key={idx} style={{ background: 'white', borderRadius: '8px', border: '1px solid #e2e8f0', borderLeft: `4px solid ${p.color}`, padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <div key={idx} style={{ background: 'white', borderRadius: '8px', border: '1px solid #cbd5e1', borderLeft: `4px solid ${p.color}`, padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
-                    <h2 style={{ margin: 0, fontSize: '16px', color: '#0f172a' }}>{p.title}</h2>
-                    <div style={formulaStyle}>{p.formula}</div>
+                    <h2 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#0f172a' }}>{p.title}</h2>
+                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>{p.subtitle}</div>
                   </div>
-                  <div style={{ background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, color: '#475569' }}>
-                    CONFIDENCE: {p.pred ? '99.9%' : '--'}
+                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '3px 8px', borderRadius: '4px', fontSize: '10.5px', fontWeight: 700, color: '#475569' }}>
+                    MONITORED
                   </div>
                 </div>
 
-                <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Current Value</div>
-                    <div style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a' }}>{p.metric}</div>
+                    <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Current Value</div>
+                    <div style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a', marginTop: 2 }}>{p.metric}</div>
                   </div>
-                  <div style={{ width: '40%' }}>
-                    <div style={{ fontSize: '11px', color: '#64748b', textAlign: 'center', fontWeight: 600 }}>7-DAY PROJECTION</div>
+                  <div style={{ width: '45%' }}>
+                    <div style={{ fontSize: '10.5px', color: '#64748b', textAlign: 'center', fontWeight: 700, letterSpacing: '0.02em' }}>7-DAY TREND FORECAST</div>
                     <TimelineChart data={p.chartData} color={p.color} />
                   </div>
                 </div>
@@ -356,38 +349,44 @@ export default function AnalyticsPage() {
             ))}
           </div>
 
-          {/* Log Table */}
-          <div style={{ marginTop: '32px', background: 'white', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '24px' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#0f172a' }}>Recent Database Writes (AIPrediction)</h3>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+          {/* Subsystem Telemetry Log */}
+          <div style={{ marginTop: '28px', background: 'white', borderRadius: '8px', border: '1px solid #cbd5e1', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <h3 style={{ margin: 0, fontSize: '13.5px', fontWeight: 800, color: '#0b3b60', letterSpacing: '0.02em' }}>
+                SUBSYSTEM TELEMETRY LOG
+              </h3>
+              <span style={{ fontSize: '11px', color: '#64748b' }}>Real-time sensor forecasting records</span>
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid #e2e8f0', textAlign: 'left', color: '#64748b' }}>
-                  <th style={{ padding: '12px 8px' }}>Timestamp</th>
-                  <th style={{ padding: '12px 8px' }}>Model</th>
-                  <th style={{ padding: '12px 8px' }}>Risk Level</th>
-                  <th style={{ padding: '12px 8px' }}>Value</th>
+                <tr style={{ borderBottom: '1px solid #cbd5e1', textAlign: 'left', color: '#475569', background: '#f8fafc' }}>
+                  <th style={{ padding: '10px 12px', fontWeight: 700 }}>Timestamp</th>
+                  <th style={{ padding: '10px 12px', fontWeight: 700 }}>Subsystem Module</th>
+                  <th style={{ padding: '10px 12px', fontWeight: 700 }}>Risk Level</th>
+                  <th style={{ padding: '10px 12px', fontWeight: 700 }}>Projected Value</th>
                 </tr>
               </thead>
               <tbody>
                 {preds.slice(0, 10).map((p: any, i: number) => (
                   <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '12px 8px', color: '#475569' }}>{new Date().toISOString()}</td>
-                    <td style={{ padding: '12px 8px', fontWeight: 500, color: '#0f172a' }}>{p.model_name}</td>
-                    <td style={{ padding: '12px 8px' }}>
+                    <td style={{ padding: '10px 12px', color: '#64748b', fontFamily: 'monospace', fontSize: '11.5px' }}>{new Date().toLocaleTimeString()}</td>
+                    <td style={{ padding: '10px 12px', fontWeight: 600, color: '#0f172a' }}>{p.model_name}</td>
+                    <td style={{ padding: '10px 12px' }}>
                       <span style={{ 
                         background: p.risk === 'CRITICAL' ? '#fef2f2' : p.risk === 'WARNING' ? '#fffbeb' : '#ecfdf5',
-                        color: p.risk === 'CRITICAL' ? '#ef4444' : p.risk === 'WARNING' ? '#d97706' : '#10b981',
-                        padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600
+                        color: p.risk === 'CRITICAL' ? '#dc2626' : p.risk === 'WARNING' ? '#d97706' : '#16a34a',
+                        border: `1px solid ${p.risk === 'CRITICAL' ? '#fca5a5' : p.risk === 'WARNING' ? '#fde68a' : '#bbf7d0'}`,
+                        padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700
                       }}>
                         {p.risk}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 8px', color: '#475569' }}>{p.val.toFixed(2)}</td>
+                    <td style={{ padding: '10px 12px', color: '#334155', fontWeight: 600 }}>{p.val.toFixed(2)}</td>
                   </tr>
                 ))}
                 {preds.length === 0 && (
                   <tr>
-                    <td colSpan={4} style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>No recent predictions found.</td>
+                    <td colSpan={4} style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>No active telemetry records.</td>
                   </tr>
                 )}
               </tbody>
