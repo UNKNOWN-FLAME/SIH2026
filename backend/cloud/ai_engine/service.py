@@ -473,8 +473,9 @@ class PredictiveAIService:
         deficit = load_kw - capacity_kw
         energy_risk = "NOMINAL"
         if deficit > 20:
-            energy_risk = "DEFICIT" # wait, instruction says CRITICAL? "Energy DEFICIT (> 20kW over capacity)" so WARNING or CRITICAL? Let's say WARNING or CRITICAL based on 20kW.
             energy_risk = "CRITICAL"
+        elif deficit > 0:
+            energy_risk = "WARNING"
 
         energy_data = {
             "load_kw": round(load_kw, 1),
@@ -556,42 +557,49 @@ class PredictiveAIService:
         }
 
         predictions = [
-            {"model_name": "FuelDepletion", "metric": "daysToCritical", "val": daysToCritical, "risk": fuel_risk, "data": fuel_data},
-            {"model_name": "EnergyLoad", "metric": "load_kw", "val": load_kw, "risk": energy_risk, "data": energy_data},
-            {"model_name": "GeneratorRUL", "metric": "RUL_hours", "val": remaining, "risk": gen_risk, "data": gen_data},
-            {"model_name": "BlizzardProb", "metric": "blizzard_prob_pct", "val": blizz_prob, "risk": blizz_risk, "data": blizz_data},
-            {"model_name": "WaterSustainability", "metric": "daysToRefillNeeded", "val": daysToRefillNeeded, "risk": water_risk, "data": water_data},
-            {"model_name": "StructuralStress", "metric": "stressPercent", "val": stressPercent, "risk": struct_risk, "data": struct_data}
+            {"model_name": "FuelDepletion", "metric": "daysToCritical", "val": round(daysToCritical, 2), "risk": fuel_risk, "data": fuel_data},
+            {"model_name": "EnergyLoad", "metric": "load_kw", "val": round(load_kw, 2), "risk": energy_risk, "data": energy_data},
+            {"model_name": "GeneratorRUL", "metric": "RUL_hours", "val": round(max(0.0, remaining), 2), "risk": gen_risk, "data": gen_data},
+            {"model_name": "BlizzardProb", "metric": "blizzard_prob_pct", "val": round(blizz_prob, 2), "risk": blizz_risk, "data": blizz_data},
+            {"model_name": "WaterSustainability", "metric": "daysToRefillNeeded", "val": round(daysToRefillNeeded, 2), "risk": water_risk, "data": water_data},
+            {"model_name": "StructuralStress", "metric": "stressPercent", "val": round(stressPercent, 2), "risk": struct_risk, "data": struct_data},
         ]
 
-        # DB Write
-        for p in predictions:
-            pred_id = f"{sid}-{p['model_name']}"
-            stmt = select(AIPrediction).where(AIPrediction.prediction_id == pred_id)
-            result = await db.execute(stmt)
-            existing = result.scalar_one_or_none()
-            if existing:
-                existing.predicted_value = p['val']
-                existing.risk_level = p['risk']
-                existing.predicted_json = p['data']
-                existing.generated_at = now
-            else:
-                new_pred = AIPrediction(
-                    prediction_id=pred_id,
-                    station_id=sid,
-                    model_name=p['model_name'],
-                    target_metric=p['metric'],
-                    predicted_for_date=now,
-                    predicted_value=p['val'],
-                    risk_level=p['risk'],
-                    predicted_json=p['data'],
-                    generated_at=now
-                )
-                db.add(new_pred)
-        await db.commit()
+        # DB Write — wrapped in try/except so any DB error never breaks the HTTP response
+        try:
+            for p in predictions:
+                pred_id = f"{sid}-{p['model_name']}"
+                stmt = select(AIPrediction).where(AIPrediction.prediction_id == pred_id)
+                result = await db.execute(stmt)
+                existing = result.scalar_one_or_none()
+                if existing:
+                    existing.predicted_value = float(p["val"])
+                    existing.risk_level = p["risk"]
+                    existing.predicted_json = p["data"]
+                    existing.generated_at = now
+                else:
+                    new_pred = AIPrediction(
+                        prediction_id=pred_id,
+                        station_id=sid,
+                        model_name=p["model_name"],
+                        target_metric=p["metric"],
+                        predicted_for_date=now,
+                        predicted_value=float(p["val"]),
+                        risk_level=p["risk"],
+                        predicted_json=p["data"],
+                        generated_at=now,
+                    )
+                    db.add(new_pred)
+            await db.commit()
+        except Exception as db_exc:
+            log.warning("predict_algorithmic_v2.db_write_failed", error=str(db_exc))
+            try:
+                await db.rollback()
+            except Exception:
+                pass
 
         return {
             "station_id": sid,
             "generated_at": now.isoformat(),
-            "predictions": predictions
+            "predictions": predictions,
         }
