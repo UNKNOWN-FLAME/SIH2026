@@ -18,7 +18,6 @@ export default function Sidebar({
 
   const navItems = [
     { icon: 'dashboard', label: t('nav.dashboard'), sub: t('nav.dashboard_sub'), path: '/' },
-    { icon: 'terminal', label: 'On-Ice Console', sub: 'Maitri LAN (192.168.1.10)', path: '/edge' },
     { icon: 'sensors', label: t('nav.telemetry'), sub: t('nav.telemetry_sub'), path: '/telemetry' },
     { icon: 'bolt', label: t('nav.energy'), sub: t('nav.energy_sub'), path: '/energy' },
     { icon: 'local_shipping', label: t('nav.logistics'), sub: t('nav.logistics_sub'), path: '/logistics' },
@@ -110,11 +109,7 @@ export default function Sidebar({
               title={`${item.label} (${item.sub})`}
               onClick={(e) => {
                 e.preventDefault()
-                if (item.path === '/edge') {
-                  window.open('/edge', '_blank', 'noopener,noreferrer')
-                } else {
-                  navigate(item.path)
-                }
+                navigate(item.path)
               }}
               style={{
                 display: 'flex',

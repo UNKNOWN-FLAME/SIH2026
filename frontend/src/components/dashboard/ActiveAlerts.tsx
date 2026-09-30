@@ -201,60 +201,74 @@ export default function ActiveAlerts({ stationId }: Props) {
             >
               {activeAlerts.length > 0 ? 'notifications_active' : 'verified_user'}
             </span>
-            <span style={{ fontSize: 11, fontWeight: 800, color: '#ffffff', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: '#ffffff', letterSpacing: '0.03em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
               {t('alerts.title')}
             </span>
-            <span
-              style={{
-                fontSize: 8.5,
-                fontWeight: 800,
-                padding: '1px 5px',
-                borderRadius: 2,
-                background: activeAlerts.length > 0 ? '#dc2626' : 'rgba(22, 163, 74, 0.3)',
-                color: '#ffffff',
-                border: activeAlerts.length > 0 ? '1px solid #ef4444' : '1px solid #22c55e',
-                flexShrink: 0,
-              }}
-            >
-              {activeAlerts.length > 0 ? `${activeAlerts.length} OPEN` : 'NOMINAL'}
-            </span>
+            {activeAlerts.length > 0 && (
+              <span
+                style={{
+                  fontSize: 8.5,
+                  fontWeight: 800,
+                  padding: '1px 5px',
+                  borderRadius: 2,
+                  background: '#dc2626',
+                  color: '#ffffff',
+                  border: '1px solid #ef4444',
+                  flexShrink: 0,
+                }}
+              >
+                {activeAlerts.length} OPEN
+              </span>
+            )}
           </div>
 
           {/* Action Tools: Tab Switcher, PDF Button, Expand */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-            <button
-              type="button"
-              onClick={() => setActiveTab('active')}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+            <div
               style={{
-                fontSize: 9,
-                fontWeight: 700,
-                padding: '2px 6px',
-                borderRadius: 2,
-                border: activeTab === 'active' ? '1px solid #ff9933' : '1px solid rgba(255,255,255,0.2)',
-                background: activeTab === 'active' ? '#ff9933' : 'rgba(255,255,255,0.1)',
-                color: activeTab === 'active' ? '#0b3b60' : '#ffffff',
-                cursor: 'pointer',
+                display: 'inline-flex',
+                background: 'rgba(0,0,0,0.22)',
+                borderRadius: 3,
+                padding: '1.5px',
+                border: '1px solid rgba(255,255,255,0.15)',
               }}
             >
-              Active ({activeAlerts.length})
-            </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('active')}
+                style={{
+                  fontSize: 8.5,
+                  fontWeight: 800,
+                  padding: '2px 6px',
+                  borderRadius: 2,
+                  border: 'none',
+                  background: activeTab === 'active' ? '#ff9933' : 'transparent',
+                  color: activeTab === 'active' ? '#0b3b60' : 'rgba(255,255,255,0.85)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                Active ({activeAlerts.length})
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('stored')}
-              style={{
-                fontSize: 9,
-                fontWeight: 700,
-                padding: '2px 6px',
-                borderRadius: 2,
-                border: activeTab === 'stored' ? '1px solid #ff9933' : '1px solid rgba(255,255,255,0.2)',
-                background: activeTab === 'stored' ? '#ff9933' : 'rgba(255,255,255,0.1)',
-                color: activeTab === 'stored' ? '#0b3b60' : '#ffffff',
-                cursor: 'pointer',
-              }}
-            >
-              Archive ({storedAlerts.length})
-            </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('stored')}
+                style={{
+                  fontSize: 8.5,
+                  fontWeight: 800,
+                  padding: '2px 6px',
+                  borderRadius: 2,
+                  border: 'none',
+                  background: activeTab === 'stored' ? '#ff9933' : 'transparent',
+                  color: activeTab === 'stored' ? '#0b3b60' : 'rgba(255,255,255,0.85)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                Archive ({storedAlerts.length})
+              </button>
+            </div>
 
             {/* ONLY PDF Download Option — Compact & Highlighted */}
             <button
@@ -262,19 +276,21 @@ export default function ActiveAlerts({ stationId }: Props) {
               onClick={handleDownloadPDF}
               title="Download Official Mission Alerts SITREP PDF"
               style={{
-                fontSize: 9,
+                fontSize: 8.5,
                 fontWeight: 800,
-                padding: '2px 7px',
-                borderRadius: 2,
-                background: '#dc2626',
+                padding: '2.5px 6px',
+                borderRadius: 3,
+                background: 'rgba(255,255,255,0.12)',
                 color: '#ffffff',
-                border: '1px solid #ef4444',
+                border: '1px solid rgba(255,255,255,0.2)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 3,
-                boxShadow: '0 1px 2px rgba(220,38,38,0.3)',
+                transition: 'all 0.15s ease',
               }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.25)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.12)')}
             >
               <span className="material-symbols-outlined" style={{ fontSize: 12 }}>
                 picture_as_pdf
@@ -290,12 +306,15 @@ export default function ActiveAlerts({ stationId }: Props) {
               style={{
                 background: 'transparent',
                 border: 'none',
-                color: '#ffffff',
+                color: 'rgba(255,255,255,0.8)',
                 cursor: 'pointer',
                 padding: '2px',
                 display: 'flex',
                 alignItems: 'center',
+                transition: 'color 0.15s ease',
               }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.8)')}
             >
               <span className="material-symbols-outlined" style={{ fontSize: 15 }}>
                 open_in_new
@@ -328,42 +347,192 @@ export default function ActiveAlerts({ stationId }: Props) {
               {!isLoading && activeAlerts.length === 0 && (
                 <div
                   style={{
-                    fontSize: 10.5,
-                    color: '#166534',
-                    padding: '10px 12px',
-                    background: '#f0fdf4',
-                    border: '1px solid #bbf7d0',
-                    fontWeight: 600,
-                    borderRadius: 2,
+                    height: '100%',
                     display: 'flex',
                     flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    justifyContent: 'space-between',
+                    padding: '2px 0',
                     gap: 6,
-                    height: '100%',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#16a34a' }}>
-                      check_circle
-                    </span>
-                    <span>{t('alerts.none')}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('stored')}
+                  {/* Top Status Banner */}
+                  <div
                     style={{
-                      fontSize: 9.5,
-                      fontWeight: 700,
-                      color: '#0b3b60',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      textDecoration: 'underline',
+                      background: '#f0fdf4',
+                      border: '1px solid #bbf7d0',
+                      borderRadius: 4,
+                      padding: '8px 10px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
                     }}
                   >
-                    Archived Events ({storedAlerts.length}) →
-                  </button>
+                    <div
+                      style={{
+                        width: 26,
+                        height: 26,
+                        borderRadius: '50%',
+                        background: '#dcfce7',
+                        border: '1px solid #86efac',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#15803d',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>verified</span>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: '#166534', letterSpacing: '-0.01em' }}>
+                        All Station Systems Nominal
+                      </div>
+                      <div style={{ fontSize: 8.5, color: '#15803d', opacity: 0.9 }}>
+                        Zero active hazards • Station telemetry in continuous parity
+                      </div>
+                    </div>
+                    <span
+                      style={{
+                        fontSize: 8,
+                        fontWeight: 800,
+                        background: '#ffffff',
+                        border: '1px solid #86efac',
+                        color: '#15803d',
+                        padding: '1px 5px',
+                        borderRadius: 2,
+                        letterSpacing: '0.04em',
+                      }}
+                    >
+                      PASS
+                    </span>
+                  </div>
+
+                  {/* Subsystems Health Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
+                    <div
+                      style={{
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 3,
+                        padding: '5px 8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#0284c7' }}>bolt</span>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: '#475569' }}>Power Grid</span>
+                      </div>
+                      <span style={{ fontSize: 8, fontWeight: 800, color: '#16a34a', background: '#dcfce7', padding: '1px 4px', borderRadius: 2 }}>
+                        NOMINAL
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 3,
+                        padding: '5px 8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#059669' }}>ac_unit</span>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: '#475569' }}>Life Support</span>
+                      </div>
+                      <span style={{ fontSize: 8, fontWeight: 800, color: '#16a34a', background: '#dcfce7', padding: '1px 4px', borderRadius: 2 }}>
+                        NOMINAL
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 3,
+                        padding: '5px 8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#d97706' }}>satellite_alt</span>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: '#475569' }}>Uplink Link</span>
+                      </div>
+                      <span style={{ fontSize: 8, fontWeight: 800, color: '#16a34a', background: '#dcfce7', padding: '1px 4px', borderRadius: 2 }}>
+                        SYNCED
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 3,
+                        padding: '5px 8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#7c3aed' }}>sensors</span>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: '#475569' }}>Sensors</span>
+                      </div>
+                      <span style={{ fontSize: 8, fontWeight: 800, color: '#16a34a', background: '#dcfce7', padding: '1px 4px', borderRadius: 2 }}>
+                        ONLINE
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Bottom Archive Peek / Action */}
+                  <div
+                    style={{
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 3,
+                      padding: '5px 8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#64748b' }}>history</span>
+                      <span style={{ fontSize: 9, color: '#64748b', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {storedAlerts.length > 0 ? `${storedAlerts.length} past incidents archived` : 'No incidents archived'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('stored')}
+                      style={{
+                        fontSize: 9,
+                        fontWeight: 800,
+                        color: '#0b3b60',
+                        background: '#ffffff',
+                        border: '1px solid #cbd5e1',
+                        padding: '2px 7px',
+                        borderRadius: 2,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 3,
+                        flexShrink: 0,
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f5f9')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = '#ffffff')}
+                    >
+                      <span>Archive Log ({storedAlerts.length})</span>
+                      <span className="material-symbols-outlined" style={{ fontSize: 11 }}>arrow_forward</span>
+                    </button>
+                  </div>
                 </div>
               )}
 

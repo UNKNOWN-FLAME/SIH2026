@@ -25,9 +25,9 @@ interface AnomalyHazardPreset {
 
 const SEV_STYLE: Record<string, { bg: string; border: string; color: string; badge: string; badgeFg: string }> = {
   CRITICAL: { bg: '#fef2f2', border: '#fecaca', color: '#b91c1c', badge: '#b91c1c', badgeFg: '#fff' },
-  HIGH:     { bg: '#fff7ed', border: '#fed7aa', color: '#c2410c', badge: '#ea580c', badgeFg: '#fff' },
-  MEDIUM:   { bg: '#fefce8', border: '#fde68a', color: '#92400e', badge: '#ca8a04', badgeFg: '#fff' },
-  LOW:      { bg: '#f0fdf4', border: '#bbf7d0', color: '#15803d', badge: '#16a34a', badgeFg: '#fff' },
+  HIGH: { bg: '#fff7ed', border: '#fed7aa', color: '#c2410c', badge: '#ea580c', badgeFg: '#fff' },
+  MEDIUM: { bg: '#fefce8', border: '#fde68a', color: '#92400e', badge: '#ca8a04', badgeFg: '#fff' },
+  LOW: { bg: '#f0fdf4', border: '#bbf7d0', color: '#15803d', badge: '#16a34a', badgeFg: '#fff' },
 }
 
 function getSevStyle(sev: string) {
@@ -219,7 +219,7 @@ export default function StationEdgeConsolePage() {
         const parsed = JSON.parse(last)
         if (parsed && !parsed.consoleEnded) return parsed
       }
-    } catch {}
+    } catch { }
     return null
   })
 
@@ -229,19 +229,31 @@ export default function StationEdgeConsolePage() {
       setActiveAnomaly(emergencyAlert)
       try {
         localStorage.setItem('himantar_edge_active_anomaly', JSON.stringify(emergencyAlert))
-      } catch {}
+      } catch { }
     } else if (lastAnomalyResult && !lastAnomalyResult.consoleEnded) {
       setActiveAnomaly(lastAnomalyResult)
       try {
         localStorage.setItem('himantar_edge_active_anomaly', JSON.stringify(lastAnomalyResult))
-      } catch {}
+      } catch { }
     } else if (lastAnomalyResult && lastAnomalyResult.consoleEnded) {
       setActiveAnomaly(null)
       try {
         localStorage.removeItem('himantar_edge_active_anomaly')
-      } catch {}
+      } catch { }
     }
   }, [emergencyAlert, lastAnomalyResult])
+
+  // Scroll to anomaly injector section if navigated with hash
+  useEffect(() => {
+    if (window.location.hash.includes('anomaly-injector')) {
+      const el = document.getElementById('anomaly-injector-section')
+      if (el) {
+        setTimeout(() => {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }, 120)
+      }
+    }
+  }, [])
 
   // Filtered preset hazards list
   const filteredPresets = HAZARD_PRESETS.filter((p) => {
@@ -347,7 +359,7 @@ export default function StationEdgeConsolePage() {
       setActiveAnomaly(res)
       try {
         localStorage.setItem('himantar_edge_active_anomaly', JSON.stringify(res))
-      } catch {}
+      } catch { }
 
       triggerEmergencyAlert(res)
       if (linkState === 'DOWN') {
@@ -365,7 +377,7 @@ export default function StationEdgeConsolePage() {
       setActiveAnomaly(null)
       try {
         localStorage.removeItem('himantar_edge_active_anomaly')
-      } catch {}
+      } catch { }
       await endAnomalyOnConsole(stationId)
       dismissEmergencyAlert()
       emergencyAudio.stop()
@@ -459,38 +471,39 @@ export default function StationEdgeConsolePage() {
             <div style={{ flex: 1, background: '#138808' }} />
           </div>
 
-          <span style={{ fontWeight: 800, color: '#0f172a', letterSpacing: '0.02em', fontSize: 11 }}>
-            भारत सरकार | Government of India
+          <span style={{ fontWeight: 700, color: '#0f172a', letterSpacing: '0.02em', fontSize: 11 }}>
+            Government of India
           </span>
-          <span style={{ color: '#94a3b8' }}>•</span>
-          <span style={{ color: '#1e293b', fontWeight: 600, fontSize: 10.5 }}>
-            पृथ्वी विज्ञान मंत्रालय | Ministry of Earth Sciences (MoES)
+          <span style={{ color: '#cbd5e1' }}>•</span>
+          <span style={{ color: '#334155', fontWeight: 600, fontSize: 11 }}>
+            Ministry of Earth Sciences (MoES)
           </span>
-          <span style={{ color: '#94a3b8' }} className="hidden md:inline">•</span>
-          <span style={{ color: '#0369a1', fontWeight: 700, fontSize: 10.5 }} className="hidden md:inline">
-            NCPOR • Polar Research Division
+          <span style={{ color: '#cbd5e1' }} className="hidden md:inline">•</span>
+          <span style={{ color: '#0369a1', fontWeight: 700, fontSize: 11 }} className="hidden md:inline">
+            National Centre for Polar and Ocean Research (NCPOR)
           </span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#0b3b60', fontWeight: 600, fontSize: 10.5 }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#ea580c' }}>schedule</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#0b3b60', fontWeight: 600, fontSize: 11, fontFamily: 'monospace' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#ea580c' }}>schedule</span>
             <span>{currentTimeStr || 'IST / UTC'}</span>
           </div>
 
-          <div
+          {/* <div
             style={{
-              background: '#e0f2fe',
-              border: '1px solid #7dd3fc',
+              background: '#f1f5f9',
+              border: '1px solid #cbd5e1',
               color: '#0369a1',
-              padding: '1px 7px',
+              padding: '2px 8px',
               borderRadius: 3,
               fontSize: 10,
               fontWeight: 800,
+              letterSpacing: '0.04em',
             }}
           >
             GIGW 3.0 COMPLIANT
-          </div>
+          </div> */}
         </div>
       </div>
 
@@ -499,25 +512,25 @@ export default function StationEdgeConsolePage() {
         style={{
           background: '#ffffff',
           borderBottom: '2px solid #FF9933',
-          padding: '8px 18px',
+          padding: '10px 20px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: 12,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+          gap: 14,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
           position: 'sticky',
           top: 0,
           zIndex: 50,
         }}
       >
-        {/* Left: Official Emblem & Ministry Header */}
+        {/* Left: Official Emblem & Research Centre Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           {/* Official Emblem of India */}
           <div
             style={{
-              width: 36,
-              height: 48,
+              width: 34,
+              height: 46,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -538,31 +551,39 @@ export default function StationEdgeConsolePage() {
             style={{ height: 42, width: 42, objectFit: 'contain', display: 'block', flexShrink: 0 }}
           />
 
-          {/* Ministry Title */}
+          <div style={{ height: 38, width: 1, background: '#e2e8f0', margin: '0 2px' }} className="hidden sm:block" />
+
+          {/* Ministry & System Title */}
           <div>
-            <div style={{ fontSize: 10.5, fontWeight: 800, color: '#0b3b60', letterSpacing: '0.03em', textTransform: 'uppercase' }}>
-              राष्ट्रीय ध्रुवीय एवं समुद्री अनुसंधान केंद्र | NCPOR
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#0b3b60', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+              National Centre for Polar and Ocean Research (NCPOR)
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 1 }}>
-              <span style={{ fontSize: 15, fontWeight: 800, color: '#0b3b60', letterSpacing: '-0.01em' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+              <span style={{ fontSize: 16, fontWeight: 900, color: '#072a44', letterSpacing: '-0.01em' }}>
                 HIMANTAR
               </span>
               <span
                 style={{
                   fontSize: 10,
                   fontWeight: 700,
-                  background: '#042f2e',
-                  color: '#2dd4bf',
+                  background: '#f0fdf4',
+                  color: '#166534',
                   padding: '2px 8px',
                   borderRadius: 3,
-                  border: '1px solid #14b8a6',
+                  border: '1px solid #bbf7d0',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
                 }}
               >
-                ON-ICE RUGGED EDGE CONSOLE (LAN 192.168.1.10)
+                {/* <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a' }} /> */}
+                {/* <span>ON-ICE RUGGED EDGE CONSOLE (LAN 192.168.1.10)</span> */}
               </span>
             </div>
-            <div style={{ fontSize: 10, color: '#64748b', marginTop: 1 }}>
-              {stationId === 'maitri' ? 'मैत्री अनुसंधान केंद्र (70°45\'S, 11°44\'E)' : 'भारती अनुसंधान केंद्र (69°24\'S, 76°11\'E)'} • 44th Indian Scientific Expedition to Antarctica (44-ISEA)
+            <div style={{ fontSize: 10.5, color: '#64748b', marginTop: 2, fontWeight: 500 }}>
+              {stationId === 'maitri'
+                ? 'Maitri Research Station, Antarctica (70°45\'S, 11°44\'E)'
+                : 'Bharati Research Station, Antarctica (69°24\'S, 76°11\'E)'} • 44th Indian Scientific Expedition to Antarctica (44-ISEA)
             </div>
           </div>
         </div>
@@ -585,11 +606,12 @@ export default function StationEdgeConsolePage() {
                 background: stationId === 'maitri' ? '#0b3b60' : 'transparent',
                 color: stationId === 'maitri' ? '#ffffff' : '#475569',
                 border: 'none',
-                padding: '4px 10px',
-                fontSize: 10.5,
+                padding: '5px 12px',
+                fontSize: 11,
                 fontWeight: 700,
                 cursor: 'pointer',
-                borderRadius: 2,
+                borderRadius: 3,
+                transition: 'all 0.15s ease',
               }}
             >
               MAITRI BASE
@@ -600,11 +622,12 @@ export default function StationEdgeConsolePage() {
                 background: stationId === 'bharati' ? '#0b3b60' : 'transparent',
                 color: stationId === 'bharati' ? '#ffffff' : '#475569',
                 border: 'none',
-                padding: '4px 10px',
-                fontSize: 10.5,
+                padding: '5px 12px',
+                fontSize: 11,
                 fontWeight: 700,
                 cursor: 'pointer',
-                borderRadius: 2,
+                borderRadius: 3,
+                transition: 'all 0.15s ease',
               }}
             >
               BHARATI BASE
@@ -621,16 +644,16 @@ export default function StationEdgeConsolePage() {
                 background: '#f0fdf4',
                 border: '1px solid #86efac',
                 color: '#15803d',
-                padding: '4px 10px',
+                padding: '5px 12px',
                 borderRadius: 4,
-                fontSize: 10.5,
+                fontSize: 11,
                 fontWeight: 700,
               }}
               title="VSAT Telemetry stream is CONNECTED via GSAT-7 military satellite carrier"
             >
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#16a34a' }} />
               <span>GSAT-7 UPLINK STREAMING</span>
-              <span style={{ fontSize: 9, color: '#166534', background: '#dcfce7', padding: '1px 5px', borderRadius: 2 }}>
+              <span style={{ fontSize: 9.5, color: '#166534', background: '#dcfce7', padding: '1px 6px', borderRadius: 2, fontWeight: 800 }}>
                 14.2 GHz • 620ms
               </span>
             </div>
@@ -643,9 +666,9 @@ export default function StationEdgeConsolePage() {
                 background: '#fef2f2',
                 border: '1px solid #f87171',
                 color: '#b91c1c',
-                padding: '4px 10px',
+                padding: '5px 12px',
                 borderRadius: 4,
-                fontSize: 10.5,
+                fontSize: 11,
                 fontWeight: 800,
                 boxShadow: '0 0 10px rgba(220, 38, 38, 0.25)',
               }}
@@ -653,7 +676,7 @@ export default function StationEdgeConsolePage() {
             >
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#dc2626', animation: 'ping 1s infinite' }} />
               <span>SATELLITE OUTAGE • AUTONOMOUS EDGE MODE</span>
-              <span style={{ fontSize: 9, background: '#fee2e2', color: '#991b1b', padding: '1px 5px', borderRadius: 2 }}>
+              <span style={{ fontSize: 9.5, background: '#fee2e2', color: '#991b1b', padding: '1px 6px', borderRadius: 2, fontWeight: 800 }}>
                 {edgeBufferCount} FRAMES BUFFERED
               </span>
             </div>
@@ -669,17 +692,17 @@ export default function StationEdgeConsolePage() {
               background: '#f8fafc',
               border: '1px solid #cbd5e1',
               color: isAudioMuted ? '#64748b' : '#ea580c',
-              padding: '5px 10px',
+              padding: '6px 12px',
               borderRadius: 4,
               fontSize: 11,
               fontWeight: 700,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: 5,
+              gap: 6,
             }}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>{isAudioMuted ? 'volume_off' : 'volume_up'}</span>
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{isAudioMuted ? 'volume_off' : 'notifications_active'}</span>
             <span>{isAudioMuted ? 'SIREN MUTED' : 'SIREN ARMED'}</span>
           </button>
 
@@ -690,22 +713,21 @@ export default function StationEdgeConsolePage() {
               background: '#0b3b60',
               border: '1px solid #07253d',
               color: '#ffffff',
-              padding: '5px 12px',
+              padding: '6px 14px',
               borderRadius: 4,
               fontSize: 11,
               fontWeight: 700,
               textDecoration: 'none',
               display: 'flex',
               alignItems: 'center',
-              gap: 5,
-              boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+              gap: 6,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
             }}
             title="Return to National Centre for Polar & Ocean Research Goa Headquarters Dashboard"
           >
-            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>dashboard</span>
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>dashboard</span>
             <span>HQ COMMAND</span>
           </Link>
-
         </div>
       </header>
 
@@ -809,7 +831,7 @@ export default function StationEdgeConsolePage() {
               </div>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 800, color: '#0b3b60', letterSpacing: '-0.01em' }}>
-                  LOCAL BLACK-BOX STORAGE ENGINE
+                  LOCAL STORAGE ENGINE
                 </div>
                 <div style={{ fontSize: 10, color: '#64748b' }}>
                   Path: <code style={{ color: '#0369a1' }}>/data/edge_ring_buffer.db</code> (NVMe RAID-1 SSD)
@@ -823,24 +845,27 @@ export default function StationEdgeConsolePage() {
               <div
                 style={{
                   background: linkState === 'DOWN' ? '#fff7ed' : '#f8fafc',
-                  border: `1px solid ${linkState === 'DOWN' ? '#fed7aa' : '#e2e8f0'}`,
+                  border: `1px solid ${linkState === 'DOWN' ? '#fdba74' : '#e2e8f0'}`,
                   borderRadius: 6,
                   padding: '10px 12px',
+                  transition: 'all 0.2s ease',
                 }}
               >
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b' }}>BUFFERED FRAMES</div>
+                <div style={{ fontSize: 9.5, fontWeight: 800, color: '#64748b', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  BUFFERED FRAMES
+                </div>
                 <div
                   style={{
-                    fontSize: 24,
-                    fontWeight: 800,
+                    fontSize: 22,
+                    fontWeight: 900,
                     color: linkState === 'DOWN' ? '#ea580c' : '#15803d',
                     fontFamily: 'monospace',
-                    marginTop: 2,
+                    marginTop: 3,
                   }}
                 >
-                  {edgeBufferCount} <span style={{ fontSize: 11, color: '#64748b' }}>frames</span>
+                  {edgeBufferCount} <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>frames</span>
                 </div>
-                <div style={{ fontSize: 9.5, color: '#94a3b8', marginTop: 2 }}>
+                <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 3 }}>
                   10-Hour Circular FIFO (1Hz)
                 </div>
               </div>
@@ -854,11 +879,13 @@ export default function StationEdgeConsolePage() {
                   padding: '10px 12px',
                 }}
               >
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b' }}>BANDWIDTH CRUSH</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: '#0b3b60', fontFamily: 'monospace', marginTop: 2 }}>
-                  94.1% <span style={{ fontSize: 11, color: '#64748b' }}>saved</span>
+                <div style={{ fontSize: 9.5, fontWeight: 800, color: '#64748b', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  BANDWIDTH SAVINGS
                 </div>
-                <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 2 }}>
+                <div style={{ fontSize: 22, fontWeight: 900, color: '#0b3b60', fontFamily: 'monospace', marginTop: 3 }}>
+                  94.1% <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>saved</span>
+                </div>
+                <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 3 }}>
                   {kbSaved} KiB saved via Protobuf
                 </div>
               </div>
@@ -870,22 +897,55 @@ export default function StationEdgeConsolePage() {
                 background: '#f8fafc',
                 border: '1px solid #cbd5e1',
                 borderRadius: 6,
-                padding: '8px 12px',
+                padding: '9px 12px',
                 marginBottom: 12,
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10.5 }}>
-                <span style={{ color: '#0b3b60', fontWeight: 700 }}>CRYPTOGRAPHIC AUDIT CHAIN</span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#15803d', fontWeight: 700 }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 13 }}>lock</span>
+                <span style={{ color: '#0b3b60', fontWeight: 800, letterSpacing: '0.03em', fontSize: 10 }}>
+                  CRYPTOGRAPHIC AUDIT CHAIN
+                </span>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    color: '#15803d',
+                    fontWeight: 800,
+                    background: '#dcfce7',
+                    padding: '1px 6px',
+                    borderRadius: 3,
+                    fontSize: 9.5,
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: 12 }}>lock</span>
                   <span>SHA-256 LOCKED</span>
                 </span>
               </div>
-              <div style={{ fontSize: 11, color: '#0369a1', fontFamily: 'monospace', marginTop: 4, fontWeight: 700 }}>
-                CURRENT BLOCK: {currentHash}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 4,
+                  padding: '5px 8px',
+                  marginTop: 6,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                  <span style={{ fontSize: 9.5, color: '#64748b', fontWeight: 700 }}>BLOCK:</span>
+                  <code style={{ fontSize: 10.5, color: '#0369a1', fontWeight: 800, fontFamily: 'monospace' }}>
+                    {currentHash}
+                  </code>
+                </div>
+                <span style={{ fontSize: 9, color: '#0369a1', fontWeight: 800, background: '#e0f2fe', padding: '1px 5px', borderRadius: 2 }}>
+                  LIVE HASH
+                </span>
               </div>
-              <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 2 }}>
-                Ed25519 Hardware Station Key: <code style={{ color: '#0b3b60' }}>pub_maitri_9f14b2...valid</code>
+              <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 5 }}>
+                Station Key: <code style={{ color: '#0b3b60', fontWeight: 600 }}>pub_maitri_9f14b2...valid (Ed25519)</code>
               </div>
             </div>
 
@@ -896,24 +956,26 @@ export default function StationEdgeConsolePage() {
                   onClick={handleSeverLink}
                   style={{
                     flex: 1,
-                    background: '#dc2626',
-                    border: '1px solid #b91c1c',
+                    background: 'linear-gradient(135deg, #b91c1c 0%, #991b1b 100%)',
+                    border: '1px solid #7f1d1d',
                     color: '#ffffff',
-                    padding: '8px 12px',
-                    borderRadius: 4,
+                    padding: '9px 14px',
+                    borderRadius: 5,
                     fontSize: 11,
-                    fontWeight: 700,
+                    fontWeight: 800,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: 6,
-                    boxShadow: '0 1px 3px rgba(220, 38, 38, 0.2)',
+                    gap: 7,
+                    boxShadow: '0 2px 6px rgba(185, 28, 28, 0.25)',
+                    letterSpacing: '0.02em',
+                    transition: 'all 0.15s ease',
                   }}
                   title="Simulate VSAT satellite outage caused by Antarctic storm"
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: 16 }}>link_off</span>
-                  <span>SEVER SATELLITE LINK (BLIZZARD)</span>
+                  <span className="material-symbols-outlined" style={{ fontSize: 16 }}>satellite_alt</span>
+                  <span>SIMULATE OUTAGE</span>
                 </button>
               ) : (
                 <button
@@ -924,16 +986,18 @@ export default function StationEdgeConsolePage() {
                     background: 'linear-gradient(135deg, #0b3b60 0%, #0369a1 100%)',
                     border: '1px solid #07253d',
                     color: '#ffffff',
-                    padding: '8px 12px',
-                    borderRadius: 4,
+                    padding: '9px 14px',
+                    borderRadius: 5,
                     fontSize: 11,
-                    fontWeight: 700,
+                    fontWeight: 800,
                     cursor: isFlushing ? 'wait' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: 6,
-                    boxShadow: '0 2px 6px rgba(11, 59, 96, 0.3)',
+                    gap: 7,
+                    boxShadow: '0 2px 8px rgba(11, 59, 96, 0.3)',
+                    letterSpacing: '0.02em',
+                    transition: 'all 0.15s ease',
                   }}
                 >
                   <span className="material-symbols-outlined" style={{ fontSize: 16, animation: isFlushing ? 'spin 1s linear infinite' : 'none' }}>
@@ -987,20 +1051,38 @@ export default function StationEdgeConsolePage() {
             {/* Binary Hex Frame Dump */}
             <div
               style={{
-                background: '#0f172a',
+                background: '#090d16',
+                border: '1px solid #1e293b',
                 color: '#38bdf8',
-                borderRadius: 4,
-                padding: 10,
+                borderRadius: 6,
+                padding: '10px 12px',
                 fontSize: 10,
-                lineHeight: 1.5,
-                fontFamily: 'monospace',
+                lineHeight: 1.6,
+                fontFamily: 'Consolas, Monaco, "Courier New", monospace',
                 marginBottom: 10,
               }}
             >
-              <div style={{ color: '#94a3b8', fontSize: 9, marginBottom: 4 }}>
-                ── FRAME #08249 • BINARY PROTOBUF (52 BYTES vs 884 BYTES JSON) ──
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  borderBottom: '1px solid #1e293b',
+                  paddingBottom: 6,
+                  marginBottom: 8,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', animation: 'ping 2s infinite' }} />
+                  <span style={{ color: '#94a3b8', fontSize: 9.5, fontWeight: 700, letterSpacing: '0.04em' }}>
+                    FRAME #08249 • BINARY PROTOBUF
+                  </span>
+                </div>
+                <span style={{ color: '#38bdf8', fontSize: 9.5, fontWeight: 700 }}>
+                  52 BYTES (-94.1% vs JSON)
+                </span>
               </div>
-              <code>
+              <code style={{ wordBreak: 'break-all', letterSpacing: '0.05em' }}>
                 08 a4 03 10 9c 01 1a 08 4d 41 49 54 52 49 5f 30 20 d8 01 28 88 02 32 10 70 77 72 2e 64 67 31 2e 63 6f 6f 6c 61 6e 74 38 64 40 c8 01 4a 08 30 78 38 66 33 63
               </code>
             </div>
@@ -1023,8 +1105,20 @@ export default function StationEdgeConsolePage() {
               }}
             >
               {recentBufferedFrames.length === 0 ? (
-                <div style={{ color: '#64748b', fontSize: 10.5, textAlign: 'center', padding: 8 }}>
-                  No offline frames currently queued. GSAT-7 direct streaming is active.
+                <div
+                  style={{
+                    color: '#64748b',
+                    fontSize: 10.5,
+                    textAlign: 'center',
+                    padding: '12px 8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#16a34a' }}>check_circle</span>
+                  <span>Buffer empty. All frames streaming directly to GSAT-7 carrier.</span>
                 </div>
               ) : (
                 recentBufferedFrames.map((f) => (
@@ -1058,6 +1152,7 @@ export default function StationEdgeConsolePage() {
         <div style={{ gridColumn: 'span 7', display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Card 3: Ground-Zero Anomaly Injector Panel */}
           <div
+            id="anomaly-injector-section"
             style={{
               background: '#ffffff',
               border: emergencyAlert ? '2px solid #ef4444' : '1px solid #cbd5e1',
@@ -1084,12 +1179,12 @@ export default function StationEdgeConsolePage() {
                   <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#dc2626' }}>crisis_alert</span>
                 </div>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#0b3b60', letterSpacing: '-0.01em' }}>
-                    GROUND-ZERO ANOMALY INJECTOR (HARDWARE LAYER)
+                  <div style={{ fontSize: 13, fontWeight: 900, color: '#0b3b60', letterSpacing: '-0.01em' }}>
+                    ANOMALY INJECTOR (ON GROUND)
                   </div>
-                  <div style={{ fontSize: 10, color: '#64748b' }}>
-                    Trigger simulated station hardware failures at Antarctic physical sensor layer
-                  </div>
+                  {/* <div style={{ fontSize: 10, color: '#64748b' }}>
+                    Hardware-layer fault injection & sensor resilience testing
+                  </div> */}
                 </div>
               </div>
 
@@ -1101,7 +1196,7 @@ export default function StationEdgeConsolePage() {
                       background: '#15803d',
                       border: '1px solid #166534',
                       color: '#ffffff',
-                      padding: '6px 12px',
+                      padding: '5px 12px',
                       borderRadius: 4,
                       fontSize: 10.5,
                       fontWeight: 700,
@@ -1125,7 +1220,7 @@ export default function StationEdgeConsolePage() {
                   className="material-symbols-outlined"
                   style={{
                     position: 'absolute',
-                    left: 8,
+                    left: 9,
                     top: '50%',
                     transform: 'translateY(-50%)',
                     fontSize: 16,
@@ -1142,13 +1237,14 @@ export default function StationEdgeConsolePage() {
                   placeholder="Search 10 station anomalies (name, code, subsystem, sensor)..."
                   style={{
                     width: '100%',
-                    padding: '6px 28px 6px 30px',
+                    padding: '6px 28px 6px 32px',
                     fontSize: 11,
                     border: '1px solid #cbd5e1',
                     borderRadius: 4,
                     outline: 'none',
                     boxSizing: 'border-box',
                     background: '#f8fafc',
+                    color: '#0f172a',
                   }}
                 />
                 {hazardSearch && (
@@ -1177,23 +1273,34 @@ export default function StationEdgeConsolePage() {
                 {(['ALL', 'CRITICAL', 'HIGH', 'MEDIUM'] as const).map((sev) => {
                   const isSelected = hazardFilterSev === sev
                   const count = sev === 'ALL' ? HAZARD_PRESETS.length : HAZARD_PRESETS.filter((p) => p.severity === sev).length
-                  const bg = !isSelected
-                    ? '#f1f5f9'
+                  const bg = isSelected
+                    ? sev === 'CRITICAL'
+                      ? '#b91c1c'
+                      : sev === 'HIGH'
+                        ? '#ea580c'
+                        : sev === 'MEDIUM'
+                          ? '#d97706'
+                          : '#0b3b60'
+                    : '#f8fafc'
+                  const color = isSelected ? '#ffffff' : '#334155'
+                  const border = isSelected
+                    ? '1px solid transparent'
                     : sev === 'CRITICAL'
-                    ? '#b91c1c'
-                    : sev === 'HIGH'
-                    ? '#ea580c'
-                    : sev === 'MEDIUM'
-                    ? '#d97706'
-                    : '#0b3b60'
+                      ? '1px solid #fecaca'
+                      : sev === 'HIGH'
+                        ? '1px solid #fed7aa'
+                        : sev === 'MEDIUM'
+                          ? '1px solid #fde68a'
+                          : '1px solid #cbd5e1'
+
                   return (
                     <button
                       key={sev}
                       onClick={() => setHazardFilterSev(sev)}
                       style={{
                         background: bg,
-                        color: isSelected ? '#ffffff' : '#334155',
-                        border: isSelected ? 'none' : '1px solid #cbd5e1',
+                        color,
+                        border,
                         padding: '4px 8px',
                         borderRadius: 4,
                         fontSize: 9.5,
@@ -1243,16 +1350,16 @@ export default function StationEdgeConsolePage() {
               </span>
             </div>
 
-            {/* All 16 Hazard Preset Cards Grid (Exact Design from Screenshot) */}
+            {/* All Hazard Preset Cards Grid */}
             <div
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-                gap: 12,
+                gap: 10,
                 marginBottom: 12,
                 maxHeight: 440,
                 overflowY: 'auto',
-                padding: '4px',
+                padding: '2px',
               }}
             >
               {filteredPresets.length === 0 ? (
@@ -1277,66 +1384,69 @@ export default function StationEdgeConsolePage() {
                       tabIndex={0}
                       onKeyDown={(e) => e.key === 'Enter' && setActivePreset(a)}
                       style={{
-                        border: isActive ? '2.5px solid #e11d48' : isSelected ? `2px solid ${sev.badge}` : '1.5px solid #e2e8f0',
-                        background: isActive ? '#fff1f2' : isSelected ? sev.bg : '#ffffff',
-                        borderRadius: 10,
-                        padding: '13px 15px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                        boxShadow: isActive
-                          ? '0 0 16px rgba(225, 29, 72, 0.35)'
+                        border: isActive
+                          ? '2px solid #ef4444'
                           : isSelected
-                          ? `0 0 0 2px ${sev.badge}33, 0 6px 18px ${sev.badge}22`
-                          : '0 1px 3px rgba(15, 23, 42, 0.04)',
+                            ? `2px solid ${sev.badge}`
+                            : '1px solid #e2e8f0',
+                        background: isActive ? '#fff1f2' : '#ffffff',
+                        borderRadius: 8,
+                        padding: '12px 14px',
+                        cursor: 'pointer',
+                        transition: 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: isActive
+                          ? '0 0 16px rgba(239, 68, 68, 0.25)'
+                          : isSelected
+                            ? `0 0 0 2px ${sev.badge}22, 0 4px 12px rgba(15, 23, 42, 0.08)`
+                            : '0 1px 3px rgba(15, 23, 42, 0.03)',
                         outline: 'none',
                         position: 'relative',
                         display: 'flex',
                         flexDirection: 'column',
                         justifyContent: 'space-between',
-                        minHeight: 88,
+                        minHeight: 104,
                       }}
                       onMouseOver={(e) => {
                         if (!isSelected && !isActive) {
                           const el = e.currentTarget as HTMLElement
-                          el.style.boxShadow = '0 6px 20px rgba(15, 23, 42, 0.09)'
-                          el.style.borderColor = sev.badge + '80'
-                          el.style.transform = 'translateY(-2px)'
+                          el.style.boxShadow = '0 4px 14px rgba(15, 23, 42, 0.08)'
+                          el.style.borderColor = '#cbd5e1'
+                          el.style.transform = 'translateY(-1px)'
                         }
                       }}
                       onMouseOut={(e) => {
                         if (!isSelected && !isActive) {
                           const el = e.currentTarget as HTMLElement
-                          el.style.boxShadow = '0 1px 3px rgba(15, 23, 42, 0.04)'
+                          el.style.boxShadow = '0 1px 3px rgba(15, 23, 42, 0.03)'
                           el.style.borderColor = '#e2e8f0'
                           el.style.transform = 'none'
                         }
                       }}
                     >
-                      {/* Top Section: Icon, Anomaly Name, Category & Severity Badge */}
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
+                      {/* Top Section: Icon, Anomaly Name, Code & Severity Badge */}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                           <div
                             style={{
-                              width: 40,
-                              height: 40,
-                              borderRadius: 8,
-                              background: isSelected ? '#ffffff' : sev.bg,
-                              border: `1px solid ${isSelected ? sev.badge + '40' : sev.border}`,
+                              width: 36,
+                              height: 36,
+                              borderRadius: 6,
+                              background: sev.bg,
+                              border: `1px solid ${sev.border}`,
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               flexShrink: 0,
-                              boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
                             }}
                           >
-                            <span className="material-symbols-outlined" style={{ fontSize: 22, color: sev.color }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 20, color: sev.color }}>
                               {a.icon}
                             </span>
                           </div>
                           <div style={{ minWidth: 0 }}>
                             <div
                               style={{
-                                fontSize: 13,
+                                fontSize: 12.5,
                                 fontWeight: 800,
                                 color: '#0f172a',
                                 lineHeight: 1.25,
@@ -1349,14 +1459,17 @@ export default function StationEdgeConsolePage() {
                             <div
                               style={{
                                 fontSize: 9.5,
-                                fontWeight: 700,
-                                color: sev.color,
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.05em',
-                                marginTop: 3,
+                                fontWeight: 600,
+                                color: '#64748b',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                marginTop: 2,
                               }}
                             >
-                              {a.category}
+                              <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#475569' }}>{a.code}</span>
+                              <span>•</span>
+                              <span style={{ color: sev.color, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{a.category}</span>
                             </div>
                           </div>
                         </div>
@@ -1365,26 +1478,49 @@ export default function StationEdgeConsolePage() {
                         <span
                           style={{
                             fontSize: 8.5,
-                            fontWeight: 700,
-                            padding: '2.5px 8px',
+                            fontWeight: 800,
+                            padding: '2px 7px',
                             background: sev.badge,
-                            color: sev.badgeFg,
-                            borderRadius: 12,
+                            color: '#ffffff',
+                            borderRadius: 10,
                             letterSpacing: '0.04em',
                             flexShrink: 0,
-                            boxShadow: `0 2px 4px ${sev.badge}25`,
+                            boxShadow: `0 1px 3px ${sev.badge}30`,
                           }}
                         >
                           {a.severity}
                         </span>
                       </div>
 
+                      {/* Middle: Sensor Impact Preview */}
+                      <div
+                        style={{
+                          fontSize: 9.5,
+                          color: '#64748b',
+                          margin: '8px 0 4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          background: '#f8fafc',
+                          padding: '3px 6px',
+                          borderRadius: 3,
+                          border: '1px solid #f1f5f9',
+                          overflow: 'hidden',
+                        }}
+                        title={a.localImpact}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: 12, color: '#94a3b8', flexShrink: 0 }}>sensors</span>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {a.sensorsAffected.slice(0, 2).join(' • ')}
+                        </span>
+                      </div>
+
                       {/* Bottom Status Row with Direct Inject Button */}
                       <div
                         style={{
-                          marginTop: 10,
-                          paddingTop: 8,
-                          borderTop: `1px solid ${isSelected ? sev.badge + '20' : '#f1f5f9'}`,
+                          marginTop: 6,
+                          paddingTop: 6,
+                          borderTop: '1px solid #f1f5f9',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
@@ -1393,7 +1529,7 @@ export default function StationEdgeConsolePage() {
                       >
                         <div style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
                           <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#94a3b8' }}>timer</span>
-                          <span>~{a.estimated_duration_s ?? 4}s</span>
+                          <span>~{a.estimated_duration_s ?? 4}s duration</span>
                         </div>
 
                         {isActive ? (
@@ -1404,24 +1540,22 @@ export default function StationEdgeConsolePage() {
                             }}
                             style={{
                               background: '#dc2626',
-                              border: 'none',
+                              border: '1px solid #b91c1c',
                               color: '#ffffff',
                               fontSize: 10,
-                              fontWeight: 700,
+                              fontWeight: 800,
                               padding: '4px 10px',
                               borderRadius: 4,
                               cursor: 'pointer',
                               display: 'flex',
                               alignItems: 'center',
                               gap: 4,
-                              boxShadow: '0 2px 6px rgba(220, 38, 38, 0.3)',
-                              transition: 'all 0.15s ease',
+                              boxShadow: '0 2px 6px rgba(220, 38, 38, 0.35)',
+                              animation: 'pulse 1.5s infinite',
                             }}
-                            onMouseEnter={(e) => (e.currentTarget.style.background = '#b91c1c')}
-                            onMouseLeave={(e) => (e.currentTarget.style.background = '#dc2626')}
                           >
                             <span className="material-symbols-outlined" style={{ fontSize: 13 }}>stop_circle</span>
-                            <span>STOP</span>
+                            <span>STOP FAULT</span>
                           </button>
                         ) : (
                           <button
@@ -1431,25 +1565,36 @@ export default function StationEdgeConsolePage() {
                               handleInjectPreset(a)
                             }}
                             style={{
-                              background: '#dc2626',
-                              border: 'none',
-                              color: '#ffffff',
+                              background: isSelected ? 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)' : '#fef2f2',
+                              border: isSelected ? '1px solid #991b1b' : '1px solid #fecaca',
+                              color: isSelected ? '#ffffff' : '#b91c1c',
                               fontSize: 10,
-                              fontWeight: 700,
-                              padding: '4px 11px',
+                              fontWeight: 800,
+                              padding: '4px 10px',
                               borderRadius: 4,
                               cursor: 'pointer',
                               display: 'flex',
                               alignItems: 'center',
                               gap: 4,
-                              boxShadow: '0 2px 4px rgba(220, 38, 38, 0.25)',
+                              boxShadow: isSelected ? '0 2px 5px rgba(220, 38, 38, 0.3)' : '0 1px 2px rgba(220, 38, 38, 0.08)',
                               transition: 'all 0.15s ease',
                             }}
-                            onMouseEnter={(e) => (e.currentTarget.style.background = '#b91c1c')}
-                            onMouseLeave={(e) => (e.currentTarget.style.background = '#dc2626')}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#dc2626'
+                              e.currentTarget.style.color = '#ffffff'
+                              e.currentTarget.style.borderColor = '#b91c1c'
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isSelected) {
+                                e.currentTarget.style.background = '#fef2f2'
+                                e.currentTarget.style.color = '#b91c1c'
+                                e.currentTarget.style.borderColor = '#fecaca'
+                              }
+                            }}
+                            title={`Simulate ${a.name} hardware fault`}
                           >
                             <span className="material-symbols-outlined" style={{ fontSize: 13 }}>bolt</span>
-                            <span>INJECT NOW</span>
+                            <span>INJECT FAULT</span>
                           </button>
                         )}
                       </div>
@@ -1761,9 +1906,9 @@ export default function StationEdgeConsolePage() {
             <span>•</span>
             <span>Himantar Dual-Twin v3.02</span>
             <span>•</span>
-            <span style={{ background: '#0b3b60', color: '#ff9933', padding: '1px 6px', borderRadius: 2, fontWeight: 800, border: '1px solid #1e3a5f' }}>
+            {/* <span style={{ background: '#0b3b60', color: '#ff9933', padding: '1px 6px', borderRadius: 2, fontWeight: 800, border: '1px solid #1e3a5f' }}>
               GIGW 3.0 VERIFIED
-            </span>
+            </span> */}
           </div>
         </div>
       </footer>

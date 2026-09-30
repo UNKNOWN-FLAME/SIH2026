@@ -791,7 +791,7 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
                 <h2 style={{ margin: 0, fontSize: 13.5, fontWeight: 800, letterSpacing: '0.03em', color: '#ffffff' }}>
-                  INCIDENT DAMAGE, RESOURCE LOSS & SHIPMENT REPORT
+                  INCIDENT DAMAGE & IMPACT REPORT
                 </h2>
                 <span
                   style={{
@@ -816,9 +816,7 @@ export default function IncidentImpactModal({ isOpen, onClose }: IncidentImpactM
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 10.5, color: '#94a3b8', marginTop: 3, flexWrap: 'wrap' }}>
-                <span>Station: <strong style={{ color: '#38bdf8' }}>{stationId.toUpperCase()}</strong></span>
-                <span style={{ color: '#475569' }}>•</span>
-                <span>Subsystem: <strong style={{ color: '#cbd5e1' }}>{model.subsystem}</strong></span>
+                <span>Station: <strong style={{ color: '#38bdf8' }}>{stationId.toUpperCase()} BASE</strong></span>
                 <span style={{ color: '#475569' }}>•</span>
                 <span>Event: <strong style={{ color: '#f1f5f9' }}>{incidentData.anomaly_name || model.title}</strong></span>
               </div>

@@ -77,7 +77,7 @@ export default function OfflineBlackoutAuditCard({ stationId }: Props) {
 
   return (
     <>
-      {/* ── 1. Compact Dashboard Card (Fixed Height ~135px - Never Breaks Bento Grid!) ── */}
+      {/* ── 1. Compact Dashboard Card (Fixed Height ~135-155px - Never Breaks Bento Grid!) ── */}
       <div
         style={{
           background: '#ffffff',
@@ -87,7 +87,7 @@ export default function OfflineBlackoutAuditCard({ stationId }: Props) {
             : isTelemetrySyncing
             ? '1.5px solid #0284c7'
             : effectiveCompletedIncident && completedModel
-            ? '1.5px solid #16a34a'
+            ? '1px solid #cbd5e1'
             : isDown
             ? '1px solid #fca5a5'
             : '1px solid #cbd5e1',
@@ -96,13 +96,13 @@ export default function OfflineBlackoutAuditCard({ stationId }: Props) {
             : isTelemetrySyncing
             ? '0 0 16px rgba(2, 132, 199, 0.25)'
             : effectiveCompletedIncident && completedModel
-            ? '0 3px 12px rgba(22, 163, 74, 0.14)'
+            ? '0 2px 8px rgba(15, 23, 42, 0.06)'
             : '0 1px 3px rgba(0, 0, 0, 0.05)',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          minHeight: 130,
-          maxHeight: 145,
+          minHeight: 135,
+          maxHeight: 155,
           position: 'relative',
           transition: 'all 0.2s ease',
         }}
@@ -110,7 +110,7 @@ export default function OfflineBlackoutAuditCard({ stationId }: Props) {
         {/* Government of India Micro Tricolor Bar */}
         <div style={{ height: 2.5, display: 'flex', width: '100%', flexShrink: 0 }}>
           <div style={{ flex: 1, background: '#FF9933' }} />
-          <div style={{ flex: 1, background: '#ffffff', borderTop: '1px solid #e2e8f0' }} />
+          <div style={{ flex: 1, background: '#e2e8f0' }} />
           <div style={{ flex: 1, background: '#138808' }} />
         </div>
 
@@ -299,23 +299,54 @@ export default function OfflineBlackoutAuditCard({ stationId }: Props) {
           </div>
         ) : effectiveCompletedIncident && completedModel ? (
           /* ── Mode D: Post-Anomaly Completed Incident Summary ── */
-          <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%' }}>
+          <div style={{ padding: '7px 10px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%' }}>
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                <span style={{ fontSize: 13 }}>📊</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                <div
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 4,
+                    background: '#f0fdf4',
+                    border: '1px solid #bbf7d0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    color: '#15803d',
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: 15 }}>assessment</span>
+                </div>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 10.5, fontWeight: 900, color: '#0f172a', letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ fontSize: 11, fontWeight: 900, color: '#0b3b60', letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {isHindi ? 'विसंगति नुकसान रिपोर्ट' : 'INCIDENT LOSS REPORT'}
                   </div>
-                  <div style={{ fontSize: 8, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <div style={{ fontSize: 8.5, color: '#64748b', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {effectiveCompletedIncident.anomaly_name || completedModel.title}
                   </div>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ fontSize: 8.5, fontWeight: 900, padding: '1.5px 6px', borderRadius: 10, background: '#dcfce7', color: '#15803d', border: '1px solid #86efac', flexShrink: 0 }}>
-                  RESOLVED
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span
+                  style={{
+                    fontSize: 8.5,
+                    fontWeight: 800,
+                    padding: '2px 6px',
+                    borderRadius: 3,
+                    background: '#dcfce7',
+                    color: '#15803d',
+                    border: '1px solid #86efac',
+                    letterSpacing: '0.04em',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 3,
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: 11 }}>check_circle</span>
+                  <span>RESOLVED</span>
                 </span>
                 <button
                   type="button"
@@ -326,11 +357,8 @@ export default function OfflineBlackoutAuditCard({ stationId }: Props) {
                     border: 'none',
                     color: '#94a3b8',
                     cursor: 'pointer',
-                    padding: '1px 4px',
+                    padding: '2px',
                     borderRadius: 3,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    lineHeight: 1,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -345,61 +373,132 @@ export default function OfflineBlackoutAuditCard({ stationId }: Props) {
                     e.currentTarget.style.background = 'transparent'
                   }}
                 >
-                  ✕
+                  <span className="material-symbols-outlined" style={{ fontSize: 15 }}>close</span>
                 </button>
               </div>
             </div>
 
-            {/* Mini Loss KPI Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, margin: '3px 0' }}>
-              <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 4, padding: '3px 6px' }}>
-                <div style={{ fontSize: 7.5, color: '#92400e', fontWeight: 700 }}>⚡ Energy</div>
-                <div style={{ fontSize: 10, fontWeight: 900, color: '#c2410c' }}>{completedModel.energyLossKwh} kWh</div>
+            {/* Mini Loss KPI Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, margin: '2px 0 5px 0' }}>
+              {/* Energy Tile */}
+              <div
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderLeft: '3px solid #d97706',
+                  borderRadius: 4,
+                  padding: '3px 8px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 8, fontWeight: 700, color: '#64748b', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    Energy
+                  </span>
+                  <span className="material-symbols-outlined" style={{ fontSize: 11, color: '#d97706' }}>bolt</span>
+                </div>
+                <div style={{ fontSize: 11.5, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em', lineHeight: 1.25 }}>
+                  {completedModel.energyLossKwh} <span style={{ fontSize: 8.5, fontWeight: 600, color: '#64748b' }}>kWh</span>
+                </div>
               </div>
-              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 4, padding: '3px 6px' }}>
-                <div style={{ fontSize: 7.5, color: '#991b1b', fontWeight: 700 }}>⛽ Fuel</div>
-                <div style={{ fontSize: 10, fontWeight: 900, color: '#b91c1c' }}>{completedModel.fuelLossLitres} L</div>
+
+              {/* Fuel Tile */}
+              <div
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderLeft: '3px solid #dc2626',
+                  borderRadius: 4,
+                  padding: '3px 8px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 8, fontWeight: 700, color: '#64748b', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    Fuel
+                  </span>
+                  <span className="material-symbols-outlined" style={{ fontSize: 11, color: '#dc2626' }}>local_gas_station</span>
+                </div>
+                <div style={{ fontSize: 11.5, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em', lineHeight: 1.25 }}>
+                  {completedModel.fuelLossLitres} <span style={{ fontSize: 8.5, fontWeight: 600, color: '#64748b' }}>L</span>
+                </div>
               </div>
-              <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4, padding: '3px 6px' }}>
-                <div style={{ fontSize: 7.5, color: '#0369a1', fontWeight: 700 }}>💰 Cost</div>
-                <div style={{ fontSize: 10, fontWeight: 900, color: '#0284c7' }}>₹{completedModel.financialLossInr.toLocaleString()}</div>
+
+              {/* Cost Tile */}
+              <div
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderLeft: '3px solid #0284c7',
+                  borderRadius: 4,
+                  padding: '3px 8px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 8, fontWeight: 700, color: '#64748b', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    Cost
+                  </span>
+                  <span className="material-symbols-outlined" style={{ fontSize: 11, color: '#0284c7' }}>payments</span>
+                </div>
+                <div style={{ fontSize: 11.5, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em', lineHeight: 1.25 }}>
+                  ₹{completedModel.financialLossInr.toLocaleString()}
+                </div>
               </div>
-              <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 4, padding: '3px 6px' }}>
-                <div style={{ fontSize: 7.5, color: '#7c3aed', fontWeight: 700 }}>⏱ Downtime</div>
-                <div style={{ fontSize: 10, fontWeight: 900, color: '#6d28d9' }}>~{completedModel.downtimeHours}h</div>
+
+              {/* Downtime Tile */}
+              <div
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderLeft: '3px solid #7c3aed',
+                  borderRadius: 4,
+                  padding: '3px 8px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 8, fontWeight: 700, color: '#64748b', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    Downtime
+                  </span>
+                  <span className="material-symbols-outlined" style={{ fontSize: 11, color: '#7c3aed' }}>schedule</span>
+                </div>
+                <div style={{ fontSize: 11.5, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em', lineHeight: 1.25 }}>
+                  ~{completedModel.downtimeHours} <span style={{ fontSize: 8.5, fontWeight: 600, color: '#64748b' }}>hrs</span>
+                </div>
               </div>
             </div>
 
-            {/* Action buttons: View Full Report + Download PDF */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            {/* Action buttons: View Full Report + Download PDF + Clear */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 'auto' }}>
               <button
+                type="button"
                 onClick={openImpactModal}
                 style={{
-                  flex: 1,
-                  background: 'linear-gradient(135deg, #0b3b60 0%, #1e3a8a 100%)',
+                  flex: 1.2,
+                  height: 26,
+                  background: '#0b3b60',
                   color: '#ffffff',
-                  border: 'none',
+                  border: '1px solid #07253d',
                   borderRadius: 4,
-                  padding: '4px 6px',
-                  fontSize: 9,
+                  padding: '0 8px',
+                  fontSize: 9.5,
                   fontWeight: 800,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 4,
-                  boxShadow: '0 1px 3px rgba(11, 59, 96, 0.2)',
+                  gap: 5,
+                  letterSpacing: '0.02em',
+                  boxShadow: '0 1px 2px rgba(11, 59, 96, 0.15)',
                   transition: 'background 0.15s ease',
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#1e3a8a')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'linear-gradient(135deg, #0b3b60 0%, #1e3a8a 100%)')}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#0e4a7a')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = '#0b3b60')}
                 title="Open full Incident Damage, Loss & Shipment Report"
               >
-                <span>📋</span>
+                <span className="material-symbols-outlined" style={{ fontSize: 13 }}>assignment</span>
                 <span>{isHindi ? 'पूरी रिपोर्ट' : 'FULL REPORT'}</span>
               </button>
 
               <button
+                type="button"
                 onClick={() => {
                   generateIncidentDamageAssessmentPDF({
                     stationId,
@@ -443,26 +542,33 @@ export default function OfflineBlackoutAuditCard({ stationId }: Props) {
                   })
                 }}
                 style={{
-                  background: 'linear-gradient(135deg, #15803d 0%, #166534 100%)',
-                  color: '#ffffff',
-                  border: 'none',
+                  height: 26,
+                  background: '#f0fdf4',
+                  color: '#15803d',
+                  border: '1px solid #86efac',
                   borderRadius: 4,
-                  padding: '4px 8px',
-                  fontSize: 9,
+                  padding: '0 8px',
+                  fontSize: 9.5,
                   fontWeight: 800,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 3,
-                  flexShrink: 0,
-                  boxShadow: '0 1px 3px rgba(21, 128, 61, 0.2)',
-                  transition: 'background 0.15s ease',
+                  justifyContent: 'center',
+                  gap: 4,
+                  letterSpacing: '0.02em',
+                  transition: 'all 0.15s ease',
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#166534')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'linear-gradient(135deg, #15803d 0%, #166534 100%)')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#dcfce7'
+                  e.currentTarget.style.borderColor = '#4ade80'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#f0fdf4'
+                  e.currentTarget.style.borderColor = '#86efac'
+                }}
                 title="Download official Government Incident Damage Assessment PDF"
               >
-                <span>📄</span>
+                <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#15803d' }}>picture_as_pdf</span>
                 <span>PDF</span>
               </button>
 
@@ -470,19 +576,20 @@ export default function OfflineBlackoutAuditCard({ stationId }: Props) {
                 type="button"
                 onClick={clearCompletedIncident}
                 style={{
-                  background: '#f8fafc',
-                  color: '#475569',
+                  height: 26,
+                  background: '#ffffff',
+                  color: '#64748b',
                   border: '1px solid #cbd5e1',
                   borderRadius: 4,
-                  padding: '4px 7px',
-                  fontSize: 8.5,
-                  fontWeight: 800,
+                  padding: '0 8px',
+                  fontSize: 9,
+                  fontWeight: 700,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 3,
-                  flexShrink: 0,
-                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+                  justifyContent: 'center',
+                  gap: 4,
+                  letterSpacing: '0.02em',
                   transition: 'all 0.15s ease',
                 }}
                 onMouseEnter={(e) => {
@@ -491,15 +598,13 @@ export default function OfflineBlackoutAuditCard({ stationId }: Props) {
                   e.currentTarget.style.borderColor = '#fca5a5'
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#f8fafc'
-                  e.currentTarget.style.color = '#475569'
+                  e.currentTarget.style.background = '#ffffff'
+                  e.currentTarget.style.color = '#64748b'
                   e.currentTarget.style.borderColor = '#cbd5e1'
                 }}
                 title="Acknowledge & clear incident report, restoring GSAT-7 Flight Recorder"
               >
-                <span className="material-symbols-outlined" style={{ fontSize: 12, color: '#dc2626' }}>
-                  check_circle
-                </span>
+                <span className="material-symbols-outlined" style={{ fontSize: 12 }}>done_all</span>
                 <span>{isHindi ? 'हटाएं' : 'CLEAR & ACK'}</span>
               </button>
             </div>

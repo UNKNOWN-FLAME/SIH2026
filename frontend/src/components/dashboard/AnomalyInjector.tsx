@@ -247,7 +247,7 @@ interface AnomalyInjectorModalProps {
   onClose: () => void
 }
 
-function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalProps) {
+export function AnomalyInjectorModal({ activeStation, onClose }: AnomalyInjectorModalProps) {
   const { lastAnomalyResult, setLastAnomalyResult, triggerEmergencyAlert, setActiveIncidentId, refreshLinkState } = useStation()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
@@ -1118,9 +1118,9 @@ export default function AnomalyInjector({
   activeStation: string
   variant?: 'header' | 'sidebar'
 }) {
-  const [open, setOpen] = useState(false)
+  const navigate = useNavigate()
   const [pulse, setPulse] = useState(true)
-  const { lastAnomalyResult } = useStation()
+  const { lastAnomalyResult, setStationId } = useStation()
 
   const isSimActive = Boolean(lastAnomalyResult)
 
@@ -1129,6 +1129,20 @@ export default function AnomalyInjector({
     const t = setTimeout(() => setPulse(false), 4000)
     return () => clearTimeout(t)
   }, [])
+
+  const handleNavigateToEdge = (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (activeStation === 'maitri' || activeStation === 'bharati') {
+      try {
+        setStationId(activeStation)
+      } catch { }
+    }
+    if (e.ctrlKey || e.metaKey) {
+      window.open('/edge#anomaly-injector-section', '_blank')
+    } else {
+      navigate('/edge#anomaly-injector-section')
+    }
+  }
 
   return (
     <>
@@ -1162,7 +1176,7 @@ export default function AnomalyInjector({
       {variant === 'sidebar' ? (
         <button
           className="anomaly-btn-sidebar"
-          onClick={() => setOpen(true)}
+          onClick={handleNavigateToEdge}
           style={{
             width: '100%',
             height: 32,
@@ -1185,7 +1199,7 @@ export default function AnomalyInjector({
             transition: 'all 0.15s ease',
             userSelect: 'none',
           }}
-          title={isSimActive ? 'Simulation Anomaly actively running — click to view or stop' : 'Open Anomaly Injection Simulator to test station resilience'}
+          title={isSimActive ? 'Hardware fault actively injected — click to access On-Ice Edge Console' : 'Open On-Ice Station Edge Console (/edge) to inject ground anomalies'}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
             <span className="material-symbols-outlined" style={{ fontSize: 15, color: isSimActive ? '#ffffff' : '#fef08a' }}>
@@ -1211,7 +1225,7 @@ export default function AnomalyInjector({
       ) : (
         <button
           className="anomaly-btn"
-          onClick={() => setOpen(true)}
+          onClick={handleNavigateToEdge}
           style={{
             height: 28,
             background: isSimActive ? '#dc2626' : '#b91c1c',
@@ -1230,7 +1244,7 @@ export default function AnomalyInjector({
             animation: pulse ? 'anomaly-pulse 1.5s ease-in-out 3' : 'none',
             userSelect: 'none',
           }}
-          title="Open the Anomaly Injection Simulator to stress-test station resilience"
+          title={isSimActive ? 'Anomaly actively running — click to open Station Edge Console' : 'Open On-Ice Station Edge Console (/edge) to inject ground anomalies & simulate hardware faults'}
         >
           <span className="material-symbols-outlined" style={{ fontSize: 14, color: isSimActive ? '#ffffff' : '#fef08a' }}>
             {isSimActive ? 'crisis_alert' : 'warning'}
@@ -1249,13 +1263,6 @@ export default function AnomalyInjector({
             {isSimActive ? 'LIVE' : 'SIM'}
           </span>
         </button>
-      )}
-
-      {open && (
-        <AnomalyInjectorModal
-          activeStation={activeStation}
-          onClose={() => setOpen(false)}
-        />
       )}
     </>
   )
