@@ -984,7 +984,6 @@ export default function SchematicPanel({ stationId }: Props) {
 
   const iotSensors = useMemo(() => iotData?.sensors ?? [], [iotData?.sensors])
   const openAlerts: AlertOut[] = useMemo(() => alertsData?.items ?? [], [alertsData?.items])
-  const hasOpenAlerts = openAlerts.length > 0
 
   // Active anomaly: strictly driven by explicit operator manual injection via AnomalyInjector
   const activeAnomalyId = useMemo(() => {
