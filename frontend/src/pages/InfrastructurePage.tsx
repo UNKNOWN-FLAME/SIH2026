@@ -1,33 +1,31 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import TopNav from '../components/layout/TopNav'
 import AlertStrip from '../components/layout/AlertStrip'
 import Sidebar from '../components/layout/Sidebar'
 import Footer from '../components/layout/Footer'
 import { useIoTSensors } from '../hooks/useIoTSensors'
-import { useDigitalTwin } from '../hooks/useDigitalTwin'
 import { useStation } from '../context/StationContext'
-import SchematicPanel from '../components/dashboard/SchematicPanel'
 import type { IoTSensor, SensorParameter } from '../api/hq'
 
 // ── Category config (colours + icons) ────────────────────────────────────────
 
-const CAT_META: Record<string, { color: string; bg: string; border: string; emoji: string }> = {
-  temperature:    { color: '#dc2626', bg: '#fef2f2', border: '#fecaca', emoji: '🌡️' },
-  pressure:       { color: '#7c3aed', bg: '#faf5ff', border: '#e9d5ff', emoji: '🔵' },
-  fuel:           { color: '#ea580c', bg: '#fff7ed', border: '#fed7aa', emoji: '⛽' },
-  seismic:        { color: '#92400e', bg: '#fefce8', border: '#fde68a', emoji: '🌍' },
-  wildlife:       { color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0', emoji: '🐧' },
-  radiation:      { color: '#ca8a04', bg: '#fefce8', border: '#fef08a', emoji: '☀️' },
-  meteorological: { color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd', emoji: '🌬️' },
-  structural:     { color: '#475569', bg: '#f8fafc', border: '#cbd5e1', emoji: '🏗️' },
-  air_quality:    { color: '#0891b2', bg: '#ecfeff', border: '#a5f3fc', emoji: '💨' },
-  oceanographic:  { color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe', emoji: '🌊' },
-  fire_safety:    { color: '#b91c1c', bg: '#fef2f2', border: '#fecaca', emoji: '🔥' },
-  communications: { color: '#6d28d9', bg: '#f5f3ff', border: '#ddd6fe', emoji: '📡' },
+const CAT_META: Record<string, { color: string; bg: string; border: string; icon: string }> = {
+  temperature:    { color: '#dc2626', bg: '#fef2f2', border: '#fecaca', icon: 'device_thermostat' },
+  pressure:       { color: '#7c3aed', bg: '#faf5ff', border: '#e9d5ff', icon: 'speed' },
+  fuel:           { color: '#ea580c', bg: '#fff7ed', border: '#fed7aa', icon: 'oil_barrel' },
+  seismic:        { color: '#92400e', bg: '#fefce8', border: '#fde68a', icon: 'vibration' },
+  wildlife:       { color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0', icon: 'biotech' },
+  radiation:      { color: '#ca8a04', bg: '#fefce8', border: '#fef08a', icon: 'wb_sunny' },
+  meteorological: { color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd', icon: 'air' },
+  structural:     { color: '#475569', bg: '#f8fafc', border: '#cbd5e1', icon: 'foundation' },
+  air_quality:    { color: '#0891b2', bg: '#ecfeff', border: '#a5f3fc', icon: 'filter_drama' },
+  oceanographic:  { color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe', icon: 'waves' },
+  fire_safety:    { color: '#b91c1c', bg: '#fef2f2', border: '#fecaca', icon: 'local_fire_department' },
+  communications: { color: '#6d28d9', bg: '#f5f3ff', border: '#ddd6fe', icon: 'cell_tower' },
 }
 
-const DEFAULT_META = { color: '#64748b', bg: '#f8fafc', border: '#e2e8f0', emoji: '🔌' }
+const DEFAULT_META = { color: '#64748b', bg: '#f8fafc', border: '#e2e8f0', icon: 'sensors' }
 
 function getCatMeta(cat: string) {
   return CAT_META[cat] ?? DEFAULT_META
@@ -234,8 +232,8 @@ function SensorDetailModal({
             alignItems: 'center',
           }}
         >
-          <span style={{ fontSize: 9.5, color: '#0369a1', fontWeight: 700 }}>
-            ⚡ Data Source: Digital Twin Synthetic Physics Engine • Live 2s SCADA Telemetry Sync
+          <span style={{ fontSize: 9.5, color: '#94a3b8' }}>
+            Data source: hardcoded_v1 • Will link to live telemetry via Maitri/Bharati dashboards
           </span>
           <button
             onClick={onClose}
@@ -308,9 +306,13 @@ function SensorCard({ sensor, onClick }: { sensor: IoTSensor; onClick: () => voi
             borderRadius: 2,
             textTransform: 'uppercase',
             letterSpacing: '0.04em',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
           }}
         >
-          {meta.emoji} {catLabel}
+          <span className="material-symbols-outlined" style={{ fontSize: 12 }}>{meta.icon}</span>
+          {catLabel}
         </span>
         {/* Online/Offline pill */}
         <span
@@ -408,87 +410,10 @@ export default function InfrastructurePage() {
   const [selectedState, setSelectedState] = useState<'all' | 'online' | 'offline'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedSensor, setSelectedSensor] = useState<IoTSensor | null>(null)
-  const [viewMode, setViewMode] = useState<'all' | 'schematic' | 'sensors'>('all')
 
   const { data: sensorData, isLoading } = useIoTSensors(activeStation)
-  const { data: twinState } = useDigitalTwin(activeStation)
 
-  // Enforce dynamic client-side overlay directly from Digital Twin synthetic physics simulator
-  const allSensors: IoTSensor[] = useMemo(() => {
-    const raw = sensorData?.sensors ?? []
-    if (!twinState) return raw
-
-    const isB = activeStation === 'bharati'
-    const env = twinState.environment || {}
-    const pwr = twinState.power || {}
-    const fuel = twinState.fuel || {}
-    const water = twinState.water || {}
-    const hvac = twinState.hvac || {}
-    const comm = twinState.communication || {}
-    const gens = pwr.generators || {}
-    const mainGen = isB ? gens['CHP-1'] : gens['DG-1']
-
-    return raw.map((sensor) => {
-      const sid = sensor.sensor_id
-      const cat = sensor.category
-      const updatedParams = sensor.parameters.map((param) => {
-        const pkey = param.key.toLowerCase()
-        const plabel = param.label.toLowerCase()
-        let val = param.value
-
-        // Temperature & Climate
-        if (sid.includes('TMP-001') || (cat === 'temperature' && plabel.includes('ambient'))) {
-          if (env.ambient_temperature_c !== undefined) val = env.ambient_temperature_c
-        } else if (sid.includes('TMP-002') || plabel.includes('indoor') || plabel.includes('living')) {
-          if (isB && hvac.zones?.LIVING?.temp_c !== undefined) val = hvac.zones.LIVING.temp_c
-          else if (hvac.living_zone_temp_c !== undefined) val = hvac.living_zone_temp_c
-        } else if (sid.includes('TMP-003') || plabel.includes('generator') || plabel.includes('engine')) {
-          if (pkey.includes('coolant') && mainGen?.coolant_temp_c !== undefined) val = mainGen.coolant_temp_c
-          else if (pkey.includes('exhaust') && mainGen?.exhaust_gas_temp_c !== undefined) val = mainGen.exhaust_gas_temp_c
-        } else if (sid.includes('MET-001') || cat === 'meteorological') {
-          if ((pkey.includes('speed') || pkey.includes('wind')) && env.wind_speed_ms !== undefined) {
-            val = Number((env.wind_speed_ms * 3.6).toFixed(1))
-          } else if (pkey.includes('pressure') && (env.pressure_hpa !== undefined || env.atmospheric_pressure_hpa !== undefined)) {
-            val = env.pressure_hpa ?? env.atmospheric_pressure_hpa ?? val
-          } else if (pkey.includes('humid') && (env.humidity_percent !== undefined || env.relative_humidity_pct !== undefined)) {
-            val = env.humidity_percent ?? env.relative_humidity_pct ?? val
-          } else if (pkey.includes('chill') && env.wind_chill_c !== undefined) {
-            val = env.wind_chill_c
-          }
-        } else if (sid.includes('RAD-001') || cat === 'radiation') {
-          if (env.solar_radiation_wm2 !== undefined) val = env.solar_radiation_wm2
-        } else if (sid.includes('FUL-001') || cat === 'fuel') {
-          if (pkey.includes('level') && (pkey.includes('pct') || param.unit === '%')) {
-            val = fuel.main_farm_pct ?? Number(((fuel.main_farm_level_L / (isB ? 250000 : 165000)) * 100).toFixed(1))
-          } else if (pkey.includes('volume') || pkey.includes('level')) {
-            if (fuel.main_farm_level_L !== undefined) val = fuel.main_farm_level_L
-          } else if (pkey.includes('autonomy') || pkey.includes('days')) {
-            val = fuel.autonomy_days ?? fuel.fuel_autonomy_days ?? val
-          } else if (pkey.includes('viscos') && fuel.viscosity_cSt !== undefined) {
-            val = fuel.viscosity_cSt
-          }
-        } else if (plabel.includes('water') || pkey.includes('tank')) {
-          if (water.potable_storage_litres !== undefined || water.tank_level_L !== undefined) {
-            val = water.potable_storage_litres ?? water.tank_level_L ?? val
-          }
-        } else if (pkey.includes('power') || pkey.includes('load') || pkey.includes('kw')) {
-          val = pwr.total_station_load_kw ?? pwr.total_load_kw ?? mainGen?.load_kw ?? val
-        } else if (pkey.includes('vibrat') && mainGen?.vibration_mms !== undefined) {
-          val = mainGen.vibration_mms
-        } else if (sid.includes('COM-001') || cat === 'communications') {
-          if (pkey.includes('bandwidth')) {
-            val = comm.geo_bandwidth_mbps ?? (comm.satellite_link?.downlink_kbps ? comm.satellite_link.downlink_kbps / 1000 : val)
-          } else if (pkey.includes('latency') && comm.satellite_link?.latency_ms !== undefined) {
-            val = comm.satellite_link.latency_ms
-          }
-        }
-
-        return { ...param, value: typeof val === 'number' ? Number(val.toFixed(2)) : val }
-      })
-      return { ...sensor, parameters: updatedParams }
-    })
-  }, [sensorData, twinState, activeStation])
-
+  const allSensors: IoTSensor[] = sensorData?.sensors ?? []
   const categories = sensorData?.categories ?? []
   const onlineCount = sensorData?.online ?? 0
   const offlineCount = sensorData?.offline ?? 0
@@ -560,7 +485,7 @@ export default function InfrastructurePage() {
                 <span>›</span>
                 <span style={{ color: '#0b3b60', fontWeight: 600 }}>Polar Operations</span>
                 <span>›</span>
-                <span style={{ color: '#ea580c', fontWeight: 800 }}>Infrastructure Digital Twin &amp; IoT Bus</span>
+                <span style={{ color: '#ea580c', fontWeight: 800 }}>IoT Sensor Telemetry Command</span>
               </div>
             </div>
 
@@ -569,7 +494,7 @@ export default function InfrastructurePage() {
               style={{
                 background: 'linear-gradient(135deg, #0b3b60 0%, #1e4d78 60%, #0b3b60 100%)',
                 color: '#ffffff',
-                padding: '14px 20px',
+                padding: '10px 18px',
                 marginBottom: 12,
                 display: 'flex',
                 alignItems: 'center',
@@ -584,15 +509,10 @@ export default function InfrastructurePage() {
               <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)', backgroundSize: '20px 20px', pointerEvents: 'none' }} />
 
               <div style={{ position: 'relative' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 28, color: '#ff9933' }}>domain</span>
-                  <div>
-                    <div style={{ fontSize: 16, fontWeight: 900, letterSpacing: '0.02em' }}>
-                      🏗️ ANTARCTIC INFRASTRUCTURE DIGITAL TWIN
-                    </div>
-                    <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>
-                      Live architectural structural twin &amp; dynamic sensor telemetry for Maitri &amp; Bharati Stations • NCPOR / MoES
-                    </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 24, color: '#ff9933' }}>sensors</span>
+                  <div style={{ fontSize: 14, fontWeight: 900, letterSpacing: '0.04em' }}>
+                    ANTARCTIC IoT SENSOR TELEMETRY COMMAND
                   </div>
                 </div>
               </div>
@@ -611,176 +531,23 @@ export default function InfrastructurePage() {
                     style={{
                       background: activeStation === s ? '#ff9933' : 'rgba(255,255,255,0.1)',
                       border: activeStation === s ? '2px solid #ff9933' : '2px solid rgba(255,255,255,0.25)',
-                      color: '#ffffff',
-                      padding: '7px 18px',
+                      color: activeStation === s ? '#0b3b60' : '#ffffff',
+                      padding: '5px 16px',
                       fontWeight: 900,
-                      fontSize: 12,
+                      fontSize: 11,
                       cursor: 'pointer',
                       borderRadius: 3,
                       letterSpacing: '0.06em',
                       transition: 'all 0.15s',
                     }}
                   >
-                    {s === 'maitri' ? '🏔️ MAITRI' : '🌊 BHARATI'}
+                    {s.toUpperCase()}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* View Mode Toggle */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-              {[
-                { id: 'all', label: '🏗️ FULL TWIN (SCHEMATIC + SENSORS)' },
-                { id: 'schematic', label: '📐 ARCHITECTURAL BLUEPRINT ONLY' },
-                { id: 'sensors', label: '📡 IoT SENSOR BUS ONLY' },
-              ].map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => setViewMode(m.id as any)}
-                  style={{
-                    background: viewMode === m.id ? '#0b3b60' : '#ffffff',
-                    color: viewMode === m.id ? '#ffffff' : '#334155',
-                    border: `1px solid ${viewMode === m.id ? '#0b3b60' : '#cbd5e1'}`,
-                    borderTop: `3px solid ${viewMode === m.id ? '#ff9933' : '#cbd5e1'}`,
-                    padding: '8px 16px',
-                    fontSize: 11,
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
-                    letterSpacing: '0.02em',
-                  }}
-                >
-                  {m.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Live Subsystem Infrastructure Status Ribbon */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                gap: 8,
-                marginBottom: 12,
-              }}
-            >
-              {/* Power Subsystem */}
-              <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderLeft: '4px solid #eab308', padding: '8px 12px', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
-                <div style={{ fontSize: 9.5, fontWeight: 800, color: '#854d0e', textTransform: 'uppercase' }}>⚡ Power Substation</div>
-                <div style={{ fontSize: 16, fontWeight: 900, color: '#0f172a', marginTop: 2 }}>
-                  {twinState?.power?.total_station_load_kw ?? twinState?.power?.total_load_kw ?? '—'} kW
-                </div>
-                <div style={{ fontSize: 9.5, color: '#64748b' }}>Grid: {twinState?.power?.grid_status ?? 'ONLINE'}</div>
-              </div>
-
-              {/* Fuel Reserve */}
-              <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderLeft: '4px solid #ea580c', padding: '8px 12px', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
-                <div style={{ fontSize: 9.5, fontWeight: 800, color: '#9a3412', textTransform: 'uppercase' }}>⛽ Fuel Farm Storage</div>
-                <div style={{ fontSize: 16, fontWeight: 900, color: '#0f172a', marginTop: 2 }}>
-                  {twinState?.fuel?.main_farm_level_L ? `${(twinState.fuel.main_farm_level_L / 1000).toFixed(1)}k L` : '—'}
-                </div>
-                <div style={{ fontSize: 9.5, color: '#16a34a' }}>
-                  {twinState?.fuel?.autonomy_days ?? twinState?.fuel?.fuel_autonomy_days ?? '—'} Days Runway
-                </div>
-              </div>
-
-              {/* Water Plant */}
-              <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderLeft: '4px solid #0284c7', padding: '8px 12px', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
-                <div style={{ fontSize: 9.5, fontWeight: 800, color: '#0369a1', textTransform: 'uppercase' }}>💧 Water &amp; RO Plant</div>
-                <div style={{ fontSize: 16, fontWeight: 900, color: '#0f172a', marginTop: 2 }}>
-                  {twinState?.water?.potable_storage_litres?.toLocaleString() ?? twinState?.water?.tank_level_L?.toLocaleString() ?? '—'} L
-                </div>
-                <div style={{ fontSize: 9.5, color: '#64748b' }}>
-                  {activeStation === 'maitri' ? 'Lake Priyadarshini' : 'Desalination Storage'}
-                </div>
-              </div>
-
-              {/* HVAC Thermal */}
-              <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderLeft: '4px solid #a855f7', padding: '8px 12px', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
-                <div style={{ fontSize: 9.5, fontWeight: 800, color: '#6b21a8', textTransform: 'uppercase' }}>🌡️ Habitat Thermal Loop</div>
-                <div style={{ fontSize: 16, fontWeight: 900, color: '#0f172a', marginTop: 2 }}>
-                  +{twinState?.hvac?.living_zone_temp_c ?? twinState?.hvac?.zones?.LIVING?.temp_c ?? 20.0}°C
-                </div>
-                <div style={{ fontSize: 9.5, color: '#64748b' }}>Indoor Climate Nominal</div>
-              </div>
-
-              {/* SATCOM Comms */}
-              <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderLeft: '4px solid #2563eb', padding: '8px 12px', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
-                <div style={{ fontSize: 9.5, fontWeight: 800, color: '#1e40af', textTransform: 'uppercase' }}>📡 Satellite Ground Link</div>
-                <div style={{ fontSize: 16, fontWeight: 900, color: '#0f172a', marginTop: 2 }}>
-                  {twinState?.communication?.geo_link_status ?? twinState?.communication?.satellite_link?.link_state ?? 'ACTIVE'}
-                </div>
-                <div style={{ fontSize: 9.5, color: '#16a34a' }}>
-                  {twinState?.communication?.geo_bandwidth_mbps ? `${twinState.communication.geo_bandwidth_mbps} Mbps` : 'GSAT Polar Link'}
-                </div>
-              </div>
-            </div>
-
-            {/* Embedded Architectural Schematic Digital Twin Panel */}
-            {(viewMode === 'all' || viewMode === 'schematic') && (
-              <div style={{ marginBottom: 16 }}>
-                <div
-                  style={{
-                    background: '#ffffff',
-                    border: '1px solid #cbd5e1',
-                    borderTop: '3px solid #0b3b60',
-                    padding: '10px 14px',
-                    marginBottom: 10,
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#0b3b60' }}>domain</span>
-                    <div>
-                      <h3 style={{ fontSize: 13, fontWeight: 900, color: '#0b3b60', margin: 0, letterSpacing: '0.02em' }}>
-                        STRUCTURAL DIGITAL TWIN BLUEPRINT — {activeStation.toUpperCase()} STATION
-                      </h3>
-                      <span style={{ fontSize: 10, color: '#64748b' }}>
-                        Live CAD architectural layout • Interactive module inspection &amp; telemetry pins
-                      </span>
-                    </div>
-                  </div>
-                  <span style={{ fontSize: 9.5, fontWeight: 800, background: '#dcfce7', color: '#166534', padding: '3px 8px', border: '1px solid #86efac', borderRadius: 2 }}>
-                    ● Real-Time Physics Twin Active
-                  </span>
-                </div>
-                <SchematicPanel stationId={activeStation} />
-              </div>
-            )}
-
-            {/* Section Header for Sensors when in 'all' view */}
-            {viewMode === 'all' && (
-              <div
-                style={{
-                  background: '#ffffff',
-                  border: '1px solid #cbd5e1',
-                  borderTop: '3px solid #0b3b60',
-                  padding: '10px 14px',
-                  marginBottom: 10,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-                }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#0b3b60' }}>sensors</span>
-                <div>
-                  <h3 style={{ fontSize: 13, fontWeight: 900, color: '#0b3b60', margin: 0, letterSpacing: '0.02em' }}>
-                    DISTRIBUTED IoT SENSOR REGISTRY &amp; TELEMETRY BUS
-                  </h3>
-                  <span style={{ fontSize: 10, color: '#64748b' }}>
-                    Live SCADA parameter streams linked to {activeStation.toUpperCase()} station hardware nodes
-                  </span>
-                </div>
-              </div>
-            )}
-
             {/* KPI Summary Row */}
-            {(viewMode === 'all' || viewMode === 'sensors') && (
-            <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10, marginBottom: 12 }}>
               {/* Total */}
               <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderTop: '3px solid #0b3b60', padding: '10px 14px', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
@@ -802,7 +569,7 @@ export default function InfrastructurePage() {
                 </div>
                 <div style={{ fontSize: 26, fontWeight: 900, color: '#16a34a' }}>{onlineCount}</div>
                 <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 700, marginTop: 2 }}>
-                  ● Transmitting data
+                  Transmitting Active
                 </div>
               </div>
 
@@ -816,7 +583,7 @@ export default function InfrastructurePage() {
                   {offlineCount}
                 </div>
                 <div style={{ fontSize: 10, color: offlineCount > 0 ? '#dc2626' : '#16a34a', fontWeight: 700, marginTop: 2 }}>
-                  {offlineCount > 0 ? '⚠️ Requires attention' : '✅ All sensors nominal'}
+                  {offlineCount > 0 ? 'Attention Required' : 'All Sensors Nominal'}
                 </div>
               </div>
 
@@ -890,17 +657,6 @@ export default function InfrastructurePage() {
                   <h3 style={{ fontSize: 13, fontWeight: 900, color: '#0b3b60', margin: 0, textTransform: 'uppercase' }}>
                     IoT Sensor Registry — {activeStation === 'maitri' ? 'Maitri' : 'Bharati'} Station
                   </h3>
-                  <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
-                    Click any sensor card to view operational parameters and real-time readings
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <span style={{ fontSize: 9.5, fontWeight: 800, background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', border: '1px solid #bae6fd', borderRadius: 2 }}>
-                    NCPOR Telemetry Network
-                  </span>
-                  <span style={{ fontSize: 9.5, fontWeight: 800, background: '#dcfce7', color: '#166534', padding: '2px 8px', border: '1px solid #86efac', borderRadius: 2 }}>
-                    ● Live Dashboard Ready
-                  </span>
                 </div>
               </div>
 
@@ -983,9 +739,13 @@ export default function InfrastructurePage() {
                         fontWeight: 700,
                         cursor: 'pointer',
                         borderRadius: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
                       }}
                     >
-                      {meta.emoji} {cat.label} ({count})
+                      <span className="material-symbols-outlined" style={{ fontSize: 13 }}>{meta.icon}</span>
+                      {cat.label} ({count})
                     </button>
                   )
                 })}
@@ -1023,29 +783,29 @@ export default function InfrastructurePage() {
               </div>
             )}
 
-            {/* Live Digital Twin Physics Status Note */}
+            {/* Dashboard Link Note */}
             <div
               style={{
                 marginTop: 14,
-                background: '#f0fdf4',
-                border: '1px solid #bbf7d0',
-                borderLeft: '4px solid #16a34a',
+                background: '#f0f9ff',
+                border: '1px solid #bae6fd',
+                borderLeft: '4px solid #0284c7',
                 padding: '8px 14px',
                 fontSize: 10.5,
-                color: '#15803d',
+                color: '#0369a1',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
               }}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: 16, flexShrink: 0 }}>check_circle</span>
+              <span className="material-symbols-outlined" style={{ fontSize: 15, flexShrink: 0 }}>info</span>
               <span>
-                <strong>Digital Twin Synchronized:</strong> Sensor parameter channels and structural hotspots are continuously synced
-                with {activeStation.toUpperCase()} Station's real-time synthetic physics engine via <code style={{ background: '#dcfce7', padding: '1px 5px', borderRadius: 2 }}>/api/v1/hq/iot/sensors</code> and <code style={{ background: '#dcfce7', padding: '1px 5px', borderRadius: 2 }}>/api/v1/hq/stations/{activeStation}/digital-twin</code>.
+                <strong>Dashboard Integration:</strong> These sensor cards are designed to link to the Maitri and Bharati
+                station dashboards once they are live. The <code style={{ background: '#e0f2fe', padding: '1px 4px', borderRadius: 2 }}>GET /api/v1/hq/iot/sensors</code> endpoint
+                (filterable by <code style={{ background: '#e0f2fe', padding: '1px 4px', borderRadius: 2 }}>station_id</code>, <code style={{ background: '#e0f2fe', padding: '1px 4px', borderRadius: 2 }}>category</code>, and <code style={{ background: '#e0f2fe', padding: '1px 4px', borderRadius: 2 }}>state</code>) is ready
+                for consumption by both dashboards.
               </span>
             </div>
-            </>
-            )}
 
           </div>
 

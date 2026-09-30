@@ -463,7 +463,7 @@ const MAITRI_PARTS: HotspotPart[] = [
     healthScore: 99,
     leadOfficer: 'Telecom & Networking Specialist',
     commissioned: '2021 Tracking Upgrade',
-    box: { left: 45.5, top: 2, width: 13.5, height: 38 },
+    box: { left: 45.5, top: 5.5, width: 13.5, height: 34 },
     pin: { x: 52, y: 21 },
     status: 'Online',
     statusColor: '#16a34a',
@@ -1253,8 +1253,8 @@ export default function SchematicPanel({ stationId }: Props) {
                   <div
                     style={{
                       position: 'absolute',
-                      top: -18,
-                      left: 0,
+                      top: part.box.top < 8 ? 3 : -18,
+                      left: part.box.top < 8 ? 3 : 0,
                       background: isAffected ? '#991b1b' : '#0b3b60',
                       color: '#ffffff',
                       fontSize: 9.5,
@@ -1263,13 +1263,18 @@ export default function SchematicPanel({ stationId }: Props) {
                       whiteSpace: 'nowrap',
                       borderLeft: isAffected ? '2px solid #ef4444' : '2px solid #ff9933',
                       boxShadow: isAffected ? '0 2px 6px rgba(153, 27, 27, 0.5)' : 'none',
-                      borderRadius: '2px 2px 0 0',
+                      borderRadius: part.box.top < 8 ? 2 : '2px 2px 0 0',
                       display: 'flex',
                       alignItems: 'center',
                       gap: 4,
+                      zIndex: 10,
                     }}
                   >
-                    {isAffected && <span>⚠</span>}
+                    {isAffected && (
+                      <span className="material-symbols-outlined" style={{ fontSize: 11, color: '#fef08a' }}>
+                        warning
+                      </span>
+                    )}
                     <span>{part.simpleTag}</span>
                     <span style={{ opacity: 0.9, fontWeight: 600 }}>
                       {isAffected ? '(Anomaly Active)' : '(Click for details)'}

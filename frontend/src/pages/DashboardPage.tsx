@@ -74,17 +74,6 @@ export default function DashboardPage() {
                 <span>&gt;</span>
                 <span style={{ color: '#0b3b60', fontWeight: 800 }}>{t('crumb.twin')}</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {isOnline ? (
-                  <span style={{ fontSize: 9.5, color: '#15803d', background: '#dcfce7', padding: '2px 8px', fontWeight: 800, border: '1px solid #bbf7d0', borderRadius: 2 }}>
-                    🟢 VSAT UPLINK LIVE (CONNECTED)
-                  </span>
-                ) : (
-                  <span style={{ fontSize: 9.5, color: '#991b1b', background: '#fee2e2', padding: '2px 8px', fontWeight: 900, border: '1px solid #fca5a5', borderRadius: 2 }}>
-                    🔴 VSAT SEVERED • EDGE BUFFER ACTIVE ({edgeBufferCount} FRAMES)
-                  </span>
-                )}
-              </div>
             </div>
 
             {/* Offline Edge Buffer Warning Banner if VSAT link is severed */}

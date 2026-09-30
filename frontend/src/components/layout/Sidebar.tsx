@@ -157,107 +157,128 @@ export default function Sidebar({
         })}
       </nav>
 
-      {/* ── PINNED AT END OF SIDEBAR: SQUARE BLACK BOX BUTTON ── */}
+      {/* ── PINNED AT END OF SIDEBAR: MISSION CONTROLS FOOTER ── */}
       <div
         className="sidebar-blackbox-container"
         style={{
-          padding: '8px 10px 10px 10px',
+          padding: '8px',
           borderTop: '1px solid #cbd5e1',
           background: '#f8fafc',
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
+          gap: 6,
           flexShrink: 0,
           marginTop: 'auto',
         }}
       >
+        {/* Anomaly Injector Simulator */}
+        <div className="sidebar-anomaly-wrapper" style={{ width: '100%' }}>
+          <AnomalyInjector activeStation={currentStation} variant="sidebar" />
+        </div>
+
+        {/* Polar Black Box Flight Telemetry Recorder Button */}
         <button
           type="button"
           className="sidebar-blackbox-btn"
           onClick={openBlackBox}
           title="Open Polar Black Box — Mission Telemetry & Flight Data Recorder"
           style={{
-            width: 86,
-            height: 86,
+            width: '100%',
+            height: 34,
             display: 'flex',
-            flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'center',
-            gap: 4,
-            padding: 6,
+            justifyContent: 'space-between',
+            gap: 6,
+            padding: '0 8px',
             background: location.pathname === '/blackbox' ? '#090d16' : '#0f172a',
             color: '#ffffff',
-            border: location.pathname === '/blackbox' ? '2px solid #ef4444' : '1.5px solid #334155',
-            borderRadius: 8,
+            border: location.pathname === '/blackbox' ? '1.5px solid #ef4444' : '1px solid #334155',
+            borderRadius: 4,
             cursor: 'pointer',
             boxShadow: location.pathname === '/blackbox'
-              ? '0 0 14px rgba(239, 68, 68, 0.45), 0 3px 8px rgba(0,0,0,0.3)'
-              : '0 2px 6px rgba(0,0,0,0.18)',
+              ? '0 0 10px rgba(239, 68, 68, 0.4)'
+              : '0 1px 3px rgba(0,0,0,0.15)',
             transition: 'all 0.15s ease',
+            userSelect: 'none',
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = '#090d16'
             e.currentTarget.style.borderColor = '#ef4444'
-            e.currentTarget.style.transform = 'translateY(-2px)'
-            e.currentTarget.style.boxShadow = '0 5px 14px rgba(239, 68, 68, 0.35)'
+            e.currentTarget.style.boxShadow = '0 0 10px rgba(239, 68, 68, 0.35)'
           }}
           onMouseLeave={(e) => {
             if (location.pathname !== '/blackbox') {
               e.currentTarget.style.background = '#0f172a'
               e.currentTarget.style.borderColor = '#334155'
-              e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.18)'
+              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.15)'
             }
-            e.currentTarget.style.transform = 'translateY(0)'
           }}
         >
-          {/* Top pulse REC indicator */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+          {/* Left: Icon & Labels */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+            <span
+              className="material-symbols-outlined"
+              style={{
+                fontSize: 16,
+                color: location.pathname === '/blackbox' ? '#ef4444' : '#38bdf8',
+                flexShrink: 0,
+              }}
+            >
+              deployed_code
+            </span>
+            <div className="sidebar-blackbox-text" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, lineHeight: 1.15 }}>
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 800,
+                  letterSpacing: '0.05em',
+                  fontFamily: 'monospace',
+                  color: '#ffffff',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                BLACK BOX
+              </span>
+              <span
+                style={{
+                  fontSize: 7.5,
+                  color: '#94a3b8',
+                  fontWeight: 600,
+                  letterSpacing: '0.02em',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                DVR LOGS
+              </span>
+            </div>
+          </div>
+
+          {/* Right: REC Pulse indicator */}
+          <div
+            className="sidebar-blackbox-badge"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '2px 5px',
+              borderRadius: 3,
+              background: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              flexShrink: 0,
+            }}
+          >
             <span
               style={{
-                width: 6,
-                height: 6,
+                width: 5,
+                height: 5,
                 borderRadius: '50%',
                 background: '#ef4444',
-                boxShadow: '0 0 6px #ef4444',
+                boxShadow: '0 0 5px #ef4444',
                 display: 'inline-block',
               }}
             />
             <span style={{ fontSize: 7.5, fontWeight: 900, color: '#ef4444', letterSpacing: '0.08em' }}>
               REC
-            </span>
-          </div>
-
-          {/* Center Flight Recorder Icon */}
-          <span
-            className="material-symbols-outlined"
-            style={{
-              fontSize: 24,
-              color: location.pathname === '/blackbox' ? '#ef4444' : '#f1f5f9',
-            }}
-          >
-            deployed_code
-          </span>
-
-          {/* Main Title */}
-          <div className="sidebar-blackbox-text" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <span
-              style={{
-                fontSize: 9.5,
-                fontWeight: 900,
-                letterSpacing: '0.07em',
-                fontFamily: 'monospace',
-                color: '#ffffff',
-                lineHeight: 1.1,
-                textAlign: 'center',
-              }}
-            >
-              BLACK BOX
-            </span>
-
-            {/* Subtitle */}
-            <span style={{ fontSize: 7, color: '#94a3b8', fontWeight: 600, letterSpacing: '0.03em' }}>
-              DVR LOGS
             </span>
           </div>
         </button>

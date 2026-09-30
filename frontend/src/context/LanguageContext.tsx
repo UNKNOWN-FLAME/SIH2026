@@ -64,7 +64,7 @@ export const DICTIONARY: Translations = {
   'advisory.title': { en: 'OFFICIAL POLAR ADVISORY', hi: 'आधिकारिक ध्रुवीय चेतावनी बुलेटिन' },
   'advisory.all_nominal': { en: 'All polar systems nominal — Station life-support & generators operating within approved parameters', hi: 'सभी प्रणालियां सामान्य — स्टेशन लाइफ-सपोर्ट और जनरेटर स्वीकृत मानकों पर कार्यरत' },
   'advisory.offline': { en: 'Satellite link disconnected — Showing cached telemetry', hi: 'उपग्रह लिंक विच्छेदित — स्थानीय कैश डेटा प्रदर्शित' },
-  'advisory.live': { en: 'VSAT TELEMETRY LIVE', hi: 'वीसेट टेलीमेट्री लाइव' },
+  'advisory.live': { en: '1 Hz TELEMETRY STREAM', hi: '1 हर्ट्ज़ टेलीमेट्री प्रवाह' },
 
   // Sidebar
   'nav.wing_title': { en: 'Ministry of Earth Sciences', hi: 'पृथ्वी विज्ञान मंत्रालय' },
@@ -134,7 +134,7 @@ export const DICTIONARY: Translations = {
   'alerts.title': { en: 'ACTIVE MISSION ALERTS', hi: 'सक्रिय अलार्म व सुरक्षा चेतावनी' },
   'alerts.total': { en: 'Total', hi: 'कुल' },
   'alerts.loading': { en: 'Loading alerts...', hi: 'अलर्ट लोड हो रहे हैं...' },
-  'alerts.none': { en: 'No active alarms (All systems nominal)', hi: 'कोई सक्रिय चेतावनी नहीं (सभी प्रणालियां सामान्य)' },
+  'alerts.none': { en: 'All Systems Nominal', hi: 'सभी प्रणालियां सामान्य' },
   'alerts.ack': { en: 'ACK', hi: 'स्वीकार' },
 
   // Meteorological Mast
@@ -147,10 +147,10 @@ export const DICTIONARY: Translations = {
   // Life Support & Freshwater
   'lss.title': { en: 'WATER & LIFE SUPPORT', hi: 'जल व जीवन रक्षा' },
   'lss.badge': { en: 'ACTIVE', hi: 'सक्रिय' },
-  'lss.storage': { en: 'CLEAN WATER IN TANK', hi: 'टैंक में स्वच्छ पानी' },
-  'lss.heating': { en: 'PIPE FREEZE GUARD', hi: 'पाइप फ्रीज़ बचाव' },
-  'lss.indoor_temp': { en: 'ROOM TEMPERATURE', hi: 'कमरे का तापमान' },
-  'lss.air_quality': { en: 'FRESH AIR (OXYGEN)', hi: 'कमरे की ताज़ा हवा' },
+  'lss.storage': { en: 'POTABLE STORAGE', hi: 'पेयजल भंडारण' },
+  'lss.heating': { en: 'TRACE HEATING', hi: 'ट्रेस हीटिंग' },
+  'lss.indoor_temp': { en: 'HABITAT TEMP', hi: 'आवास तापमान' },
+  'lss.air_quality': { en: 'OXYGEN LEVEL', hi: 'ऑक्सीजन स्तर' },
 
   // Glacial & Ice Shelf
   'glacial.title': { en: 'GLACIAL SUB-STRUCTURE & ICE SHELF', hi: 'हिमनद एवं हिम स्तर निगरानी' },

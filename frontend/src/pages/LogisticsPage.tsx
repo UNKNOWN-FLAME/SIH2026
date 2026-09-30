@@ -48,7 +48,7 @@ const CATEGORY_CONFIG = [
   {
     key: 'food' as const,
     label: 'Food Rations',
-    icon: '🍲',
+    icon: 'restaurant',
     color: '#16a34a',
     bg: '#f0fdf4',
     border: '#bbf7d0',
@@ -57,7 +57,7 @@ const CATEGORY_CONFIG = [
   {
     key: 'fuel' as const,
     label: 'Fuel & Diesel',
-    icon: '⛽',
+    icon: 'oil_barrel',
     color: '#ea580c',
     bg: '#fff7ed',
     border: '#fed7aa',
@@ -66,7 +66,7 @@ const CATEGORY_CONFIG = [
   {
     key: 'medical' as const,
     label: 'Medical Supplies',
-    icon: '🏥',
+    icon: 'medical_services',
     color: '#dc2626',
     bg: '#fef2f2',
     border: '#fecaca',
@@ -75,7 +75,7 @@ const CATEGORY_CONFIG = [
   {
     key: 'spares' as const,
     label: 'Spare Parts',
-    icon: '⚙️',
+    icon: 'settings_suggest',
     color: '#7c3aed',
     bg: '#faf5ff',
     border: '#e9d5ff',
@@ -118,7 +118,7 @@ function AuditBadge({
           borderRadius: 3,
         }}
       >
-        ⏳ {label}: PENDING
+        {label}: PENDING
       </span>
     )
   }
@@ -134,7 +134,7 @@ function AuditBadge({
         borderRadius: 3,
       }}
     >
-      {verified ? '✅' : '❌'} {label}: {verified ? 'VERIFIED' : 'NOT VERIFIED'}
+      {label}: {verified ? 'VERIFIED' : 'NOT VERIFIED'}
     </span>
   )
 }
@@ -165,7 +165,7 @@ function TrackingItemRow({ item }: { item: AuditItemDetail }) {
           color: item.reorder_qty > 0 ? '#0284c7' : '#64748b',
         }}
       >
-        {item.reorder_qty > 0 ? `📦 ${item.reorder_qty.toLocaleString()} ${item.unit}` : '—'}
+        {item.reorder_qty > 0 ? `${item.reorder_qty.toLocaleString()} ${item.unit}` : '—'}
       </td>
       <td style={{ padding: '7px 10px', fontSize: 10.5, color: '#475569' }}>{item.daily_use}</td>
       <td
@@ -190,7 +190,7 @@ function TrackingItemRow({ item }: { item: AuditItemDetail }) {
             border: isLow ? '1px solid #fecaca' : '1px solid #bbf7d0',
           }}
         >
-          {isLow ? '⚠️ REORDER' : '✅ SAFE'}
+          {isLow ? 'REORDER' : 'OPTIMAL'}
         </span>
       </td>
     </tr>
@@ -264,7 +264,9 @@ function CategorySection({
         onClick={() => setExpanded((v) => !v)}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 20 }}>{config.icon}</span>
+          <span className="material-symbols-outlined" style={{ fontSize: 20, color: config.color }}>
+            {config.icon}
+          </span>
           <div>
             <div style={{ fontSize: 13, fontWeight: 900, color: config.color, textTransform: 'uppercase' }}>
               {config.label}
@@ -443,7 +445,7 @@ function CategorySection({
                 title={`Confirm stock count for: ${item.name}`}
               >
                 <span className="material-symbols-outlined" style={{ fontSize: 12 }}>task_alt</span>
-                ✓ {item.name.slice(0, 22)}{item.name.length > 22 ? '…' : ''}
+                {item.name.slice(0, 22)}{item.name.length > 22 ? '…' : ''}
               </button>
             ))}
           </div>
@@ -719,7 +721,7 @@ export default function LogisticsPage() {
                   <span style={{ fontSize: 11, fontWeight: 700, color: '#475569' }}>Days of Normal Supplies</span>
                 </div>
                 <div style={{ fontSize: 10, color: '#475569', fontWeight: 600, marginTop: 4 }}>
-                  Winter Stock Status: <strong style={{ color: '#16a34a' }}>EXCELLENT (SAFE)</strong>
+                  Winter Stock Status: <strong style={{ color: '#16a34a' }}>NOMINAL</strong>
                 </div>
               </div>
 
@@ -876,17 +878,6 @@ export default function LogisticsPage() {
                   <h3 style={{ fontSize: 13, fontWeight: 900, color: '#0b3b60', margin: 0, textTransform: 'uppercase' }}>
                     {lang === 'hi' ? 'राष्ट्रीय ध्रुवीय भंडार सूची' : 'NATIONAL POLAR STOCK REGISTER'}
                   </h3>
-                  <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
-                    Food, fuel, medicines, and machine spare parts for Antarctic stations • Use sections below to drill into each category
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 9.5, fontWeight: 800, background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', border: '1px solid #bae6fd', borderRadius: 2 }}>
-                    GeM Govt Store Linked
-                  </span>
-                  <span style={{ fontSize: 9.5, fontWeight: 800, background: '#dcfce7', color: '#166534', padding: '2px 8px', border: '1px solid #86efac', borderRadius: 2 }}>
-                    ● Stock Verified Safe
-                  </span>
                 </div>
               </div>
 

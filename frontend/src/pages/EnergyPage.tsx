@@ -476,41 +476,109 @@ export default function EnergyPage() {
                   <span style={{ fontSize: 12, fontWeight: 700, color: '#16a34a' }}>230V / 415V</span>
                 </div>
                 <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 700, marginTop: 4 }}>
-                  Electricity is Stable & Safe (Standard Indian Voltage)
+                  Nominal Grid Frequency & Bus Voltage (50Hz / 415V)
                 </div>
               </div>
             </div>
 
             {/* Sub-Navigation Tabs */}
-            <div style={{ display: 'flex', gap: 4, borderBottom: '2px solid #cbd5e1', marginBottom: 12, background: '#ffffff', padding: '4px 8px 0 8px' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'stretch',
+                gap: 6,
+                borderBottom: '2px solid #0b3b60',
+                marginBottom: 14,
+                background: '#ffffff',
+                padding: '6px 8px 0 8px',
+                flexWrap: 'wrap',
+              }}
+            >
               {[
-                { id: 'overview', label: lang === 'hi' ? '⚡ जनरेटर स्वास्थ्य व बिजली सारांश' : '⚡ Generator Health & Power Overview', icon: 'speed' },
-                { id: 'generators', label: lang === 'hi' ? '⚙️ सभी 4 जनरेटर (DG 1-4)' : '⚙️ All 4 Generators (DG 1-4)', icon: 'manufacturing' },
-                { id: 'fuel', label: lang === 'hi' ? '🛢️ ईंधन टैंक व स्टोरेज' : '🛢️ Fuel Tanks & Storage', icon: 'propane_tank' },
-                { id: 'prediction', label: lang === 'hi' ? '⛽ ईंधन कैलकुलेटर (Fuel Predictor)' : '⛽ Fuel Predictor', icon: 'psychology' },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  style={{
-                    background: activeTab === tab.id ? '#0b3b60' : 'transparent',
-                    color: activeTab === tab.id ? '#ffffff' : '#475569',
-                    border: 'none',
-                    borderTopLeftRadius: 4,
-                    borderTopRightRadius: 4,
-                    padding: '8px 14px',
-                    fontSize: 11.5,
-                    fontWeight: activeTab === tab.id ? 800 : 600,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  <span>{tab.label}</span>
-                </button>
-              ))}
+                {
+                  id: 'overview',
+                  label: lang === 'hi' ? 'जनरेटर स्वास्थ्य व पावर सारांश' : 'Generator Health & Power Overview',
+                  icon: 'speed',
+                },
+                {
+                  id: 'generators',
+                  label: lang === 'hi' ? 'सभी 4 जनरेटर (DG 1-4)' : 'All 4 Generators (DG 1-4)',
+                  icon: 'settings_suggest',
+                },
+                {
+                  id: 'fuel',
+                  label: lang === 'hi' ? 'ईंधन टैंक व भंडारण' : 'Fuel Tanks & Storage',
+                  icon: 'oil_barrel',
+                },
+                {
+                  id: 'prediction',
+                  label: lang === 'hi' ? 'ईंधन पूर्वानुमान मॉडल' : 'Fuel Predictor',
+                  icon: 'trending_up',
+                },
+              ].map((tab, idx, arr) => {
+                const isActive = activeTab === tab.id
+                return (
+                  <div key={tab.id} style={{ display: 'flex', alignItems: 'center' }}>
+                    <button
+                      onClick={() => setActiveTab(tab.id as any)}
+                      style={{
+                        background: isActive ? '#0b3b60' : '#f1f5f9',
+                        color: isActive ? '#ffffff' : '#334155',
+                        border: isActive ? '1px solid #0b3b60' : '1px solid #cbd5e1',
+                        borderBottom: isActive ? '2px solid #0b3b60' : '1px solid #cbd5e1',
+                        borderTop: isActive ? '2px solid #ff9933' : '1px solid #cbd5e1',
+                        borderTopLeftRadius: 4,
+                        borderTopRightRadius: 4,
+                        padding: '8px 14px',
+                        fontSize: 11.5,
+                        fontWeight: isActive ? 800 : 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 7,
+                        transition: 'all 0.15s ease',
+                        boxShadow: isActive ? '0 -1px 3px rgba(0,0,0,0.06)' : 'none',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.background = '#e2e8f0'
+                          e.currentTarget.style.borderColor = '#94a3b8'
+                          e.currentTarget.style.color = '#0f172a'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.background = '#f1f5f9'
+                          e.currentTarget.style.borderColor = '#cbd5e1'
+                          e.currentTarget.style.color = '#334155'
+                        }
+                      }}
+                    >
+                      <span
+                        className="material-symbols-outlined"
+                        style={{
+                          fontSize: 16,
+                          color: isActive ? '#ff9933' : '#64748b',
+                        }}
+                      >
+                        {tab.icon}
+                      </span>
+                      <span>{tab.label}</span>
+                    </button>
+                    {idx < arr.length - 1 && (
+                      <span
+                        style={{
+                          width: 1,
+                          height: 16,
+                          background: '#cbd5e1',
+                          marginLeft: 6,
+                          display: 'inline-block',
+                        }}
+                      />
+                    )}
+                  </div>
+                )
+              })}
             </div>
 
             {/* ═══════════ TAB 1: MICROGRID FLOW & TELEMETRY ═══════════ */}
@@ -568,7 +636,7 @@ export default function EnergyPage() {
                         padding: '3px 8px',
                         borderRadius: 2
                       }}>
-                        ● {genHealthScore}% {genHealthScore > 80 ? 'Good' : genHealthScore > 50 ? 'Warning' : 'Degraded'}
+                        {genHealthScore}% {genHealthScore > 80 ? 'Nominal' : genHealthScore > 50 ? 'Advisory' : 'Degraded'}
                       </span>
                     </div>
                   </div>
@@ -578,8 +646,9 @@ export default function EnergyPage() {
                     {/* Gauge 1: Vibration */}
                     <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: `4px solid ${liveVibration > 4.5 ? '#dc2626' : '#0284c7'}`, padding: 10 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: '#0b3b60' }}>
-                          📳 Vibration
+                        <span style={{ fontSize: 11, fontWeight: 800, color: '#0b3b60', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#0284c7' }}>vibration</span>
+                          Vibration (RMS)
                         </span>
                         <span style={{
                           fontSize: 9,
@@ -589,7 +658,7 @@ export default function EnergyPage() {
                           padding: '1px 5px',
                           borderRadius: 2
                         }}>
-                          {liveVibration > 4.5 ? 'CRITICAL HIGH' : liveVibration > 3.0 ? 'ELEVATED' : 'Smooth'}
+                          {liveVibration > 4.5 ? 'CRITICAL HIGH' : liveVibration > 3.0 ? 'ELEVATED' : 'Nominal'}
                         </span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, margin: '2px 0' }}>
@@ -614,16 +683,17 @@ export default function EnergyPage() {
                       </div>
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, color: '#64748b' }}>
-                        <span>Bearings: <strong>Good</strong></span>
-                        <span>Limit: <strong>&lt; 4.5</strong></span>
+                        <span>Bearings: <strong>Nominal</strong></span>
+                        <span>Threshold: <strong>&lt; 4.5</strong></span>
                       </div>
                     </div>
 
                     {/* Gauge 2: Coolant Temp */}
                     <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: `4px solid ${liveCoolant > 95 ? '#dc2626' : '#16a34a'}`, padding: 10 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: '#0b3b60' }}>
-                          🌡️ Coolant Temp
+                        <span style={{ fontSize: 11, fontWeight: 800, color: '#0b3b60', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#16a34a' }}>device_thermostat</span>
+                          Coolant Temp
                         </span>
                         <span style={{
                           fontSize: 9,
@@ -633,7 +703,7 @@ export default function EnergyPage() {
                           padding: '1px 5px',
                           borderRadius: 2
                         }}>
-                          {liveCoolant > 95 ? 'OVERHEATING' : liveCoolant < 50 ? 'Cold' : 'Normal'}
+                          {liveCoolant > 95 ? 'OVERHEATING' : liveCoolant < 50 ? 'Sub-nominal' : 'Nominal'}
                         </span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, margin: '2px 0' }}>
@@ -656,16 +726,17 @@ export default function EnergyPage() {
                       </div>
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, color: '#64748b' }}>
-                        <span>Flow: <strong>Normal</strong></span>
-                        <span>Safe: <strong>80–88°C</strong></span>
+                        <span>Circulation: <strong>Normal</strong></span>
+                        <span>Operating: <strong>80–88°C</strong></span>
                       </div>
                     </div>
 
                     {/* Gauge 3: Oil Pressure */}
                     <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: `4px solid ${liveOilPressure < 1.0 ? '#dc2626' : '#d97706'}`, padding: 10 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: '#0b3b60' }}>
-                          🛢️ Oil Pressure
+                        <span style={{ fontSize: 11, fontWeight: 800, color: '#0b3b60', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#d97706' }}>oil_barrel</span>
+                          Oil Pressure
                         </span>
                         <span style={{
                           fontSize: 9,
@@ -675,7 +746,7 @@ export default function EnergyPage() {
                           padding: '1px 5px',
                           borderRadius: 2
                         }}>
-                          {liveOilPressure < 1.0 ? 'PRESSURE DROP' : liveOilPressure < 2.5 ? 'LOW' : 'Good'}
+                          {liveOilPressure < 1.0 ? 'PRESSURE DROP' : liveOilPressure < 2.5 ? 'LOW' : 'Nominal'}
                         </span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, margin: '2px 0' }}>
@@ -698,16 +769,17 @@ export default function EnergyPage() {
                       </div>
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, color: '#64748b' }}>
-                        <span>Filter: <strong>Clean</strong></span>
-                        <span>Min: <strong>2.2 bar</strong></span>
+                        <span>Filter ΔP: <strong>Nominal</strong></span>
+                        <span>Trip Limit: <strong>2.2 bar</strong></span>
                       </div>
                     </div>
 
                     {/* Gauge 4: Exhaust Temp */}
                     <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: `4px solid ${liveExhaust > 520 ? '#dc2626' : '#7c3aed'}`, padding: 10 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: '#0b3b60' }}>
-                          🔥 Exhaust Temp
+                        <span style={{ fontSize: 11, fontWeight: 800, color: '#0b3b60', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#7c3aed' }}>mode_heat</span>
+                          Exhaust Temp (EGT)
                         </span>
                         <span style={{
                           fontSize: 9,
@@ -717,7 +789,7 @@ export default function EnergyPage() {
                           padding: '1px 5px',
                           borderRadius: 2
                         }}>
-                          {liveExhaust > 520 ? 'HIGH EGT' : 'Balanced'}
+                          {liveExhaust > 520 ? 'HIGH EGT' : 'Nominal'}
                         </span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, margin: '2px 0' }}>
@@ -745,8 +817,8 @@ export default function EnergyPage() {
                       </div>
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, color: '#64748b' }}>
-                        <span>6 Cylinders: <strong>Even</strong></span>
-                        <span>Turbo: <strong>462°C</strong></span>
+                        <span>Cylinders: <strong>Balanced</strong></span>
+                        <span>Turbo Inlet: <strong>462°C</strong></span>
                       </div>
                     </div>
                   </div>
@@ -823,7 +895,7 @@ export default function EnergyPage() {
                           {isGenAnomaly ? 'EMERGENCY TRIP' : '3,840 Hrs (160 Days)'}
                         </div>
                         <div style={{ color: isGenAnomaly ? '#dc2626' : '#16a34a', fontSize: 8.5, fontWeight: 700 }}>
-                          {isGenAnomaly ? 'Trip Flagged' : 'Confidence: 98%'}
+                          {isGenAnomaly ? 'Trip Flagged' : 'Model R²: 0.98'}
                         </div>
                       </div>
                       <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: 6 }}>
@@ -832,24 +904,24 @@ export default function EnergyPage() {
                           {isGenAnomaly ? 'Inspect Bearing / Seal' : 'Oil & Filter'}
                         </div>
                         <div style={{ color: isGenAnomaly ? '#dc2626' : '#ea580c', fontSize: 8.5, fontWeight: 700 }}>
-                          {isGenAnomaly ? 'Action Required NOW' : 'In 184 running hrs'}
+                          {isGenAnomaly ? 'Action Required NOW' : 'Interval: 184 hrs'}
                         </div>
                       </div>
                       <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: 6 }}>
                         <div style={{ color: '#64748b', fontSize: 9 }}>Piston Wear</div>
                         <div style={{ fontWeight: 900, color: isGenAnomaly ? '#ea580c' : '#0b3b60', fontSize: 11.5 }}>
-                          {isGenAnomaly ? 'Thermal Stress' : '1.4% (Minimal)'}
+                          {isGenAnomaly ? 'Thermal Stress' : '1.4% (Nominal)'}
                         </div>
                         <div style={{ color: isGenAnomaly ? '#ea580c' : '#16a34a', fontSize: 8.5, fontWeight: 700 }}>
-                          {isGenAnomaly ? 'Vib Warning' : 'No leaks'}
+                          {isGenAnomaly ? 'Vib Warning' : 'Blow-by: Normal'}
                         </div>
                       </div>
                       <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: 6 }}>
                         <div style={{ color: '#64748b', fontSize: 9 }}>Insulation</div>
                         <div style={{ fontWeight: 900, color: '#0b3b60', fontSize: 11.5 }}>
-                          {isGenAnomaly ? 'Dry & Isolated' : 'Dry & Safe'}
+                          {isGenAnomaly ? 'Dry & Isolated' : 'Nominal (>100 MΩ)'}
                         </div>
-                        <div style={{ color: '#16a34a', fontSize: 8.5, fontWeight: 700 }}>Heater On</div>
+                        <div style={{ color: '#16a34a', fontSize: 8.5, fontWeight: 700 }}>Heater: Active</div>
                       </div>
                     </div>
                   </div>
@@ -1117,7 +1189,7 @@ export default function EnergyPage() {
                   </div>
 
                   <div style={{ fontSize: 10, color: daysOfAutonomy >= resupplyDaysLeft ? '#16a34a' : '#dc2626', fontWeight: 700 }}>
-                    {daysOfAutonomy >= resupplyDaysLeft ? '✓ Safe: Enough fuel until ship arrives' : '⚠️ Alert: Immediate fuel rationing required'}
+                    {daysOfAutonomy >= resupplyDaysLeft ? 'Sufficient Fuel Reserves Until Resupply' : 'Alert: Fuel Rationing Protocol Required'}
                   </div>
                 </div>
               </div>

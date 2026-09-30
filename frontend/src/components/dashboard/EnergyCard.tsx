@@ -1,5 +1,4 @@
 import { useSensors } from '../../hooks/useSensors'
-import { useDigitalTwin } from '../../hooks/useDigitalTwin'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStation } from '../../context/StationContext'
 import GaugeCircle from '../ui/GaugeCircle'
@@ -8,18 +7,15 @@ import { getCardAnomalyImpact } from '../../utils/anomalyImpact'
 
 interface Props { stationId: string }
 
-function findVal(sensors: SensorSummary[] | undefined, key: string): number | null {
+function findVal(sensors: SensorSummary[] | undefined, key: string): number {
   const s = sensors?.find(s => s.sensor_id.includes(key))
-  return s?.latest_value ?? null
+  return s?.latest_value ?? 0
 }
 
 export default function EnergyCard({ stationId }: Props) {
   const { lastAnomalyResult } = useStation()
   const { data: sensors } = useSensors(stationId, 'energy')
-  const { data: dt } = useDigitalTwin(stationId)
   const { t } = useLanguage()
-
-  const isMaitri = stationId === 'maitri'
 
   const anomalyImpact = getCardAnomalyImpact('energy', lastAnomalyResult, stationId)
   const isInfected = Boolean(anomalyImpact?.isInfected)
@@ -32,63 +28,30 @@ export default function EnergyCard({ stationId }: Props) {
   const isHvacAnomaly = aid === 'hvac_failure'
   const isSolarAnomaly = aid === 'solar_flare_radiation'
 
-  // Total station capacities & specs
-  const maxFuelCapacityL = isMaitri ? 165000 : 250000
-  const gensetModel = isMaitri ? 'DG-1 (100kVA Kirloskar)' : 'CHP-1 (Co-Gen Microgrid)'
-  const backupModel = isMaitri ? 'DG-2 Hot Standby' : 'CHP-2 Peak Assist'
+  const rawPower = findVal(sensors, 'load')
+  let power = Math.min(100, rawPower || 78)
+  if (isGenAnomaly) power = 28 // DG-1 tripped, DG-2 running critical circuits only
+  else if (isBlizzardAnomaly) power = 96 // Extreme heating & trace line demand
+  else if (isFireAnomaly) power = 35 // Non-essential electrical isolation
+  else if (isHvacAnomaly) power = 92 // Backup electric resistance heaters active
 
-  // Dynamic Power Load calculation
-  const rawSensorPower = findVal(sensors, 'load')
-  const dtPowerLoadKw = dt?.power?.total_station_load_kw ?? dt?.power?.total_load_kw
-  const basePowerLoadKw = dtPowerLoadKw ?? rawSensorPower ?? (isMaitri ? 84.2 : 38.5)
-
-  // Normalize to gauge percentage (Maitri 100kVA, Bharati 120kW CHP)
-  const ratedCapacityKw = isMaitri ? 100 : 120
-  let power = Math.min(100, Math.round((basePowerLoadKw / ratedCapacityKw) * 100))
-
-  if (isGenAnomaly) power = 28 // Primary tripped, secondary on critical circuits
-  else if (isBlizzardAnomaly) power = 96 // Extreme trace line heating
-  else if (isFireAnomaly) power = 35 // Electrical isolation
-  else if (isHvacAnomaly) power = 92 // Electric resistance heaters active
-
-  // Solar PV percentage
-  const rawSolar = findVal(sensors, 'solar')
-  let solar = Math.min(100, rawSolar ?? (isMaitri ? 12 : 24))
+  let solar = Math.min(100, findVal(sensors, 'solar') || 14)
   if (isBlizzardAnomaly) solar = 0 // Polar blizzard blackout
   else if (isSolarAnomaly) solar = 95 // Solar irradiance surge
 
-  // Battery Storage SOC
-  const rawStorage = findVal(sensors, 'storage')
-  let storage = Math.min(100, rawStorage ?? (dt?.power?.battery_ups?.soc_percent ?? (isMaitri ? 89 : 94)))
+  let storage = Math.min(100, findVal(sensors, 'storage') || 88)
   if (isGenAnomaly) storage = 38 // Rapid battery bank discharge
   else if (isFireAnomaly) storage = 64
   else if (isBlizzardAnomaly) storage = 72
 
-  // Fuel Storage Calculation
-  const rawFuelPct = findVal(sensors, 'fuel')
-  const dtFuelLitres = dt?.fuel?.main_farm_level_L
-  let fuelLitres = dtFuelLitres ?? (isMaitri ? 142500 : 210000)
-  if (isMaitri && fuelLitres > maxFuelCapacityL) {
-    fuelLitres = 142500
-  }
-  let fuelPct = rawFuelPct ?? Math.min(100, Math.round((fuelLitres / maxFuelCapacityL) * 100))
+  const rawFuel = findVal(sensors, 'fuel')
+  const fuel = isFuelAnomaly ? 18.2 : (rawFuel || 76)
 
-  if (isFuelAnomaly) {
-    fuelPct = 18.2
-    fuelLitres = Math.round(maxFuelCapacityL * 0.182)
-  }
-
-  // Days remaining calculation
-  const dtAutonomy = dt?.fuel?.fuel_autonomy_days ?? dt?.fuel?.autonomy_days
-  const autonomyDays = isFuelAnomaly
-    ? 38
-    : (dtAutonomy && dtAutonomy > 0 ? Math.round(dtAutonomy) : (isMaitri ? 214 : 240))
-
-  const hasCritical = isGenAnomaly || isFuelAnomaly || isFireAnomaly || (fuelPct > 0 && fuelPct < 15)
-  const hasWarning = isBlizzardAnomaly || isHvacAnomaly || (fuelPct > 0 && fuelPct < 30)
+  const hasCritical = isGenAnomaly || isFuelAnomaly || isFireAnomaly || (fuel > 0 && fuel < 15)
+  const hasWarning = isBlizzardAnomaly || isHvacAnomaly || (fuel > 0 && fuel < 30)
 
   let status = 'NOMINAL'
-  if (isGenAnomaly) status = isMaitri ? 'DG-1 TRIP' : 'CHP-1 TRIP'
+  if (isGenAnomaly) status = 'DG-1 TRIP'
   else if (isFuelAnomaly) status = 'FUEL CRITICAL'
   else if (isFireAnomaly) status = 'FIRE ISOLATE'
   else if (isBlizzardAnomaly) status = 'BLIZZARD LOAD'
@@ -160,33 +123,22 @@ export default function EnergyCard({ stationId }: Props) {
             </span>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 8, color: '#ffedd5', fontWeight: 700 }}>
-            {isMaitri ? 'MAITRI 100kVA' : 'BHARATI CHP'}
-          </span>
-          <span
-            style={{
-              fontSize: 8.5,
-              fontWeight: 800,
-              color: isInfected ? '#dc2626' : statusColor,
-              background: '#ffffff',
-              padding: '1px 6px',
-              borderRadius: 2,
-              boxShadow: isInfected ? '0 0 6px rgba(239, 68, 68, 0.4)' : 'none',
-            }}
-          >
-            {status}
-          </span>
-        </div>
+        <span
+          style={{
+            fontSize: 8.5,
+            fontWeight: 800,
+            color: isInfected ? '#dc2626' : statusColor,
+            background: '#ffffff',
+            padding: '1px 6px',
+            borderRadius: 2,
+            boxShadow: isInfected ? '0 0 6px rgba(239, 68, 68, 0.4)' : 'none',
+          }}
+        >
+          {status}
+        </span>
       </div>
 
       <div style={{ padding: '8px 10px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {/* Prime Genset Subtitle */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, fontSize: 8.5, color: '#475569' }}>
-          <span>Primary: <strong style={{ color: '#0b3b60' }}>{gensetModel}</strong></span>
-          <span style={{ color: '#16a34a', fontWeight: 700 }}>● {basePowerLoadKw.toFixed(1)} kW Load</span>
-        </div>
-
         {/* Gauges */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 8 }}>
           <GaugeCircle value={power} color={isGenAnomaly || isBlizzardAnomaly ? '#dc2626' : '#0284c7'} label={t('energy.power')} />
@@ -198,10 +150,10 @@ export default function EnergyCard({ stationId }: Props) {
         <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '6px 8px', marginTop: 'auto', borderRadius: 2 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
             <span style={{ fontSize: 9.5, fontWeight: 800, color: '#0b3b60', letterSpacing: '0.03em' }}>
-              {isMaitri ? 'Maitri Bulk Fuel Farm' : 'Bharati Bulk Fuel Farm'}
+              {t('energy.fuel')}
             </span>
             <span style={{ fontSize: 11, fontWeight: 800, color: statusColor, fontFamily: 'Inter' }}>
-              {fuelPct}% ({fuelLitres.toLocaleString()} L / {(maxFuelCapacityL / 1000).toFixed(0)}k L)
+              {fuel > 0 ? `${fuel.toFixed(0)}%` : '42%'} ({fuel > 0 ? Math.round(fuel * 920).toLocaleString() : '38,640'} L)
             </span>
           </div>
 
@@ -209,7 +161,7 @@ export default function EnergyCard({ stationId }: Props) {
           <div style={{ width: '100%', height: 6, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden', marginBottom: 6 }}>
             <div
               style={{
-                width: `${fuelPct}%`,
+                width: `${fuel > 0 ? fuel : 42}%`,
                 height: '100%',
                 background: statusColor,
                 transition: 'width 0.4s ease',
@@ -222,12 +174,12 @@ export default function EnergyCard({ stationId }: Props) {
               Reserve:{' '}
               <strong style={{ color: isFuelAnomaly ? '#dc2626' : '#0f172a' }}>
                 {isFuelAnomaly
-                  ? '~38 Days Emergency Rationing'
+                  ? '~38 Days (Critical)'
                   : isGenAnomaly
-                    ? backupModel
+                    ? 'DG-2 Active (DG-1 Tripped)'
                     : isBlizzardAnomaly
-                      ? 'Heavy Winter Draw'
-                      : `~${autonomyDays} Days Autonomy`}
+                      ? 'High Winter Draw'
+                      : '~48 Days Reserve'}
               </strong>
             </span>
             <span
@@ -240,7 +192,7 @@ export default function EnergyCard({ stationId }: Props) {
                 fontWeight: 700,
               }}
             >
-              ● {isFuelAnomaly ? 'Forced Rationing' : isGenAnomaly ? 'Backup Rotation' : isBlizzardAnomaly ? 'High (+45%)' : 'Optimal Cogen'}
+              Burn Rate: {isFuelAnomaly ? 'Rationing' : isGenAnomaly ? 'Single DG' : isBlizzardAnomaly ? 'High (+45%)' : 'Nominal'}
             </span>
           </div>
         </div>

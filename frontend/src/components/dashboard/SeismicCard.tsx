@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useStation } from '../../context/StationContext'
-import { useDigitalTwin } from '../../hooks/useDigitalTwin'
 import { getCardAnomalyImpact } from '../../utils/anomalyImpact'
 
 interface Props {
@@ -9,48 +8,40 @@ interface Props {
 
 export default function SeismicCard({ stationId }: Props) {
   const { lastAnomalyResult } = useStation()
-  const { data: dt } = useDigitalTwin(stationId)
   const [viewMode, setViewMode] = useState<'sync' | 'autonomy'>('sync')
 
   const anomalyImpact = getCardAnomalyImpact('seismic', lastAnomalyResult, stationId)
   const isInfected = Boolean(anomalyImpact?.isInfected)
 
   const isMaitri = stationId === 'maitri'
-  const stationName = isMaitri ? 'Maitri Base (Schirmacher)' : 'Bharati Base (Larsemann)'
-
-  // Dynamic values from digital twin
-  const fuelDays = dt?.fuel?.fuel_autonomy_days ?? dt?.fuel?.autonomy_days ?? (isMaitri ? 48 : 72)
-  const crewCount = dt?.human?.occupancy ?? (isMaitri ? 25 : 22)
-  const waterStorageL = dt?.water?.potable_storage_litres ?? dt?.water?.tank_level_L ?? (isMaitri ? 14800 : 11200)
-  const waterDays = Math.round(waterStorageL / (isMaitri ? 1100 : 1250))
 
   const syncMetrics = [
     {
       icon: 'satellite_alt',
       label: 'SATELLITE LINK',
       value: 'ONLINE',
-      sub: isMaitri ? 'ISRO GSAT-30 (584ms)' : 'ISRO GSAT-7A (562ms)',
+      sub: 'ISRO GSAT-30 (574ms)',
       color: '#16a34a',
     },
     {
       icon: 'compress',
       label: 'DATA COMPRESSION',
-      value: isMaitri ? '94.2% SAVED' : '95.1% SAVED',
-      sub: isMaitri ? '8.4x Compacted at Edge' : '9.1x Compacted at Edge',
+      value: '88.2% SAVED',
+      sub: 'Protobuf WireFormat',
       color: '#0b3b60',
     },
     {
       icon: 'inventory_2',
       label: 'LOCAL BACKUP',
       value: '30 DAYS',
-      sub: 'Zero Data Loss Risk',
+      sub: 'NVMe Ring Buffer',
       color: '#0b3b60',
     },
     {
       icon: 'cloud_sync',
       label: 'UPLINK SPEED',
-      value: isMaitri ? '42 kbps' : '64 kbps',
-      sub: 'Hourly Batched Sync',
+      value: '42 kbps',
+      sub: '1Hz Telemetry Rate',
       color: '#0b3b60',
     },
   ]
@@ -59,29 +50,29 @@ export default function SeismicCard({ stationId }: Props) {
     {
       icon: 'local_gas_station',
       label: 'DIESEL FUEL',
-      value: `${fuelDays} DAYS`,
-      sub: isMaitri ? '86% Remaining (3x DGs)' : '84% Remaining (CHP)',
+      value: '48 DAYS',
+      sub: '42% Remaining (Genset)',
       color: '#16a34a',
     },
     {
       icon: 'water_drop',
       label: 'FRESHWATER',
-      value: `${waterDays} DAYS`,
-      sub: isMaitri ? 'Lake Priyadarshini Intake' : 'Seawater RO Desalination',
+      value: '12 DAYS',
+      sub: isMaitri ? '88% Lake Priyadarshini' : '84% Desalination',
       color: '#0284c7',
     },
     {
       icon: 'restaurant',
       label: 'FOOD RATIONS',
-      value: isMaitri ? '210 DAYS' : '240 DAYS',
-      sub: isMaitri ? 'Cold Storage Pantry' : 'Prydz Bay Freezer Vault',
+      value: '290 DAYS',
+      sub: '95% Winter Supply',
       color: '#0b3b60',
     },
     {
       icon: 'group',
       label: 'WINTER CREW',
-      value: `${crewCount} ON SITE`,
-      sub: isMaitri ? '25 Berths (100% Filled)' : '47 Berths (22 Wintering)',
+      value: '48 ON SITE',
+      sub: 'Autonomy: 246 Days',
       color: '#0b3b60',
     },
   ]
@@ -191,12 +182,12 @@ export default function SeismicCard({ stationId }: Props) {
               whiteSpace: 'nowrap',
             }}
           >
-            {isMaitri ? 'MAITRI BASE' : 'BHARATI BASE'}
+            {viewMode === 'sync' ? 'ISRO GSAT-30' : 'MoES / NCPOR'}
           </span>
         </div>
       </div>
 
-      {/* Official Government 4-Tile Parameter Grid */}
+      {/* Official Government 4-Tile Parameter Grid (Matches MetMastCard) */}
       <div
         style={{
           flex: 1,
@@ -236,29 +227,6 @@ export default function SeismicCard({ stationId }: Props) {
             </div>
           </div>
         ))}
-      </div>
-
-      {/* Official Government Verification Strip */}
-      <div
-        style={{
-          background: '#f1f5f9',
-          borderTop: '1px solid #e2e8f0',
-          padding: '4px 10px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          fontSize: 8.5,
-          color: '#475569',
-        }}
-      >
-        <span>
-          {viewMode === 'sync'
-            ? `● DTN Polar Store & Forward • ${stationName}`
-            : `● Expedition Supplies • Winter Lockout Verified`}
-        </span>
-        <span style={{ color: '#15803d', fontWeight: 700 }}>
-          {viewMode === 'sync' ? '✓ ISRO Verified' : '✓ Resources Safe'}
-        </span>
       </div>
     </div>
   )
