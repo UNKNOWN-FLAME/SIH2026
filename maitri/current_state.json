@@ -1,6 +1,6 @@
 {
   "station": "MAITRI",
-  "timestamp": "2026-09-30T08:10:26Z",
+  "timestamp": "2026-09-30T15:36:16Z",
   "environment": {
     "station": "MAITRI",
     "coordinates": {
@@ -8,15 +8,15 @@
       "lon": 11.7333,
       "oasis": "Schirmacher"
     },
-    "ambient_temperature_c": -15.55,
-    "wind_chill_c": -25.96,
-    "wind_speed_ms": 7.05,
-    "wind_speed_kmh": 25.4,
-    "atmospheric_pressure_hpa": 988.2,
+    "ambient_temperature_c": -15.5,
+    "wind_chill_c": -25.3,
+    "wind_speed_ms": 6.2,
+    "wind_speed_kmh": 22.31,
+    "atmospheric_pressure_hpa": 988.1,
     "relative_humidity_pct": 58.0,
-    "solar_radiation_wm2": 307.2,
+    "solar_radiation_wm2": 207.5,
     "weather_state": "CLEAR",
-    "katabatic_active": true,
+    "katabatic_active": false,
     "lake_priyadarshini": {
       "water_temp_c": 2.36,
       "ice_thickness_m": 1.2,
@@ -27,7 +27,7 @@
     "headcount": 25,
     "expedition_season": "WINTER_OVER_ISOLATION",
     "crew_metabolic_heat_kw": 3.0,
-    "crew_health_index_pct": 98.7,
+    "crew_health_index_pct": 98.4,
     "outside_cold_stress_advisory": "MODERATE_THERMAL_GEAR_MANDATORY",
     "daily_potable_water_demand_L": 2500.0,
     "daily_food_ration_consumption": 25.0
@@ -43,7 +43,7 @@
         "ready_for_dispatch": true,
         "cold_soak_risk": "NOMINAL",
         "fuel_level_L": 180.0,
-        "hydraulic_pressure_bar": 212.4
+        "hydraulic_pressure_bar": 210.4
       },
       "PistenBully-2": {
         "type": "SNOW_GROOMER",
@@ -53,7 +53,7 @@
         "ready_for_dispatch": true,
         "cold_soak_risk": "NOMINAL",
         "fuel_level_L": 180.0,
-        "hydraulic_pressure_bar": 210.6
+        "hydraulic_pressure_bar": 209.3
       },
       "Crane-Manitou": {
         "type": "HEAVY_CRANE",
@@ -63,7 +63,7 @@
         "ready_for_dispatch": true,
         "cold_soak_risk": "NOMINAL",
         "fuel_level_L": 180.0,
-        "hydraulic_pressure_bar": 212.6
+        "hydraulic_pressure_bar": 210.1
       },
       "SkiDoo-Alpha": {
         "type": "SNOWMOBILE",
@@ -73,7 +73,7 @@
         "ready_for_dispatch": true,
         "cold_soak_risk": "NOMINAL",
         "fuel_level_L": 180.0,
-        "hydraulic_pressure_bar": 210.5
+        "hydraulic_pressure_bar": 208.4
       }
     },
     "fuel_requested_L": 0.0,
@@ -82,12 +82,12 @@
   "hvac": {
     "system_mode": "HYDRONIC_OIL_BOILER",
     "active_boiler": "Boiler-1",
-    "boiler_firing_rate_pct": 50.2,
-    "boiler_fuel_flow_L_hr": 8.84,
-    "primary_supply_temp_c": 90.9,
-    "primary_return_temp_c": 77.3,
+    "boiler_firing_rate_pct": 50.5,
+    "boiler_fuel_flow_L_hr": 8.89,
+    "primary_supply_temp_c": 92.0,
+    "primary_return_temp_c": 78.6,
     "loop_flow_L_s": 4.2,
-    "loop_pressure_bar": 2.42,
+    "loop_pressure_bar": 2.4,
     "pump_status": {
       "pump_a": "RUNNING",
       "pump_b": "STANDBY"
@@ -95,9 +95,9 @@
     "living_zone_temp_c": 21.01,
     "displayed_thermostat_c": 21.01,
     "laboratories_temp_c": 19.81,
-    "powerhouse_temp_c": 20.02,
-    "indoor_co2_ppm": 595.5,
-    "dhw_calorifier_temp_c": 60.1,
+    "powerhouse_temp_c": 20.04,
+    "indoor_co2_ppm": 579.3,
+    "dhw_calorifier_temp_c": 60.2,
     "legionella_safe": true,
     "emergency_electric_heat_active": false,
     "electrical_demand_kw": 4.5
@@ -105,33 +105,33 @@
   "power": {
     "grid_status": "NOMINAL",
     "total_station_load_kw": 77.3,
-    "net_dg_demand_kw": 68.91,
+    "net_dg_demand_kw": 71.63,
     "solar_pv": {
       "installed_capacity_kw": 25.0,
-      "current_output_kw": 8.39,
+      "current_output_kw": 5.67,
       "inverter_online": true
     },
     "battery_ups": {
       "capacity_kva": 60.0,
-      "state_of_charge_pct": 95.3,
+      "state_of_charge_pct": 95.2,
       "supporting_critical_bus": false
     },
-    "total_fuel_consumption_L_hr": 17.23,
+    "total_fuel_consumption_L_hr": 17.91,
     "generators": {
       "DG-1": {
         "state": "RUNNING",
-        "load_kw": 68.91,
-        "load_pct": 86.1,
-        "rpm": 1500.9,
-        "coolant_temp_c": 74.8,
-        "oil_pressure_bar": 4.5,
-        "exhaust_gas_temp_c": 487.1,
-        "boost_pressure_bar": 2.21,
-        "fuel_rail_pressure_bar": 1202.2,
-        "fuel_flow_L_hr": 17.23,
-        "vibration_mms": 2.87,
-        "voltage_v": 414.2,
-        "frequency_hz": 50.01,
+        "load_kw": 71.63,
+        "load_pct": 89.5,
+        "rpm": 1497.6,
+        "coolant_temp_c": 63.2,
+        "oil_pressure_bar": 4.26,
+        "exhaust_gas_temp_c": 494.3,
+        "boost_pressure_bar": 2.25,
+        "fuel_rail_pressure_bar": 1196.3,
+        "fuel_flow_L_hr": 17.91,
+        "vibration_mms": 2.84,
+        "voltage_v": 415.4,
+        "frequency_hz": 49.84,
         "operating_hours": 0.0
       },
       "DG-2": {
@@ -172,11 +172,11 @@
     "main_farm_level_L": 138400.0,
     "main_farm_capacity_L": 165000.0,
     "main_farm_pct": 83.9,
-    "autonomy_days": 221.2,
+    "autonomy_days": 215.2,
     "day_tank_level_L": 2149.8,
     "reported_day_tank_L": 2149.8,
     "day_tank_pct": 86.0,
-    "fuel_temp_c": -13.9,
+    "fuel_temp_c": -14.0,
     "viscosity_cSt": 2.78,
     "trace_heating_online": true,
     "transfer_pump_status": {
@@ -185,24 +185,24 @@
     },
     "transfer_flow_L_s": 0.0,
     "filter_dp_bar": 0.25,
-    "daily_burn_rate_L_day": 625.7,
+    "daily_burn_rate_L_day": 643.2,
     "electrical_demand_kw": 4.0
   },
   "water": {
     "source": "LAKE_PRIYADARSHINI",
-    "potable_storage_litres": 16799.0,
+    "potable_storage_litres": 16799.4,
     "potable_storage_pct": 84.0,
     "lake_pump_status": "STANDBY",
     "intake_flow_L_s": 0.0,
     "pipeline_250m": {
-      "water_temp_c": 6.61,
+      "water_temp_c": 5.66,
       "trace_heating_online": true,
       "is_frozen_blocked": false,
       "freeze_hazard_risk": "NOMINAL"
     },
-    "sediment_filter_dp_bar": 0.33,
+    "sediment_filter_dp_bar": 0.35,
     "uv_disinfection": {
-      "uv_intensity_pct": 98.7,
+      "uv_intensity_pct": 98.2,
       "potable_certified": true
     },
     "electrical_demand_kw": 12.4
@@ -211,14 +211,14 @@
     "stp_mode": "EXTENDED_AERATION",
     "aeration_tank_temp_c": 14.5,
     "immersion_heater_online": true,
-    "dissolved_oxygen_mg_l": 3.83,
-    "biomass_health_pct": 95.7,
-    "effluent_bod_mg_l": 8.7,
+    "dissolved_oxygen_mg_l": 3.7,
+    "biomass_health_pct": 95.4,
+    "effluent_bod_mg_l": 10.0,
     "madrid_protocol_compliant": true,
-    "raw_influent_tank_L": 1199.9,
+    "raw_influent_tank_L": 1200.0,
     "incinerator_toilet": {
       "active": true,
-      "chamber_temp_c": 787.6,
+      "chamber_temp_c": 765.6,
       "power_kw": 2.4
     },
     "electrical_demand_kw": 8.4
@@ -227,9 +227,9 @@
     "satellite_link": {
       "earth_station": "MAITRI_GSAT7A_VSAT",
       "link_state": "UP",
-      "carrier_to_noise_db": 14.54,
-      "latency_ms": 627.3,
-      "packet_loss_pct": 0.19,
+      "carrier_to_noise_db": 14.55,
+      "latency_ms": 613.9,
+      "packet_loss_pct": 0.17,
       "radome_icing_attenuation_db": 0.0,
       "uplink_kbps": 4096.0,
       "downlink_kbps": 8192.0
