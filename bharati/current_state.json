@@ -1,12 +1,12 @@
 {
   "station": "BHARATI",
-  "timestamp": "2026-09-30T08:09:56Z",
+  "timestamp": "2026-09-30T08:09:57Z",
   "environment": {
     "state": "CLEAR",
     "katabatic_active": true,
-    "ambient_temperature_c": -15.01,
-    "wind_chill_c": -23.74,
-    "wind_speed_ms": 5.03,
+    "ambient_temperature_c": -15.02,
+    "wind_chill_c": -23.76,
+    "wind_speed_ms": 5.04,
     "pressure_hpa": 995.0,
     "humidity_percent": 60.0,
     "solar_radiation_wm2": 249.7
@@ -28,9 +28,9 @@
         "engine_load_kw": 0.0,
         "fuel_level_L": 250.0,
         "engine_block_temp_c": 4.9,
-        "battery_temp_c": 4.6,
+        "battery_temp_c": 4.5,
         "battery_soc_pct": 100.0,
-        "cca_available": 629,
+        "cca_available": 627,
         "oil_viscosity_cSt": 11.4,
         "fuel_viscosity_cSt": 3.5,
         "cabin_temp_c": 4.7
@@ -41,9 +41,9 @@
         "engine_load_kw": 0.0,
         "fuel_level_L": 250.0,
         "engine_block_temp_c": 4.9,
-        "battery_temp_c": 4.6,
+        "battery_temp_c": 4.5,
         "battery_soc_pct": 100.0,
-        "cca_available": 629,
+        "cca_available": 627,
         "oil_viscosity_cSt": 11.4,
         "fuel_viscosity_cSt": 3.5,
         "cabin_temp_c": 4.7
@@ -53,8 +53,8 @@
         "speed_kmh": 0.0,
         "engine_load_kw": 0.0,
         "fuel_level_L": 40.0,
-        "engine_block_temp_c": 4.6,
-        "battery_temp_c": 4.6,
+        "engine_block_temp_c": 4.5,
+        "battery_temp_c": 4.5,
         "battery_soc_pct": 100.0,
         "cca_available": 188,
         "oil_viscosity_cSt": 11.4,
@@ -66,8 +66,8 @@
         "speed_kmh": 0.0,
         "engine_load_kw": 0.0,
         "fuel_level_L": 40.0,
-        "engine_block_temp_c": 4.6,
-        "battery_temp_c": 4.6,
+        "engine_block_temp_c": 4.5,
+        "battery_temp_c": 4.5,
         "battery_soc_pct": 100.0,
         "cca_available": 188,
         "oil_viscosity_cSt": 11.4,
@@ -83,7 +83,7 @@
     "total_electrical_demand_kw": 0.0,
     "glycol_supply_temp_c": 15.0,
     "glycol_return_temp_c": 14.0,
-    "glycol_pressure_bar": 2.48,
+    "glycol_pressure_bar": 2.51,
     "dhw_tank_temp_c": 60.0,
     "legionella_risk": false,
     "ventilation_loss_kw": 0.0,
@@ -96,7 +96,7 @@
     "zones": {
       "LIVING": {
         "temp_c": 20.01,
-        "perceived_temp_c": 20.0,
+        "perceived_temp_c": 20.01,
         "heat_demand_kw": 0.0,
         "ahu": {
           "fan_rpm": 0,
@@ -108,8 +108,8 @@
         }
       },
       "GARAGE": {
-        "temp_c": 5.0,
-        "perceived_temp_c": 5.0,
+        "temp_c": 5.01,
+        "perceived_temp_c": 5.01,
         "heat_demand_kw": 0.0,
         "ahu": {
           "fan_rpm": 0,
@@ -134,8 +134,8 @@
         }
       },
       "SERVER": {
-        "temp_c": 17.9,
-        "perceived_temp_c": 17.9,
+        "temp_c": 17.93,
+        "perceived_temp_c": 17.93,
         "heat_demand_kw": 0.0,
         "ahu": {
           "fan_rpm": 0,
@@ -251,14 +251,14 @@
     "technical_water_tank_L": 2000.0,
     "blackwater_tank_L": 500.0,
     "mbr_tank_L": 2000.0,
-    "mbr_temp_c": 15.0,
+    "mbr_temp_c": 14.9,
     "discharge_pipe_temp_c": 5.0,
-    "bacteria_health_pct": 98.5,
+    "bacteria_health_pct": 98.0,
     "sludge_tank_L": 0.0,
     "sludge_bags_available": 100,
     "effluent_cod_mgL": 40.0,
     "effluent_ammonia_mgL": 1.0,
-    "uv_intensity_pct": 85.0,
+    "uv_intensity_pct": 80.0,
     "pathogen_alarm": false,
     "chemical_alarm": false,
     "discharge_frozen": false,
@@ -270,7 +270,7 @@
     "geo_link_status": "ONLINE",
     "geo_bandwidth_mbps": 150.0,
     "leo_pass_active": false,
-    "leo_timer_s": 7197,
+    "leo_timer_s": 7196,
     "leo_incoming_gbps": 0.0,
     "tracking_accuracy_pct": 100.0,
     "radome_ice_thickness_mm": 0.0,
@@ -281,7 +281,7 @@
     "ups_charge_pct": 99.9,
     "server_core_temp_c": 40.0,
     "electrical_demand_kw": 0.0,
-    "heat_dissipation_kw": 11.1
+    "heat_dissipation_kw": 11.0
   },
   "inventory": {
     "food_stock_kg": 15000.0,

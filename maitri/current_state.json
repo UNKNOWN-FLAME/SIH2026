@@ -1,6 +1,6 @@
 {
   "station": "MAITRI",
-  "timestamp": "2026-09-30T08:10:25Z",
+  "timestamp": "2026-09-30T08:10:26Z",
   "environment": {
     "station": "MAITRI",
     "coordinates": {
@@ -9,9 +9,9 @@
       "oasis": "Schirmacher"
     },
     "ambient_temperature_c": -15.55,
-    "wind_chill_c": -25.94,
-    "wind_speed_ms": 7.02,
-    "wind_speed_kmh": 25.29,
+    "wind_chill_c": -25.96,
+    "wind_speed_ms": 7.05,
+    "wind_speed_kmh": 25.4,
     "atmospheric_pressure_hpa": 988.2,
     "relative_humidity_pct": 58.0,
     "solar_radiation_wm2": 307.2,
@@ -27,7 +27,7 @@
     "headcount": 25,
     "expedition_season": "WINTER_OVER_ISOLATION",
     "crew_metabolic_heat_kw": 3.0,
-    "crew_health_index_pct": 98.6,
+    "crew_health_index_pct": 98.7,
     "outside_cold_stress_advisory": "MODERATE_THERMAL_GEAR_MANDATORY",
     "daily_potable_water_demand_L": 2500.0,
     "daily_food_ration_consumption": 25.0
@@ -84,8 +84,8 @@
     "active_boiler": "Boiler-1",
     "boiler_firing_rate_pct": 50.2,
     "boiler_fuel_flow_L_hr": 8.84,
-    "primary_supply_temp_c": 91.1,
-    "primary_return_temp_c": 77.4,
+    "primary_supply_temp_c": 90.9,
+    "primary_return_temp_c": 77.3,
     "loop_flow_L_s": 4.2,
     "loop_pressure_bar": 2.42,
     "pump_status": {
@@ -96,7 +96,7 @@
     "displayed_thermostat_c": 21.01,
     "laboratories_temp_c": 19.81,
     "powerhouse_temp_c": 20.02,
-    "indoor_co2_ppm": 594.6,
+    "indoor_co2_ppm": 595.5,
     "dhw_calorifier_temp_c": 60.1,
     "legionella_safe": true,
     "emergency_electric_heat_active": false,
@@ -123,7 +123,7 @@
         "load_kw": 68.91,
         "load_pct": 86.1,
         "rpm": 1500.9,
-        "coolant_temp_c": 74.1,
+        "coolant_temp_c": 74.8,
         "oil_pressure_bar": 4.5,
         "exhaust_gas_temp_c": 487.1,
         "boost_pressure_bar": 2.21,
@@ -190,12 +190,12 @@
   },
   "water": {
     "source": "LAKE_PRIYADARSHINI",
-    "potable_storage_litres": 16799.1,
+    "potable_storage_litres": 16799.0,
     "potable_storage_pct": 84.0,
     "lake_pump_status": "STANDBY",
     "intake_flow_L_s": 0.0,
     "pipeline_250m": {
-      "water_temp_c": 6.53,
+      "water_temp_c": 6.61,
       "trace_heating_online": true,
       "is_frozen_blocked": false,
       "freeze_hazard_risk": "NOMINAL"
@@ -212,8 +212,8 @@
     "aeration_tank_temp_c": 14.5,
     "immersion_heater_online": true,
     "dissolved_oxygen_mg_l": 3.83,
-    "biomass_health_pct": 95.6,
-    "effluent_bod_mg_l": 8.8,
+    "biomass_health_pct": 95.7,
+    "effluent_bod_mg_l": 8.7,
     "madrid_protocol_compliant": true,
     "raw_influent_tank_L": 1199.9,
     "incinerator_toilet": {
