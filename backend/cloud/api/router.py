@@ -1110,45 +1110,80 @@ async def get_iot_sensors(
         fuel = b_twin.get("fuel", {})
         water = b_twin.get("water", {})
         hvac = b_twin.get("hvac", {})
+        comm = b_twin.get("communication", {})
         gens = pwr.get("generators", {})
         chp1 = gens.get("CHP-1", {})
 
         for sensor in all_sensors["bharati"]:
+            sid = sensor.get("sensor_id", "")
             cat = sensor.get("category", "")
             for param in sensor.get("parameters", []):
                 pkey = param.get("key", "").lower()
-                if "temp" in pkey and cat in ["weather", "environment", "ambient"]:
+                plabel = param.get("label", "").lower()
+
+                # Temperature & Climate
+                if sid == "BHA-TMP-001" or ("ambient" in plabel and "temp" in pkey):
                     param["value"] = round(env.get("ambient_temperature_c", param["value"]), 1)
-                elif "wind" in pkey or "speed" in pkey:
-                    param["value"] = round(env.get("wind_speed_ms", 12.0) * 3.6, 1)
-                elif "pressure" in pkey or "baro" in pkey:
-                    param["value"] = round(env.get("pressure_hpa", 990.0), 1)
-                elif "humid" in pkey:
-                    param["value"] = round(env.get("humidity_percent", 75.0), 1)
-                elif "solar" in pkey or "rad" in pkey:
-                    param["value"] = round(env.get("solar_radiation_wm2", 180.0), 1)
+                elif sid == "BHA-TMP-002" or ("indoor" in plabel or "living" in plabel):
+                    param["value"] = round(hvac.get("zones", {}).get("LIVING", {}).get("temp_c", 20.0), 1)
+                elif sid == "BHA-TMP-003" or ("generator" in plabel or "engine" in plabel):
+                    if "coolant" in pkey:
+                        param["value"] = round(chp1.get("coolant_temp_c", 88.5), 1)
+                    elif "exhaust" in pkey:
+                        param["value"] = round(chp1.get("exhaust_gas_temp_c", 404.0), 0)
+                    elif "temp" in pkey:
+                        param["value"] = round(chp1.get("stator_temp_c", 64.0), 1)
+
+                # Meteorological
+                elif sid == "BHA-MET-001" or cat == "meteorological":
+                    if "wind_speed" in pkey or "speed" in pkey:
+                        param["value"] = round(env.get("wind_speed_ms", 5.5) * 3.6, 1)
+                    elif "pressure" in pkey or "baro" in pkey:
+                        param["value"] = round(env.get("pressure_hpa", 994.9), 1)
+                    elif "humid" in pkey:
+                        param["value"] = round(env.get("humidity_percent", 60.5), 1)
+                    elif "chill" in pkey or "wind_chill" in pkey:
+                        param["value"] = round(env.get("wind_chill_c", -24.0), 1)
+
+                # Radiation
+                elif sid == "BHA-RAD-001" or cat == "radiation":
+                    if "solar" in pkey or "rad" in pkey:
+                        param["value"] = round(env.get("solar_radiation_wm2", param["value"]), 1)
+
+                # Fuel System
+                elif sid == "BHA-FUL-001" or cat == "fuel":
+                    if "level" in pkey or "farm" in pkey or "volume" in pkey:
+                        param["value"] = round(fuel.get("main_farm_level_L", 200000.0), 0)
+                    elif "day_tank" in pkey:
+                        param["value"] = round(fuel.get("day_tank_level_L", 2000.0), 0)
+                    elif "autonomy" in pkey or "days" in pkey:
+                        param["value"] = round(fuel.get("autonomy_days", 356.1), 0)
+                    elif "viscos" in pkey:
+                        param["value"] = round(fuel.get("viscosity_cSt", 2.61), 2)
+                    elif "fuel_temp" in pkey:
+                        param["value"] = round(fuel.get("fuel_temp_c", -15.0), 1)
+
+                # Pressure & HVAC Loops
+                elif sid == "BHA-PRS-001" or cat == "pressure":
+                    if "glycol" in pkey or "loop" in pkey or "pressure" in pkey:
+                        param["value"] = round(hvac.get("glycol_pressure_bar", 2.52), 2)
+
+                # Communications
+                elif sid == "BHA-COM-001" or cat == "communications":
+                    if "bandwidth" in pkey:
+                        param["value"] = round(comm.get("geo_bandwidth_mbps", 150.0), 1)
+                    elif "accuracy" in pkey or "tracking" in pkey:
+                        param["value"] = round(comm.get("tracking_accuracy_pct", 100.0), 1)
+
+                # Microgrid / Power Readings
                 elif "power" in pkey or "load" in pkey or "kw" in pkey:
                     param["value"] = round(pwr.get("total_load_kw", chp1.get("load_kw", param["value"])), 1)
-                elif "coolant" in pkey:
-                    param["value"] = round(chp1.get("coolant_temp_c", 88.5), 1)
                 elif "vibrat" in pkey:
-                    param["value"] = round(chp1.get("vibration_mms", 0.05), 3)
+                    param["value"] = round(chp1.get("vibration_mms", 1.14), 2)
                 elif "oil" in pkey and "press" in pkey:
-                    param["value"] = round(chp1.get("oil_pressure_bar", 4.8), 2)
-                elif "fuel_flow" in pkey:
-                    param["value"] = round(chp1.get("fuel_flow_L_hr", 14.5), 1)
-                elif "level" in pkey and cat in ["fuel", "energy"]:
-                    param["value"] = round(fuel.get("main_farm_level_L", 210500.0), 0)
-                elif "viscos" in pkey:
-                    param["value"] = round(fuel.get("viscosity_cSt", 2.6), 2)
-                elif "tank" in pkey and cat in ["water", "life_support"]:
-                    param["value"] = round(water.get("tank_level_L", 14850.0), 0)
-                elif "ph" in pkey:
-                    param["value"] = round(water.get("tank_ph", 7.2), 2)
-                elif "tds" in pkey:
-                    param["value"] = round(water.get("permeate_tds_ppm", 195.0), 0)
-                elif "glycol" in pkey:
-                    param["value"] = round(hvac.get("glycol_supply_temp_c", 31.4), 1)
+                    param["value"] = round(chp1.get("oil_pressure_bar", 4.79), 2)
+                elif "tank" in pkey and ("water" in cat or "water" in plabel):
+                    param["value"] = round(water.get("tank_level_L", 14998.0), 0)
 
     # 2. Dynamically overlay Maitri physics simulator readings
     if m_twin and "maitri" in all_sensors:
@@ -1157,45 +1192,82 @@ async def get_iot_sensors(
         m_fuel = m_twin.get("fuel", {})
         m_water = m_twin.get("water", {})
         m_hvac = m_twin.get("hvac", {})
+        m_comm = m_twin.get("communication", {})
         m_gens = m_pwr.get("generators", {})
         m_dg1 = m_gens.get("DG-1", {})
+        m_sat = m_comm.get("satellite_link", {})
 
         for sensor in all_sensors["maitri"]:
+            sid = sensor.get("sensor_id", "")
             cat = sensor.get("category", "")
             for param in sensor.get("parameters", []):
                 pkey = param.get("key", "").lower()
-                if "temp" in pkey and cat in ["weather", "environment", "ambient"]:
+                plabel = param.get("label", "").lower()
+
+                # Temperature & Climate
+                if sid == "MAI-TMP-001" or ("ambient" in plabel and "temp" in pkey):
                     param["value"] = round(m_env.get("ambient_temperature_c", param["value"]), 1)
-                elif "temp" in pkey and ("indoor" in param.get("label", "").lower() or "living" in param.get("label", "").lower()):
-                    param["value"] = round(m_hvac.get("living_zone_temp_c", 21.0), 1)
-                elif "wind" in pkey or "speed" in pkey:
-                    param["value"] = round(m_env.get("wind_speed_ms", 6.0) * 3.6, 1)
-                elif "pressure" in pkey or "baro" in pkey:
-                    param["value"] = round(m_env.get("atmospheric_pressure_hpa", 988.0), 1)
-                elif "humid" in pkey:
-                    param["value"] = round(m_env.get("relative_humidity_pct", 58.0), 1)
-                elif "solar" in pkey or "rad" in pkey:
-                    param["value"] = round(m_env.get("solar_radiation_wm2", 0.0), 1)
+                elif sid == "MAI-TMP-002" or ("indoor" in plabel or "living" in plabel):
+                    param["value"] = round(m_hvac.get("living_zone_temp_c", 20.0), 1)
+                elif sid == "MAI-TMP-003" or ("generator" in plabel or "engine" in plabel):
+                    if "coolant" in pkey:
+                        param["value"] = round(m_dg1.get("coolant_temp_c", 86.0), 1)
+                    elif "exhaust" in pkey:
+                        param["value"] = round(m_dg1.get("exhaust_temp_c", 420.0), 0)
+                    elif "temp" in pkey:
+                        param["value"] = round(m_dg1.get("engine_room_temp_c", 32.6), 1)
+
+                # Meteorological
+                elif sid == "MAI-MET-001" or cat == "meteorological":
+                    if "wind_speed" in pkey or "speed" in pkey:
+                        param["value"] = round(m_env.get("wind_speed_ms", 6.0) * 3.6, 1)
+                    elif "pressure" in pkey or "baro" in pkey:
+                        param["value"] = round(m_env.get("atmospheric_pressure_hpa", 988.0), 1)
+                    elif "humid" in pkey:
+                        param["value"] = round(m_env.get("relative_humidity_pct", 58.0), 1)
+                    elif "chill" in pkey or "wind_chill" in pkey:
+                        param["value"] = round(m_env.get("wind_chill_c", -31.0), 1)
+
+                # Radiation
+                elif sid == "MAI-RAD-001" or cat == "radiation":
+                    if "solar" in pkey or "rad" in pkey:
+                        param["value"] = round(m_env.get("solar_radiation_wm2", param["value"]), 1)
+
+                # Fuel System
+                elif sid == "MAI-FUL-001" or cat == "fuel":
+                    if "level" in pkey and ("pct" in pkey or "%" in param.get("unit", "")):
+                        param["value"] = round(m_fuel.get("main_farm_pct", (m_fuel.get("main_farm_level_L", 138400.0) / 165000.0) * 100), 1)
+                    elif "volume" in pkey or "level" in pkey:
+                        param["value"] = round(m_fuel.get("main_farm_level_L", 138400.0), 0)
+                    elif "days_remaining" in pkey or "autonomy" in pkey:
+                        param["value"] = round(m_fuel.get("fuel_autonomy_days", m_fuel.get("autonomy_days", 111.0)), 0)
+                    elif "day_tank" in pkey:
+                        param["value"] = round(m_fuel.get("day_tank_litres", 2150.0), 0)
+                    elif "viscos" in pkey:
+                        param["value"] = round(m_fuel.get("viscosity_cSt", 2.6), 2)
+                    elif "flow" in pkey or "consumption" in pkey:
+                        param["value"] = round(m_pwr.get("total_fuel_consumption_L_hr", 51.6), 1)
+
+                # Water & Life Support
+                elif "tank" in pkey and ("water" in cat or "water" in plabel):
+                    param["value"] = round(m_water.get("potable_storage_litres", 18500.0), 0)
+
+                # Communications
+                elif sid == "MAI-COM-001" or cat == "communications":
+                    if "latency" in pkey:
+                        param["value"] = round(m_sat.get("latency_ms", 610.0), 0)
+                    elif "bandwidth" in pkey:
+                        param["value"] = round(m_sat.get("downlink_kbps", 8192) / 1000.0, 1)
+                    elif "packet_loss" in pkey:
+                        param["value"] = round(m_sat.get("packet_loss_pct", 0.1), 2)
+
+                # Generator / Electrical
                 elif "power" in pkey or "load" in pkey or "kw" in pkey:
                     param["value"] = round(m_pwr.get("total_station_load_kw", m_dg1.get("load_kw", param["value"])), 1)
-                elif "coolant" in pkey:
-                    param["value"] = round(m_dg1.get("coolant_temp_c", 86.0), 1)
                 elif "vibrat" in pkey:
                     param["value"] = round(m_dg1.get("vibration_mms", 0.05), 3)
                 elif "oil" in pkey and "press" in pkey:
                     param["value"] = round(m_dg1.get("oil_pressure_bar", 4.5), 2)
-                elif "fuel_flow" in pkey or "consumption" in pkey:
-                    param["value"] = round(m_pwr.get("total_fuel_consumption_L_hr", 51.6), 1)
-                elif "level" in pkey and cat in ["fuel", "energy"]:
-                    param["value"] = round((m_fuel.get("main_farm_level_L", 138400.0) / 165000.0) * 100, 1)
-                elif "volume" in pkey and cat in ["fuel", "energy"]:
-                    param["value"] = round(m_fuel.get("main_farm_level_L", 138400.0), 0)
-                elif "days_remaining" in pkey:
-                    param["value"] = round(m_fuel.get("fuel_autonomy_days", 111.0), 0)
-                elif "viscos" in pkey:
-                    param["value"] = round(m_fuel.get("viscosity_cSt", 2.6), 2)
-                elif "tank" in pkey and cat in ["water", "life_support"]:
-                    param["value"] = round(m_water.get("potable_storage_litres", 18500.0), 0)
 
     if station_id and station_id.lower() in all_sensors:
         sensors = all_sensors[station_id.lower()]
