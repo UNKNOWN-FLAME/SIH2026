@@ -1,7 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useLanguage } from '../../context/LanguageContext'
 import { useStation } from '../../context/StationContext'
-import AnomalyInjector from '../dashboard/AnomalyInjector'
 import emblemOfIndia from '../../assets/emblem_of_india.svg'
 
 export default function Sidebar({
@@ -14,7 +13,8 @@ export default function Sidebar({
   const navigate = useNavigate()
   const location = useLocation()
   const { t } = useLanguage()
-  const { stationId, openBlackBox } = useStation()
+  const { stationId, openBlackBox, lastAnomalyResult } = useStation()
+  const isSimActive = Boolean(lastAnomalyResult)
 
   const navItems = [
     { icon: 'dashboard', label: t('nav.dashboard'), sub: t('nav.dashboard_sub'), path: '/' },
@@ -168,9 +168,64 @@ export default function Sidebar({
         }}
       >
         {/* Anomaly Injector Simulator */}
-        <div className="sidebar-anomaly-wrapper" style={{ width: '100%' }}>
-          <AnomalyInjector activeStation={stationId} variant="sidebar" />
-        </div>
+        <button
+          type="button"
+          className="sidebar-edge-btn"
+          onClick={() => window.open(`/edge?station=${stationId || 'maitri'}`, '_blank', 'noopener,noreferrer')}
+          title={isSimActive ? `Hardware fault actively running on ${(stationId || 'maitri').toUpperCase()} — click to access On-Ice Edge Console` : `Open ${(stationId || 'maitri').toUpperCase()} On-Ice Station Edge Console (/edge) to inject ground anomalies`}
+          style={{
+            width: '100%',
+            height: 32,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 6,
+            padding: '0 8px',
+            background: isSimActive ? '#dc2626' : '#b91c1c',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: 4,
+            cursor: 'pointer',
+            boxShadow: isSimActive
+              ? '0 0 10px rgba(220, 38, 38, 0.4)'
+              : '0 1px 3px rgba(185, 28, 28, 0.25)',
+            fontWeight: 800,
+            fontSize: 10.5,
+            letterSpacing: '0.03em',
+            transition: 'all 0.15s ease',
+            userSelect: 'none',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#dc2626'
+            e.currentTarget.style.boxShadow = '0 0 10px rgba(220, 38, 38, 0.4)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = isSimActive ? '#dc2626' : '#b91c1c'
+            e.currentTarget.style.boxShadow = isSimActive ? '0 0 10px rgba(220, 38, 38, 0.4)' : '0 1px 3px rgba(185, 28, 28, 0.25)'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 15, color: isSimActive ? '#ffffff' : '#fef08a' }}>
+              {isSimActive ? 'crisis_alert' : 'warning'}
+            </span>
+            <span className="sidebar-edge-text" style={{ whiteSpace: 'nowrap' }}>{isSimActive ? 'FAULT ACTIVE' : 'INJECT ANOMALY'}</span>
+          </div>
+          <span
+            className="sidebar-edge-badge"
+            style={{
+              fontSize: 7.5,
+              fontWeight: 900,
+              background: isSimActive ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.22)',
+              color: '#ffffff',
+              padding: '1.5px 5px',
+              borderRadius: 2,
+              letterSpacing: '0.06em',
+              flexShrink: 0,
+            }}
+          >
+            {isSimActive ? 'LIVE' : 'SIM'}
+          </span>
+        </button>
 
         {/* Polar Black Box Flight Telemetry Recorder Button */}
         <button

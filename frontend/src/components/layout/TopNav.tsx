@@ -199,31 +199,6 @@ export default function TopNav() {
             </button>
           )}
 
-          {/* On-Ice Station Edge Console Toggle */}
-          <button
-            onClick={() => window.open('/edge', '_blank', 'noopener,noreferrer')}
-            style={{
-              background: '#042f2e',
-              border: '1px solid #14b8a6',
-              color: '#2dd4bf',
-              fontSize: 10.5,
-              fontWeight: 800,
-              padding: '2px 8px',
-              borderRadius: 3,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-              boxShadow: '0 0 8px rgba(20, 184, 166, 0.25)',
-              letterSpacing: '0.02em',
-            }}
-            title="Open On-Ice Station Edge Console in new tab (Maitri LAN 192.168.1.10)"
-          >
-            <span style={{ fontSize: 12 }}>❄️</span>
-            <span className="hidden sm:inline">ON-ICE CONSOLE</span>
-            <span className="inline sm:hidden">ON-ICE</span>
-            <span style={{ fontSize: 10 }}>↗</span>
-          </button>
 
           {/* Language Switch Button */}
           <button

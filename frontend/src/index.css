@@ -259,27 +259,17 @@ body {
   .sidebar-blackbox-container {
     padding: 6px 4px !important;
   }
-  .sidebar-blackbox-btn {
+  .sidebar-blackbox-btn,
+  .sidebar-edge-btn {
     width: 44px !important;
     height: 36px !important;
     padding: 4px !important;
     justify-content: center !important;
   }
   .sidebar-blackbox-text,
-  .sidebar-blackbox-badge {
-    display: none !important;
-  }
-  .sidebar-anomaly-wrapper {
-    display: flex !important;
-    justify-content: center !important;
-  }
-  .anomaly-btn-sidebar {
-    width: 44px !important;
-    height: 36px !important;
-    padding: 4px !important;
-    justify-content: center !important;
-  }
-  .anomaly-btn-sidebar span:not(:first-child) {
+  .sidebar-blackbox-badge,
+  .sidebar-edge-text,
+  .sidebar-edge-badge {
     display: none !important;
   }
 }
